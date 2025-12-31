@@ -1,0 +1,18 @@
+﻿@{
+    ViewData["Title"] = "Lecturer Dashboard";
+}
+
+<div class="container mt-4">
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success">@TempData["Success"]</div>
+    }
+
+    <h2>Lecturer Dashboard</h2>
+    <p>Welcome, @User.Identity?.Name!</p>
+
+    <form asp-controller="Account" asp-action="Logout" method="post">
+        @Html.AntiForgeryToken()
+        <button class="btn btn-outline-danger">Logout</button>
+    </form>
+</div>
