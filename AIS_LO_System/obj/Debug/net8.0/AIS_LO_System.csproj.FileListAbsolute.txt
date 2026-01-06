@@ -31,3 +31,4 @@ C:\Users\admin\Documents\COMP720_Project\LO_system\AIS_LO_System\AIS_LO_System\o
 C:\Users\admin\Documents\COMP720_Project\LO_system\AIS_LO_System\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.pdb
 C:\Users\admin\Documents\COMP720_Project\LO_system\AIS_LO_System\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.genruntimeconfig.cache
 C:\Users\admin\Documents\COMP720_Project\LO_system\AIS_LO_System\AIS_LO_System\obj\Debug\net8.0\ref\AIS_LO_System.dll
+C:\Users\admin\Documents\COMP720_Project\LO_system\AIS_LO_System\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.sourcelink.json
