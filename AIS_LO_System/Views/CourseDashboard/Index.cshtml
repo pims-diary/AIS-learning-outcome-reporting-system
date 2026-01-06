@@ -1,0 +1,14 @@
+﻿@{
+    ViewData["Title"] = "Course Dashboard";
+}
+
+<div class="container mt-4">
+    <h2>Course Dashboard</h2>
+    <p><b>Course:</b> @ViewBag.CourseCode</p>
+    <p><b>Context:</b> @ViewBag.Year - Trimester @ViewBag.Trimester</p>
+
+    <a class="btn btn-outline-secondary" asp-controller="LecturerDashboard" asp-action="Index"
+       asp-route-year="@ViewBag.Year" asp-route-trimester="@ViewBag.Trimester">
+        Back to Dashboard
+    </a>
+</div>
