@@ -14,11 +14,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\AIS_LO_System.csproj",
+      "projectUniqueName": "C:\\Users\\admin\\OneDrive - Auckland Institute of Studies\\COMP720\\Code\\AIS_LO_System\\AIS_LO_System.csproj",
       "projectName": "AIS_LO_System",
-      "projectPath": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\AIS_LO_System.csproj",
+      "projectPath": "C:\\Users\\admin\\OneDrive - Auckland Institute of Studies\\COMP720\\Code\\AIS_LO_System\\AIS_LO_System.csproj",
       "packagesPath": "C:\\Users\\admin\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\obj\\",
+      "outputPath": "C:\\Users\\admin\\OneDrive - Auckland Institute of Studies\\COMP720\\Code\\AIS_LO_System\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -51,8 +51,7 @@
         "enableAudit": "true",
         "auditLevel": "low",
         "auditMode": "direct"
-      },
-      "SdkAnalysisLevel": "9.0.300"
+      }
     },
     "frameworks": {
       "net8.0": {
@@ -76,7 +75,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.400/PortableRuntimeIdentifierGraph.json"
       }
     }
   }

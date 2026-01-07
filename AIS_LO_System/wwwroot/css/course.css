@@ -1,0 +1,115 @@
+﻿body {
+    font-family: Inter, sans-serif;
+    background: #ffffff;
+}
+
+.course-container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 40px;
+}
+
+.course-title {
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.course-dates {
+    font-size: 20px;
+    margin-bottom: 30px;
+}
+
+.expand-toggle {
+    text-align: right;
+    margin-bottom: 20px;
+}
+
+    .expand-toggle button {
+        background: none;
+        border: none;
+        color: #c62828;
+        font-size: 16px;
+        cursor: pointer;
+    }
+
+/* Accordion */
+.accordion {
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 16px;
+    margin-bottom: 20px;
+}
+
+.accordion-header {
+    padding: 20px;
+    font-size: 22px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+
+.accordion-body {
+    display: none;
+    padding: 10px 20px 20px;
+    padding-left: 72px;
+}
+
+    .accordion-body a {
+        display: block;
+        padding: 10px 0;
+        color: #c62828;
+        text-decoration: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+        .accordion-body a:last-child {
+            border-bottom: none;
+        }
+
+.arrow {
+    transition: transform 0.3s ease;
+}
+
+.accordion.active .arrow {
+    transform: rotate(90deg);
+}
+
+.accordion.active .accordion-body {
+    display: block;
+}
+
+.accordion-header:hover {
+    background: #f9f9f9;
+}
+
+/* Header left layout */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Circle icon */
+.icon-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #fdecec; /* light red/pink like Figma */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Arrow inside circle */
+.icon-arrow {
+    font-size: 22px;
+    color: #c62828;
+    transition: transform 0.3s ease;
+}
+
+/* Rotate arrow when expanded */
+.accordion.active .icon-arrow {
+    transform: rotate(90deg);
+}
