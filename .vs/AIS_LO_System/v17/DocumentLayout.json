@@ -1,0 +1,139 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\wwwroot\\css\\site.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\wwwroot\\css\\site.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\views\\lecturerdashboard\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\views\\lecturerdashboard\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\views\\account\\login.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\views\\account\\login.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\controllers\\lecturerdashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\controllers\\lecturerdashboardcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\controllers\\accountcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\controllers\\accountcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\models\\auth\\loginviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\models\\auth\\loginviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "site.css",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\wwwroot\\css\\site.css",
+              "RelativeDocumentMoniker": "AIS_LO_System\\wwwroot\\css\\site.css",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\wwwroot\\css\\site.css",
+              "RelativeToolTip": "AIS_LO_System\\wwwroot\\css\\site.css",
+              "ViewState": "AgIAACMAAAAAAAAAAAAwwEEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
+              "WhenOpened": "2025-12-31T17:22:55.488Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Index.cshtml",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\LecturerDashboard\\Index.cshtml",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Views\\LecturerDashboard\\Index.cshtml",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\LecturerDashboard\\Index.cshtml",
+              "RelativeToolTip": "AIS_LO_System\\Views\\LecturerDashboard\\Index.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-12-31T17:22:24.323Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Login.cshtml",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\Account\\Login.cshtml",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Views\\Account\\Login.cshtml",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\Account\\Login.cshtml",
+              "RelativeToolTip": "AIS_LO_System\\Views\\Account\\Login.cshtml",
+              "ViewState": "AgIAAAIAAAAAAAAAAAAgwAgAAAA6AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-12-31T17:21:12.527Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "LecturerDashboardController.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\LecturerDashboardController.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\LecturerDashboardController.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\LecturerDashboardController.cs",
+              "RelativeToolTip": "AIS_LO_System\\Controllers\\LecturerDashboardController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-31T16:03:44.761Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "AccountController.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\AccountController.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\AccountController.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\AccountController.cs",
+              "RelativeToolTip": "AIS_LO_System\\Controllers\\AccountController.cs",
+              "ViewState": "AgIAADEAAAAAAAAAAAAgwE0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-31T16:02:49.625Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "LoginViewModel.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\Auth\\LoginViewModel.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Models\\Auth\\LoginViewModel.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\Auth\\LoginViewModel.cs",
+              "RelativeToolTip": "AIS_LO_System\\Models\\Auth\\LoginViewModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-31T16:02:20.125Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Program.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Program.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Program.cs",
+              "RelativeToolTip": "AIS_LO_System\\Program.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAAACcAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-31T16:01:09.403Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
