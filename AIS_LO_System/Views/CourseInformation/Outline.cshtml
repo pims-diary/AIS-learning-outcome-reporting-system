@@ -1,0 +1,76 @@
+﻿@{
+    ViewData["Title"] = "Course Outline";
+    bool canReupload = (bool)(ViewBag.CanReupload ?? false);
+    string outlineUrl = ViewBag.OutlineUrl as string;
+}
+
+<link rel="stylesheet" href="~/css/courseinfo.css" />
+
+<div class="page-shell">
+
+    <div class="top-header">
+        <img class="ais-logo" src="~/images/AIS_logo.png" alt="AIS Logo" />
+
+        <div class="crumb">
+            <span>@ViewBag.CourseCode @ViewBag.Year – Tri @ViewBag.Trimester</span>
+            <span class="sep">/</span>
+            <span>Course Information</span>
+            <span class="sep">/</span>
+            <strong>Course Outline</strong>
+        </div>
+
+        <a class="backlink"
+           asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            ← Go Back
+        </a>
+    </div>
+
+    <div class="content-card">
+        <h2 class="page-title">Course Outline</h2>
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="error">@TempData["Error"]</div>
+        }
+
+        <div class="pdf-wrap">
+            @if (!string.IsNullOrWhiteSpace(outlineUrl))
+            {
+                <iframe class="pdf-frame" src="@outlineUrl" title="Course Outline"></iframe>
+            }
+            else
+            {
+                <div class="empty">No course outline uploaded yet.</div>
+            }
+        </div>
+
+        <div class="actions-center" style="margin-top:16px;">
+            @if (canReupload)
+            {
+                <form asp-controller="CourseInformation"
+                      asp-action="UploadOutline"
+                      method="post"
+                      enctype="multipart/form-data"
+                      class="upload-form">
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
+                    <input type="hidden" name="year" value="@ViewBag.Year" />
+                    <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
+
+                    <input type="file" name="file" accept="application/pdf" required />
+                    <button type="submit" class="btn-primary">Re-upload Course Outline</button>
+                </form>
+            }
+            else
+            {
+                <button class="btn-primary" type="button" disabled>Re-upload Course Outline</button>
+                <div class="denied">Action Denied (permission required).</div>
+            }
+        </div>
+    </div>
+</div>

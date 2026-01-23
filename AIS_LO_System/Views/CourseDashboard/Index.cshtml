@@ -45,9 +45,20 @@
         </div>
 
         <div class="accordion-body">
-            <a asp-action="Outline">Course Outline</a>
-            <a asp-action="LearningOutcomes">Learning Outcomes</a>
+            <a asp-controller="CourseInformation" asp-action="Outline"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">Course Outline
+           </a>
+
+            <a asp-controller="CourseInformation" asp-action="LearningOutcomes"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">Learning Outcomes
+           </a>
+
         </div>
+
     </div>
 
     <!-- Assessments -->
