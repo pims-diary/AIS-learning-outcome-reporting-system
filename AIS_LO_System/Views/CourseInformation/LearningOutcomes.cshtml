@@ -1,0 +1,149 @@
+﻿@{
+    ViewData["Title"] = "Learning Outcomes";
+
+    bool canEdit = (bool)(ViewBag.CanEditLO ?? false);
+    bool editMode = (bool)(ViewBag.EditMode ?? false);
+
+    // Controller sets BOTH, so we safely read either
+    var los = (ViewBag.LearningOutcomes as List<string>) ??
+              (ViewBag.LOs as List<string>) ??
+              new List<string>();
+}
+
+<link rel="stylesheet" href="~/css/courseinfo.css" />
+
+<div class="page-shell">
+
+    <div class="top-header">
+        <img class="ais-logo" src="~/images/AIS_logo.png" alt="AIS Logo" />
+
+        <div class="crumb">
+            <span>@ViewBag.CourseCode @ViewBag.Year – Tri @ViewBag.Trimester</span>
+            <span class="sep">/</span>
+            <span>Course Information</span>
+            <span class="sep">/</span>
+            <strong>Learning Outcomes</strong>
+        </div>
+
+        <a class="backlink"
+           asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            ← Go Back
+        </a>
+    </div>
+
+    <div class="content-card">
+        <h2 class="page-title">Learning Outcomes</h2>
+
+        @* ---------------------------
+           VIEW MODE
+           --------------------------- *@
+        @if (!editMode)
+        {
+            <ol class="lo-list">
+                @foreach (var lo in los)
+                {
+                    <li>@lo</li>
+                }
+            </ol>
+
+            <div class="actions-center">
+                @if (canEdit)
+                {
+                    <a class="btn-primary"
+                       asp-controller="CourseInformation"
+                       asp-action="EditLearningOutcomes"
+                       asp-route-courseCode="@ViewBag.CourseCode"
+                       asp-route-year="@ViewBag.Year"
+                       asp-route-trimester="@ViewBag.Trimester">
+                        Edit Learning Outcomes
+                    </a>
+                }
+                else
+                {
+                    <button class="btn-primary" type="button" disabled>Edit Learning Outcomes</button>
+                    <div class="denied">Action Denied (permission required).</div>
+                }
+            </div>
+        }
+        else
+        {
+            @* ---------------------------
+               EDIT MODE
+               --------------------------- *@
+            @if (!canEdit)
+            {
+                <div class="denied">Action Denied (permission required).</div>
+                <div class="actions-center" style="margin-top:12px;">
+                    <a class="btn-secondary"
+                       asp-controller="CourseInformation"
+                       asp-action="LearningOutcomes"
+                       asp-route-courseCode="@ViewBag.CourseCode"
+                       asp-route-year="@ViewBag.Year"
+                       asp-route-trimester="@ViewBag.Trimester">
+                        Back
+                    </a>
+                </div>
+            }
+            else
+            {
+                <form asp-controller="CourseInformation"
+                      asp-action="SaveLearningOutcomes"
+                      method="post">
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
+                    <input type="hidden" name="year" value="@ViewBag.Year" />
+                    <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
+
+                    <div id="loEditor">
+                        @for (int i = 0; i < los.Count; i++)
+                        {
+                            <div class="lo-edit-row">
+                                <textarea name="outcomes" class="lo-text">@los[i]</textarea>
+                                <button type="button" class="btn-remove" onclick="removeRow(this)">✕</button>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="edit-actions">
+                        <button type="button" class="btn-secondary" onclick="addRow()">+ Add LO</button>
+
+                        <div class="right">
+                            <a class="btn-secondary"
+                               asp-controller="CourseInformation"
+                               asp-action="LearningOutcomes"
+                               asp-route-courseCode="@ViewBag.CourseCode"
+                               asp-route-year="@ViewBag.Year"
+                               asp-route-trimester="@ViewBag.Trimester">
+                                Cancel
+                            </a>
+
+                            <button type="submit" class="btn-primary">Save</button>
+                        </div>
+                    </div>
+                </form>
+
+                <script>
+                    function addRow() {
+                        const editor = document.getElementById("loEditor");
+                        const row = document.createElement("div");
+                        row.className = "lo-edit-row";
+                        row.innerHTML = `
+                            <textarea name="outcomes" class="lo-text"></textarea>
+                            <button type="button" class="btn-remove" onclick="removeRow(this)">✕</button>
+                        `;
+                        editor.appendChild(row);
+                    }
+
+                    function removeRow(btn) {
+                        btn.closest(".lo-edit-row").remove();
+                    }
+                </script>
+            }
+        }
+    </div>
+</div>
