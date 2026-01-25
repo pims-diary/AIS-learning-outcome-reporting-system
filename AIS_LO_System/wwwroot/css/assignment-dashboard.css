@@ -1,0 +1,72 @@
+﻿body {
+    font-family: Inter, sans-serif;
+    background: #ffffff;
+}
+
+.assignment-page {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+
+/* Breadcrumb */
+.breadcrumb {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 16px;
+}
+
+.crumb-primary {
+    color: #c62828;
+    font-weight: 500;
+}
+
+/* Title */
+.page-title {
+    font-size: 36px;
+    font-weight: 700;
+    margin-bottom: 40px;
+    color: #111827;
+}
+
+/* Grid */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+}
+
+/* Cards */
+.assignment-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+    .assignment-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+    }
+
+    .assignment-card img {
+        max-width: 220px;
+        margin-bottom: 24px;
+    }
+
+    /* Card Text */
+    .assignment-card h3 {
+        color: #c62828;
+        font-size: 20px;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .assignment-card p {
+        font-size: 15px;
+        color: #6b7280;
+        line-height: 1.5;
+    }

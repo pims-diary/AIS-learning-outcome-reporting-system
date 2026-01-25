@@ -63,3 +63,34 @@ C:\Users\admin\OneDrive - Auckland Institute of Studies\COMP720\Code\AIS_LO_Syst
 C:\Users\admin\OneDrive - Auckland Institute of Studies\COMP720\Code\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.pdb
 C:\Users\admin\OneDrive - Auckland Institute of Studies\COMP720\Code\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.genruntimeconfig.cache
 C:\Users\admin\OneDrive - Auckland Institute of Studies\COMP720\Code\AIS_LO_System\obj\Debug\net8.0\ref\AIS_LO_System.dll
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\appsettings.Development.json
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\appsettings.json
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\AIS_LO_System.staticwebassets.runtime.json
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\AIS_LO_System.exe
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\AIS_LO_System.deps.json
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\AIS_LO_System.runtimeconfig.json
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\AIS_LO_System.dll
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\AIS_LO_System.pdb
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.AssemblyInfoInputs.cache
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.AssemblyInfo.cs
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.csproj.CoreCompileInputs.cache
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.RazorAssemblyInfo.cache
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.RazorAssemblyInfo.cs
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.sourcelink.json
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\staticwebassets.build.json
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\staticwebassets.development.json
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\staticwebassets\msbuild.AIS_LO_System.Microsoft.AspNetCore.StaticWebAssets.props
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\staticwebassets\msbuild.build.AIS_LO_System.props
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\staticwebassets\msbuild.buildMultiTargeting.AIS_LO_System.props
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\staticwebassets\msbuild.buildTransitive.AIS_LO_System.props
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\staticwebassets.pack.json
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\scopedcss\Views\Shared\_Layout.cshtml.rz.scp.css
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\scopedcss\bundle\AIS_LO_System.styles.css
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\scopedcss\projectbundle\AIS_LO_System.bundle.scp.css
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.dll
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\refint\AIS_LO_System.dll
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.pdb
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.genruntimeconfig.cache
+C:\Users\admin\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\ref\AIS_LO_System.dll

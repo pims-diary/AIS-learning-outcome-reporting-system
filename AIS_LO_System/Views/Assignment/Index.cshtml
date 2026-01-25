@@ -1,0 +1,48 @@
+﻿@{
+    ViewData["Title"] = $"Assignment {ViewBag.AssignmentId}";
+}
+
+<link rel="stylesheet" href="~/css/assignment-dashboard.css" />
+
+<div class="assignment-page">
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <span class="crumb-primary">@ViewBag.CourseCode @ViewBag.CourseTitle</span>
+        <span>/</span>
+        <span class="crumb-primary">Assessments</span>
+        <span>/</span>
+        <span>Assignment @ViewBag.AssignmentId</span>
+    </div>
+
+    <!-- Page Title -->
+    <h1 class="page-title">Assignment @ViewBag.AssignmentId</h1>
+
+    <!-- Cards Grid -->
+    <div class="card-grid">
+
+        <div class="assignment-card">
+            <img src="~/images/assignment-info.svg" alt="Assignment Info" />
+            <h3>Assignment Information</h3>
+            <p>Essential details of the Assessment</p>
+        </div>
+
+        <div class="assignment-card">
+            <img src="~/images/rubric.svg" alt="Rubric" />
+            <h3>Rubric Management</h3>
+            <p>Upload, Edit, or Create the Rubric</p>
+        </div>
+
+        <div class="assignment-card">
+            <h3>LO Mapping and Weighting</h3>
+            <p>Mapping each criterion to LOs and assigning its weight</p>
+        </div>
+
+        <div class="assignment-card">
+            <h3>Mark Students</h3>
+            <p>Enter or Update student scores</p>
+        </div>
+
+    </div>
+
+</div>
