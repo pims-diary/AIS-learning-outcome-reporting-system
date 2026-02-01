@@ -1,5 +1,5 @@
 ﻿@{
-    ViewData["Title"] = $"Assignment {ViewBag.AssignmentId}";
+    ViewData["Title"] = $"Assignment {ViewBag.AssessmentName}";
 }
 
 <link rel="stylesheet" href="~/css/assignment-dashboard.css" />
@@ -8,15 +8,23 @@
 
     <!-- Breadcrumb -->
     <div class="breadcrumb">
-        <span class="crumb-primary">@ViewBag.CourseCode @ViewBag.CourseTitle</span>
+        <a class="crumb-primary"
+           asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            @ViewBag.CourseCode @ViewBag.CourseTitle
+        </a>
+
         <span>/</span>
         <span class="crumb-primary">Assessments</span>
         <span>/</span>
-        <span>Assignment @ViewBag.AssignmentId</span>
+        <span>@ViewBag.AssessmentName</span>
     </div>
 
     <!-- Page Title -->
-    <h1 class="page-title">Assignment @ViewBag.AssignmentId</h1>
+    <h1 class="page-title">@ViewBag.AssessmentName</h1>
 
     <!-- Cards Grid -->
     <div class="card-grid">
