@@ -73,9 +73,35 @@
         </div>
 
         <div class="accordion-body">
-            <a asp-action="Assessment" asp-route-id="1">Assignment 1</a>
-            <a asp-action="Assessment" asp-route-id="2">Assignment 2</a>
-            <a asp-action="Assessment" asp-route-id="3">Midterm</a>
+            <a asp-controller="Assignment"
+               asp-action="Index"
+               asp-route-assessmentName="Assignment 1"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                Assignment 1
+            </a>
+
+            <a asp-controller="Assignment"
+               asp-action="Index"
+               asp-route-assessmentName="Assignment 2"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                Assignment 2
+            </a>
+
+            <a asp-controller="Assignment"
+               asp-action="Index"
+               asp-route-assessmentName="Midterm"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                Midterm
+            </a>
         </div>
     </div>
 
