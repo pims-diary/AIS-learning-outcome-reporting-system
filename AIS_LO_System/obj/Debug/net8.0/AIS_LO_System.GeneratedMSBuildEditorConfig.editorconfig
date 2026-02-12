@@ -26,8 +26,20 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXNzaWdubWVudFxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/Users/admin/Source/Repos/AIS-learning-outcome-reporting-system/AIS_LO_System/Views/Assignment/Information.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQXNzaWdubWVudFxJbmZvcm1hdGlvbi5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/Users/admin/Source/Repos/AIS-learning-outcome-reporting-system/AIS_LO_System/Views/CourseDashboard/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ291cnNlRGFzaGJvYXJkXEluZGV4LmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/admin/Source/Repos/AIS-learning-outcome-reporting-system/AIS_LO_System/Views/CourseInformation/LearningOutcomes.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ291cnNlSW5mb3JtYXRpb25cTGVhcm5pbmdPdXRjb21lcy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/Users/admin/Source/Repos/AIS-learning-outcome-reporting-system/AIS_LO_System/Views/CourseInformation/Outline.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ291cnNlSW5mb3JtYXRpb25cT3V0bGluZS5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [C:/Users/admin/Source/Repos/AIS-learning-outcome-reporting-system/AIS_LO_System/Views/Home/Index.cshtml]

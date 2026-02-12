@@ -29,11 +29,22 @@
     <!-- Cards Grid -->
     <div class="card-grid">
 
-        <div class="assignment-card">
-            <img src="~/images/assignment-info.svg" alt="Assignment Info" />
-            <h3>Assignment Information</h3>
-            <p>Essential details of the Assessment</p>
-        </div>
+        <a asp-controller="Assignment"
+           asp-action="Information"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester"
+           class="assignment-card-link">
+
+            <div class="assignment-card">
+                <img src="~/images/assignment-info.svg" alt="Assignment Info" />
+                <h3>Assignment Information</h3>
+                <p>Essential details of the Assessment</p>
+            </div>
+
+        </a>
 
         <div class="assignment-card">
             <img src="~/images/rubric.svg" alt="Rubric" />
