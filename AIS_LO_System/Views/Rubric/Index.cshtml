@@ -4,59 +4,130 @@
     ViewData["Title"] = "Rubric Management";
 }
 
-<h2>Rubric Management</h2>
+<link rel="stylesheet" href="~/css/rubric.css" />
 
-<hr />
+<div class="rubric-page">
 
-<div class="mb-3">
-    <strong>Assessment:</strong> @ViewBag.AssessmentName <br />
-    <strong>Course:</strong> @ViewBag.CourseCode - @ViewBag.CourseTitle <br />
-    <strong>Year:</strong> @ViewBag.Year |
-    <strong>Trimester:</strong> @ViewBag.Trimester
-</div>
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <a asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            @ViewBag.CourseCode @ViewBag.Year-S@ViewBag.Trimester
+        </a>
 
-<hr />
+        <span>/</span>
 
-<h4>Upload Rubric (Excel)</h4>
+        <a asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            Assessments
+        </a>
 
-<form asp-action="UploadRubricExcel"
-      asp-controller="Rubric"
-      method="post"
-      enctype="multipart/form-data">
-
-    <input type="hidden" name="assignmentId" value="@ViewBag.AssignmentId" />
-    <input type="hidden" name="assessmentName" value="@ViewBag.AssessmentName" />
-    <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
-    <input type="hidden" name="courseTitle" value="@ViewBag.CourseTitle" />
-    <input type="hidden" name="year" value="@ViewBag.Year" />
-    <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
-
-    <div class="form-group mb-3">
-        <input type="file" name="file" class="form-control" required />
+        <span>/</span>
+        <span>@ViewBag.AssessmentName</span>
+        <span>/</span>
+        <span class="active">Rubric Management</span>
     </div>
 
-    <button type="submit" class="btn btn-primary">
-        Upload Excel
-    </button>
-</form>
+    <!-- Header -->
+    <div class="header-row">
+        <h1>Rubric Management</h1>
 
-<hr />
+        <a asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester"
+           class="go-back">
+            ← Go Back
+        </a>
+    </div>
 
-@if (Model != null)
-{
-    <h4>Existing Rubric</h4>
+    <!-- Action Buttons -->
+    <div class="action-buttons">
 
-    <p>
-        Created on: @Model.CreatedDate.ToShortDateString()
-    </p>
+        <!-- Upload -->
+        <form asp-action="UploadRubricExcel"
+              method="post"
+              enctype="multipart/form-data">
 
-    <a asp-action="Preview"
-       asp-route-id="@Model.Id"
-       class="btn btn-success">
-        Preview Rubric
-    </a>
-}
-else
-{
-    <p class="text-muted">No rubric uploaded yet.</p>
-}
+            <input type="hidden" name="assignmentId" value="@ViewBag.AssignmentId" />
+            <input type="hidden" name="assessmentName" value="@ViewBag.AssessmentName" />
+            <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
+            <input type="hidden" name="courseTitle" value="@ViewBag.CourseTitle" />
+            <input type="hidden" name="year" value="@ViewBag.Year" />
+            <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
+
+            <label class="upload-btn">
+                Upload Rubric
+                <input type="file" name="file" hidden onchange="this.form.submit()" />
+            </label>
+        </form>
+
+        @if (Model != null)
+        {
+            <a asp-action="Edit"
+               asp-route-id="@Model.Id"
+               class="red-btn">
+                Edit Rubric
+            </a>
+
+            <a asp-action="Preview"
+               asp-route-id="@Model.Id"
+               class="red-btn">
+                View Full Rubric
+            </a>
+        }
+    </div>
+
+    <!-- Preview Section -->
+    <h2 class="preview-title">Rubric Preview</h2>
+
+    @if (Model != null && Model.Criteria.Any())
+    {
+        <div class="rubric-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">Criterion</th>
+                        <th colspan="5">Scale (0-4)</th>
+                    </tr>
+                    <tr>
+                        <th>Exceeds</th>
+                        <th>Meets</th>
+                        <th>Below</th>
+                        <th>Poor</th>
+                        <th>Not Achieved</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Criteria)
+                    {
+                        <tr>
+                            <td>@c.CriterionName</td>
+
+                            @foreach (var level in c.Levels.OrderByDescending(l => l.Score))
+                            {
+                                <td>@level.Score</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p class="no-rubric">No rubric uploaded yet.</p>
+    }
+
+</div>

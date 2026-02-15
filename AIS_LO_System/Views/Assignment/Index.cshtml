@@ -31,12 +31,8 @@
 
         <a asp-controller="Assignment"
            asp-action="Information"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester"
-           class="assignment-card-link">
+           asp-route-id="@Model.Id">
+
 
             <div class="assignment-card">
                 <img src="~/images/assignment-info.svg" alt="Assignment Info" />
@@ -48,12 +44,12 @@
 
         <a asp-controller="Rubric"
            asp-action="Index"
-           asp-route-assignmentId="@ViewBag.AssignmentId"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester"
+           asp-route-assignmentId="@Model.Id"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
            class="assignment-card-link">
 
             <div class="assignment-card">
@@ -61,7 +57,6 @@
                 <h3>Rubric Management</h3>
                 <p>Upload, Edit, or Create the Rubric</p>
             </div>
-
         </a>
 
         <div class="assignment-card">

@@ -16,20 +16,34 @@ namespace AIS_LO_System.Controllers
 
         [HttpGet]
         public IActionResult Index(
-            string assessmentName,
-            string courseCode,
-            string courseTitle,
-            int year,
-            int trimester)
+    string assessmentName,
+    string courseCode,
+    string courseTitle,
+    int year,
+    int trimester)
         {
-            ViewBag.AssessmentName = assessmentName;
-            ViewBag.CourseCode = courseCode;
-            ViewBag.CourseTitle = courseTitle;
-            ViewBag.Year = year;
-            ViewBag.Trimester = trimester;
-            ViewBag.CourseDate = GetTrimesterDateRange(year, trimester);
+            var assignment = _context.Assignments.FirstOrDefault(a =>
+                a.AssessmentName == assessmentName &&
+                a.CourseCode == courseCode &&
+                a.Year == year &&
+                a.Trimester == trimester);
 
-            return View();
+            if (assignment == null)
+            {
+                assignment = new Assignment
+                {
+                    AssessmentName = assessmentName,
+                    CourseCode = courseCode,
+                    CourseTitle = courseTitle,
+                    Year = year,
+                    Trimester = trimester
+                };
+
+                _context.Assignments.Add(assignment);
+                _context.SaveChanges();
+            }
+
+            return View(assignment);
         }
 
         private string GetTrimesterDateRange(int year, int trimester)
@@ -44,73 +58,36 @@ namespace AIS_LO_System.Controllers
         }
 
         [HttpGet]
-        public IActionResult Information(
-    string assessmentName,
-    string courseCode,
-    string courseTitle,
-    int year,
-    int trimester)
+        public IActionResult Information(int id)
         {
             var assignment = _context.Assignments
                 .Include(a => a.Files)
-                .FirstOrDefault(a => a.AssessmentName == assessmentName
-                                  && a.CourseCode == courseCode);
+                .FirstOrDefault(a => a.Id == id);
 
             if (assignment == null)
-            {
-                assignment = new Assignment
-                {
-                    AssessmentName = assessmentName,
-                    CourseCode = courseCode,
-                    Files = new List<AssignmentFile>()
-                };
-            }
-
-            ViewBag.AssessmentName = assessmentName;
-            ViewBag.CourseCode = courseCode;
-            ViewBag.CourseTitle = courseTitle;
-            ViewBag.Year = year;
-            ViewBag.Trimester = trimester;
-            ViewBag.CourseDate = GetTrimesterDateRange(year, trimester);
+                return NotFound();
 
             return View(assignment);
         }
 
         [HttpPost]
-        public async Task<IActionResult> UploadAssignment(
-    IFormFile file,
-    string assessmentName,
-    string courseCode,
-    string courseTitle,
-    int year,
-    int trimester)
+        public async Task<IActionResult> UploadAssignment(IFormFile file, int assignmentId)
         {
             if (file == null || file.Length == 0)
-                return RedirectToAction("Information",
-                    new { assessmentName, courseCode, courseTitle, year, trimester });
+                return RedirectToAction("Information", new { id = assignmentId });
 
-            // ✅ Allow only PDF
+            // Only PDF
             if (Path.GetExtension(file.FileName).ToLower() != ".pdf")
             {
                 TempData["Error"] = "Only PDF files are allowed.";
-                return RedirectToAction("Information",
-                    new { assessmentName, courseCode, courseTitle, year, trimester });
+                return RedirectToAction("Information", new { id = assignmentId });
             }
 
             var assignment = _context.Assignments
-                .FirstOrDefault(a => a.AssessmentName == assessmentName
-                                  && a.CourseCode == courseCode);
+                .FirstOrDefault(a => a.Id == assignmentId);
 
             if (assignment == null)
-            {
-                assignment = new Assignment
-                {
-                    AssessmentName = assessmentName,
-                    CourseCode = courseCode
-                };
-                _context.Assignments.Add(assignment);
-                await _context.SaveChangesAsync();
-            }
+                return NotFound();
 
             var latestVersion = _context.AssignmentFiles
                 .Where(f => f.AssignmentId == assignment.Id)
@@ -142,8 +119,7 @@ namespace AIS_LO_System.Controllers
 
             await _context.SaveChangesAsync();
 
-            return RedirectToAction("Information",
-                new { assessmentName, courseCode, courseTitle, year, trimester });
+            return RedirectToAction("Information", new { id = assignment.Id });
         }
     }
 }

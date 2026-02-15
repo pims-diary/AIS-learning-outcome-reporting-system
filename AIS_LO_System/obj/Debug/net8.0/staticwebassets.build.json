@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "AuQwDTTYjuZQlaw+PQWSItKxA5QBZxwj1grNu9bog5s=",
+  "Hash": "kQvS/QvG8iOgPxAoqRS+jAPrnvugF9To8BP62Cl7uUE=",
   "Source": "AIS_LO_System",
   "BasePath": "_content/AIS_LO_System",
   "Mode": "Default",
@@ -129,6 +129,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\css\\courseinfo.css"
+    },
+    {
+      "Identity": "C:\\Users\\admin\\Source\\Repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\css\\rubric.css",
+      "SourceId": "AIS_LO_System",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\admin\\Source\\Repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\",
+      "BasePath": "_content/AIS_LO_System",
+      "RelativePath": "css/rubric.css",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\css\\rubric.css"
     },
     {
       "Identity": "C:\\Users\\admin\\Source\\Repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\css\\site.css",
@@ -1345,6 +1364,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\uploads\\assignments\\bf19961c-d20f-4223-a2b1-7ba4382cbbc1.pdf"
+    },
+    {
+      "Identity": "C:\\Users\\admin\\Source\\Repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\uploads\\assignments\\f534fa41-7218-4260-b363-3abb684e445f.pdf",
+      "SourceId": "AIS_LO_System",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\admin\\Source\\Repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\",
+      "BasePath": "_content/AIS_LO_System",
+      "RelativePath": "uploads/assignments/f534fa41-7218-4260-b363-3abb684e445f.pdf",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\uploads\\assignments\\f534fa41-7218-4260-b363-3abb684e445f.pdf"
     },
     {
       "Identity": "C:\\Users\\admin\\Source\\Repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\uploads\\outlines\\COMP720-2026-T1.pdf",

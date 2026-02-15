@@ -14,37 +14,52 @@
     Edit Rubric
 </a>
 
-@if (Model == null || !Model.Criteria.Any())
+@if (Model != null && Model.Criteria.Any())
 {
-    <p>No rubric data available.</p>
-}
-else
-{
-    <table class="table table-bordered table-striped">
-        <thead>
-            <tr>
-                <th>Criteria</th>
+    var scaleHeaders = Model.Criteria
+        .First()
+        .Levels
+        .OrderByDescending(l => l.Score)
+        .ToList();
 
-                @foreach (var level in Model.Criteria.First().Levels.OrderByDescending(l => l.Score))
-                {
-                    <th>Score @level.Score</th>
-                }
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var criterion in Model.Criteria)
-            {
+    <div class="rubric-table">
+        <table>
+            <thead>
                 <tr>
-                    <td><strong>@criterion.CriterionName</strong></td>
+                    <th>Criteria</th>
 
-                    @foreach (var level in criterion.Levels.OrderByDescending(l => l.Score))
+                    @foreach (var level in scaleHeaders)
                     {
-                        <td>@level.Description</td>
+                        <th>
+                            Score @level.Score <br />
+                            <span class="scale-header">
+                                @level.ScaleName
+                            </span>
+                        </th>
                     }
                 </tr>
-            }
-        </tbody>
-    </table>
+            </thead>
+
+            <tbody>
+                @foreach (var criterion in Model.Criteria)
+                {
+                    <tr>
+                        <td class="criteria-cell">
+                            @criterion.CriterionName
+                        </td>
+
+                        @foreach (var level in criterion.Levels
+                       .OrderByDescending(l => l.Score))
+                        {
+                            <td>
+                                @level.Description
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
 }
 
 <br />

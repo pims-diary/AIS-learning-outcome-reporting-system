@@ -17,5 +17,20 @@ namespace AIS_LO_System.Data
         public DbSet<RubricCriterion> RubricCriteria { get; set; }
         public DbSet<RubricLevel> RubricLevels { get; set; }
 
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Rubric>()
+                .HasMany(r => r.Criteria)
+                .WithOne(c => c.Rubric)
+                .HasForeignKey(c => c.RubricId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RubricCriterion>()
+                .HasMany(c => c.Levels)
+                .WithOne(l => l.RubricCriterion)
+                .HasForeignKey(l => l.RubricCriterionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+
     }
 }

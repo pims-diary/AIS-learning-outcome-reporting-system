@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AIS_LO_System")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6663f3e7aaf16b9c45a0cd0dda57a606b2a40b57")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+848dd72df384ac1f17680be6e581fdd271eb305c")]
 [assembly: System.Reflection.AssemblyProductAttribute("AIS_LO_System")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AIS_LO_System")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

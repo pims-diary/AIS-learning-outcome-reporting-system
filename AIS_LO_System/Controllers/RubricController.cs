@@ -1,10 +1,9 @@
-﻿using AIS_LO_System.Models;
+﻿using AIS_LO_System.Data;
+using AIS_LO_System.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
-using System.Linq;
 using System.IO;
-using AIS_LO_System.Data;
 
 namespace AIS_LO_System.Controllers
 {
@@ -17,10 +16,10 @@ namespace AIS_LO_System.Controllers
             _context = context;
         }
 
-        // ================================
+        // ======================================================
         // LOAD RUBRIC MANAGEMENT PAGE
-        // ================================
-        public IActionResult Index(
+        // ======================================================
+        public async Task<IActionResult> Index(
             int? assignmentId,
             string assessmentName,
             string courseCode,
@@ -28,6 +27,9 @@ namespace AIS_LO_System.Controllers
             int year,
             int trimester)
         {
+            if (assignmentId == null)
+                return BadRequest("AssignmentId is required.");
+
             ViewBag.AssignmentId = assignmentId;
             ViewBag.AssessmentName = assessmentName;
             ViewBag.CourseCode = courseCode;
@@ -35,22 +37,17 @@ namespace AIS_LO_System.Controllers
             ViewBag.Year = year;
             ViewBag.Trimester = trimester;
 
-            var rubric = _context.Rubrics
+            var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                 .ThenInclude(c => c.Levels)
-                .FirstOrDefault(r => r.AssignmentId == assignmentId);
-
-            if (assignmentId == null)
-            {
-                return Content("AssignmentId missing in route.");
-            }
+                .FirstOrDefaultAsync(r => r.AssignmentId == assignmentId);
 
             return View(rubric);
         }
 
-        // ================================
+        // ======================================================
         // UPLOAD RUBRIC EXCEL
-        // ================================
+        // ======================================================
         [HttpPost]
         public async Task<IActionResult> UploadRubricExcel(
             IFormFile file,
@@ -62,6 +59,7 @@ namespace AIS_LO_System.Controllers
             int trimester)
         {
             if (file == null || file.Length == 0)
+            {
                 return RedirectToAction("Index", new
                 {
                     assignmentId,
@@ -71,6 +69,7 @@ namespace AIS_LO_System.Controllers
                     year,
                     trimester
                 });
+            }
 
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
@@ -78,132 +77,142 @@ namespace AIS_LO_System.Controllers
             await file.CopyToAsync(stream);
 
             using var package = new ExcelPackage(stream);
-            var worksheet = package.Workbook.Worksheets[0];
+            var worksheet = package.Workbook.Worksheets.FirstOrDefault();
 
-            // ================================
-            // GET ASSIGNMENT
-            // ================================
-            var assignment = _context.Assignments
-                .FirstOrDefault(a => a.Id == assignmentId);
+            if (worksheet == null)
+                return BadRequest("Invalid Excel file.");
 
-            if (assignment == null)
-                return RedirectToAction("Index");
+            // Validate Assignment
+            var assignmentExists = await _context.Assignments
+                .AnyAsync(a => a.Id == assignmentId);
 
-            // ================================
-            // CHECK IF RUBRIC EXISTS
-            // ================================
-            var rubric = _context.Rubrics
+            if (!assignmentExists)
+                return NotFound("Assignment not found.");
+
+            // Remove existing rubric (full clean replace)
+            var existingRubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                 .ThenInclude(c => c.Levels)
-                .FirstOrDefault(r => r.AssignmentId == assignmentId);
+                .FirstOrDefaultAsync(r => r.AssignmentId == assignmentId);
 
-            if (rubric != null)
+            if (existingRubric != null)
             {
-                // delete old levels
-                var oldLevels = rubric.Criteria
-                    .SelectMany(c => c.Levels);
-
-                _context.RubricLevels.RemoveRange(oldLevels);
-
-                // delete criteria
-                _context.RubricCriteria.RemoveRange(rubric.Criteria);
-
-                await _context.SaveChangesAsync();
-            }
-            else
-            {
-                rubric = new Rubric
-                {
-                    AssignmentId = assignmentId,
-                    CreatedDate = DateTime.Now
-                };
-
-                _context.Rubrics.Add(rubric);
+                _context.Rubrics.Remove(existingRubric);
                 await _context.SaveChangesAsync();
             }
 
-            // ================================
-            // EXTRACT EXCEL DATA
-            // ================================
+            // Create new rubric
+            var rubric = new Rubric
+            {
+                AssignmentId = assignmentId,
+                CreatedDate = DateTime.Now,
+                Criteria = new List<RubricCriterion>()
+            };
+
             int row = 2;
 
             while (worksheet.Cells[row, 1].Value != null)
             {
                 var criterion = new RubricCriterion
                 {
-                    RubricId = rubric.Id,
-                    CriterionName = worksheet.Cells[row, 1].Text
+                    CriterionName = worksheet.Cells[row, 1].Text,
+                    Levels = new List<RubricLevel>()
                 };
 
-                _context.RubricCriteria.Add(criterion);
-                await _context.SaveChangesAsync();
-
+                // Columns 2–6 = Levels
                 for (int col = 2; col <= 6; col++)
                 {
                     var level = new RubricLevel
                     {
-                        RubricCriterionId = criterion.Id,
-                        Score = 6 - col,
+                        Score = 6 - col, // adjust if needed
                         Description = worksheet.Cells[row, col].Text
                     };
 
-                    _context.RubricLevels.Add(level);
+                    criterion.Levels.Add(level);
                 }
 
+                rubric.Criteria.Add(criterion);
                 row++;
             }
 
+            _context.Rubrics.Add(rubric);
             await _context.SaveChangesAsync();
 
-            return RedirectToAction("Preview", new { id = rubric.Id });
+            return RedirectToAction(nameof(Preview), new { id = rubric.Id });
         }
 
-        // ================================
-        // RUBRIC PREVIEW
-        // ================================
-        public IActionResult Preview(int id)
+        // ======================================================
+        // PREVIEW RUBRIC
+        // ======================================================
+        public async Task<IActionResult> Preview(int id)
         {
-            var rubric = _context.Rubrics
+            var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                 .ThenInclude(c => c.Levels)
                 .Include(r => r.Assignment)
-                .FirstOrDefault(r => r.Id == id);
+                .FirstOrDefaultAsync(r => r.Id == id);
 
             if (rubric == null)
-                return RedirectToAction("Index");
+                return NotFound();
 
             return View(rubric);
         }
 
-        public IActionResult Edit(int id)
+        // ======================================================
+        // EDIT RUBRIC (GET)
+        // ======================================================
+        public async Task<IActionResult> Edit(int id)
         {
-            var rubric = _context.Rubrics
+            var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                 .ThenInclude(c => c.Levels)
-                .FirstOrDefault(r => r.Id == id);
+                .FirstOrDefaultAsync(r => r.Id == id);
 
             if (rubric == null)
-                return RedirectToAction("Index");
+                return NotFound();
 
             return View(rubric);
         }
 
+        // ======================================================
+        // EDIT RUBRIC (POST)
+        // ======================================================
         [HttpPost]
-        public async Task<IActionResult> Edit(Rubric rubric)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Rubric model)
         {
+            var rubric = await _context.Rubrics
+                .Include(r => r.Criteria)
+                .ThenInclude(c => c.Levels)
+                .FirstOrDefaultAsync(r => r.Id == model.Id);
+
+            if (rubric == null)
+                return NotFound();
+
+            // Update descriptions only (safe update)
             foreach (var criterion in rubric.Criteria)
             {
+                var updatedCriterion = model.Criteria
+                    .FirstOrDefault(c => c.Id == criterion.Id);
+
+                if (updatedCriterion == null)
+                    continue;
+
                 foreach (var level in criterion.Levels)
                 {
-                    _context.RubricLevels.Update(level);
+                    var updatedLevel = updatedCriterion.Levels
+                        .FirstOrDefault(l => l.Id == level.Id);
+
+                    if (updatedLevel != null)
+                    {
+                        level.Description = updatedLevel.Description;
+                    }
                 }
             }
 
             await _context.SaveChangesAsync();
 
-            return RedirectToAction("Preview", new { id = rubric.Id });
+            return RedirectToAction(nameof(Preview), new { id = rubric.Id });
         }
-
-
     }
 }

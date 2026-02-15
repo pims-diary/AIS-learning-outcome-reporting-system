@@ -5,7 +5,7 @@
         public int Id { get; set; }
 
         public int AssignmentId { get; set; }
-        public Assignment Assignment { get; set; }
+        public Assignment? Assignment { get; set; }
 
         public string OriginalFileName { get; set; }
         public string StoredFileName { get; set; }

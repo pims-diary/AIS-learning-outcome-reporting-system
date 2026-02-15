@@ -60,11 +60,9 @@
     <div class="upload-card">
         <form asp-action="UploadAssignment"
               method="post"
-              enctype="multipart/form-data"
-              style="display:flex; gap:15px; width:100%;">
+              enctype="multipart/form-data">
 
-            <input type="hidden" name="assessmentName" value="@ViewBag.AssessmentName" />
-            <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
+            <input type="hidden" name="assignmentId" value="@Model.Id" />
 
             <input type="file" name="file" accept=".pdf" required />
             <button class="upload-btn">Upload New Version</button>
