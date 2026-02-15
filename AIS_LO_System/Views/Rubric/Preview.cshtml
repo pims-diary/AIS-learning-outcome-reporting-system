@@ -1,0 +1,56 @@
+﻿@model AIS_LO_System.Models.Rubric
+
+@{
+    ViewData["Title"] = "Rubric Preview";
+}
+
+<h2>Rubric Preview</h2>
+
+<hr />
+
+<a asp-action="Edit"
+   asp-route-id="@Model.Id"
+   class="btn btn-warning">
+    Edit Rubric
+</a>
+
+@if (Model == null || !Model.Criteria.Any())
+{
+    <p>No rubric data available.</p>
+}
+else
+{
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Criteria</th>
+
+                @foreach (var level in Model.Criteria.First().Levels.OrderByDescending(l => l.Score))
+                {
+                    <th>Score @level.Score</th>
+                }
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var criterion in Model.Criteria)
+            {
+                <tr>
+                    <td><strong>@criterion.CriterionName</strong></td>
+
+                    @foreach (var level in criterion.Levels.OrderByDescending(l => l.Score))
+                    {
+                        <td>@level.Description</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<br />
+
+<a asp-action="Index"
+   asp-route-assignmentId="@Model.AssignmentId"
+   class="btn btn-secondary">
+    Back to Rubric Management
+</a>

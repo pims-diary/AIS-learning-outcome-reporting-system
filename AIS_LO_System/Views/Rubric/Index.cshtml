@@ -1,0 +1,62 @@
+﻿@model AIS_LO_System.Models.Rubric
+
+@{
+    ViewData["Title"] = "Rubric Management";
+}
+
+<h2>Rubric Management</h2>
+
+<hr />
+
+<div class="mb-3">
+    <strong>Assessment:</strong> @ViewBag.AssessmentName <br />
+    <strong>Course:</strong> @ViewBag.CourseCode - @ViewBag.CourseTitle <br />
+    <strong>Year:</strong> @ViewBag.Year |
+    <strong>Trimester:</strong> @ViewBag.Trimester
+</div>
+
+<hr />
+
+<h4>Upload Rubric (Excel)</h4>
+
+<form asp-action="UploadRubricExcel"
+      asp-controller="Rubric"
+      method="post"
+      enctype="multipart/form-data">
+
+    <input type="hidden" name="assignmentId" value="@ViewBag.AssignmentId" />
+    <input type="hidden" name="assessmentName" value="@ViewBag.AssessmentName" />
+    <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
+    <input type="hidden" name="courseTitle" value="@ViewBag.CourseTitle" />
+    <input type="hidden" name="year" value="@ViewBag.Year" />
+    <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
+
+    <div class="form-group mb-3">
+        <input type="file" name="file" class="form-control" required />
+    </div>
+
+    <button type="submit" class="btn btn-primary">
+        Upload Excel
+    </button>
+</form>
+
+<hr />
+
+@if (Model != null)
+{
+    <h4>Existing Rubric</h4>
+
+    <p>
+        Created on: @Model.CreatedDate.ToShortDateString()
+    </p>
+
+    <a asp-action="Preview"
+       asp-route-id="@Model.Id"
+       class="btn btn-success">
+        Preview Rubric
+    </a>
+}
+else
+{
+    <p class="text-muted">No rubric uploaded yet.</p>
+}

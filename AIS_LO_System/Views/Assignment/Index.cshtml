@@ -46,11 +46,23 @@
 
         </a>
 
-        <div class="assignment-card">
-            <img src="~/images/rubric.svg" alt="Rubric" />
-            <h3>Rubric Management</h3>
-            <p>Upload, Edit, or Create the Rubric</p>
-        </div>
+        <a asp-controller="Rubric"
+           asp-action="Index"
+           asp-route-assignmentId="@ViewBag.AssignmentId"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester"
+           class="assignment-card-link">
+
+            <div class="assignment-card">
+                <img src="~/images/rubric.svg" alt="Rubric" />
+                <h3>Rubric Management</h3>
+                <p>Upload, Edit, or Create the Rubric</p>
+            </div>
+
+        </a>
 
         <div class="assignment-card">
             <h3>LO Mapping and Weighting</h3>

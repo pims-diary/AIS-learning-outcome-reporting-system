@@ -13,5 +13,9 @@ namespace AIS_LO_System.Data
 
         public DbSet<Assignment> Assignments { get; set; }
         public DbSet<AssignmentFile> AssignmentFiles { get; set; }
+        public DbSet<Rubric> Rubrics { get; set; }
+        public DbSet<RubricCriterion> RubricCriteria { get; set; }
+        public DbSet<RubricLevel> RubricLevels { get; set; }
+
     }
 }
