@@ -1,4 +1,5 @@
 ﻿@model AIS_LO_System.Models.Rubric
+@using System.Linq
 
 @{
     ViewData["Title"] = "Rubric Management";
@@ -92,7 +93,7 @@
     <!-- Preview Section -->
     <h2 class="preview-title">Rubric Preview</h2>
 
-    @if (Model != null && Model.Criteria.Any())
+    @if (Model != null && Model.Criteria != null && Model.Criteria.Count > 0)
     {
         <div class="rubric-table">
             <table>
@@ -102,22 +103,29 @@
                         <th colspan="5">Scale (0-4)</th>
                     </tr>
                     <tr>
-                        <th>Exceeds</th>
-                        <th>Meets</th>
-                        <th>Below</th>
-                        <th>Poor</th>
-                        <th>Not Achieved</th>
+                        @{
+                            // Get scale names from the first criterion's levels
+                            var headerLevels = Model.Criteria.First().Levels.OrderByDescending(l => l.Score).ToList();
+                        }
+                        @foreach (var level in headerLevels)
+                        {
+                            <th>@level.ScaleName (@level.Score)</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var c in Model.Criteria)
                     {
                         <tr>
-                            <td>@c.CriterionName</td>
+                            <td><strong>@c.CriterionName</strong></td>
 
-                            @foreach (var level in c.Levels.OrderByDescending(l => l.Score))
+                            @{
+                                var orderedLevels = c.Levels.OrderByDescending(l => l.Score).ToList();
+                            }
+
+                            @foreach (var level in orderedLevels)
                             {
-                                <td>@level.Score</td>
+                                <td>@level.Description</td>
                             }
                         </tr>
                     }

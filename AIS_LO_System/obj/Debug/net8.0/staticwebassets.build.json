@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "kQvS/QvG8iOgPxAoqRS+jAPrnvugF9To8BP62Cl7uUE=",
+  "Hash": "7tAYTjLCk6kPETJQOB+cjhbJfxhsZiL09qVxD/LDzKo=",
   "Source": "AIS_LO_System",
   "BasePath": "_content/AIS_LO_System",
   "Mode": "Default",
@@ -129,6 +129,25 @@
       "CopyToOutputDirectory": "Never",
       "CopyToPublishDirectory": "PreserveNewest",
       "OriginalItemSpec": "wwwroot\\css\\courseinfo.css"
+    },
+    {
+      "Identity": "C:\\Users\\admin\\Source\\Repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\css\\edit-rubric.css",
+      "SourceId": "AIS_LO_System",
+      "SourceType": "Discovered",
+      "ContentRoot": "C:\\Users\\admin\\Source\\Repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\",
+      "BasePath": "_content/AIS_LO_System",
+      "RelativePath": "css/edit-rubric.css",
+      "AssetKind": "All",
+      "AssetMode": "All",
+      "AssetRole": "Primary",
+      "AssetMergeBehavior": "PreferTarget",
+      "AssetMergeSource": "",
+      "RelatedAsset": "",
+      "AssetTraitName": "",
+      "AssetTraitValue": "",
+      "CopyToOutputDirectory": "Never",
+      "CopyToPublishDirectory": "PreserveNewest",
+      "OriginalItemSpec": "wwwroot\\css\\edit-rubric.css"
     },
     {
       "Identity": "C:\\Users\\admin\\Source\\Repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\css\\rubric.css",

@@ -1,6 +1,5 @@
 using AIS_LO_System.Data;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using AIS_LO_System.Data;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
