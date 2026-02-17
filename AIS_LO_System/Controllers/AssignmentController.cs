@@ -67,6 +67,13 @@ namespace AIS_LO_System.Controllers
             if (assignment == null)
                 return NotFound();
 
+            // Pass ViewBag data for breadcrumb
+            ViewBag.CourseCode = assignment.CourseCode;
+            ViewBag.CourseTitle = assignment.CourseTitle;
+            ViewBag.Year = assignment.Year;
+            ViewBag.Trimester = assignment.Trimester;
+            ViewBag.AssessmentName = assignment.AssessmentName;
+
             return View(assignment);
         }
 

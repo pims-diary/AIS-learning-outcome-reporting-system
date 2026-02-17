@@ -34,13 +34,9 @@
         <span>Rubric Management</span>
     </div>
 
-    <!-- Title -->
+    <!-- Title + Go Back on same row -->
     <div class="edit-header">
         <h1>Edit Rubric</h1>
-    </div>
-
-    <!-- Go Back Link -->
-    <div style="margin-bottom: 20px;">
         <a asp-action="Index"
            asp-route-assignmentId="@ViewBag.AssignmentId"
            asp-route-assessmentName="@ViewBag.AssessmentName"
@@ -130,7 +126,8 @@
             <h2>Performance Levels</h2>
 
             @{
-                var performanceLevels = Model.Criteria.FirstOrDefault()?.Levels.OrderByDescending(l => l.Score).ToList();
+                var performanceLevels = Model.Criteria.FirstOrDefault()?.Levels
+                .OrderByDescending(l => l.Score).ToList();
             }
 
             @if (performanceLevels != null)
@@ -140,17 +137,16 @@
                     <div class="performance-row">
                         <div class="perf-score">@performanceLevels[i].Score</div>
                         <div class="perf-name">
+                            <!-- name must match the controller parameter "performanceLevels" -->
                             <input type="text"
-                                   name="PerformanceLevels[@i].ScaleName"
+                                   name="performanceLevels[@i].ScaleName"
                                    value="@performanceLevels[i].ScaleName" />
                         </div>
                     </div>
                 }
             }
         </div>
-
     </form>
-
 </div>
 
 <script>
@@ -171,32 +167,32 @@
             </div>
             <div class="score-cell">
                 <input type="number" name="Criteria[${index}].Levels[0].Score" value="4" />
+                <input type="hidden" name="Criteria[${index}].Levels[0].ScaleName" value="Excellent" />
+                <input type="hidden" name="Criteria[${index}].Levels[0].Description" value="" />
             </div>
             <div class="score-cell">
                 <input type="number" name="Criteria[${index}].Levels[1].Score" value="3" />
+                <input type="hidden" name="Criteria[${index}].Levels[1].ScaleName" value="Good" />
+                <input type="hidden" name="Criteria[${index}].Levels[1].Description" value="" />
             </div>
             <div class="score-cell">
                 <input type="number" name="Criteria[${index}].Levels[2].Score" value="2" />
+                <input type="hidden" name="Criteria[${index}].Levels[2].ScaleName" value="Satisfactory" />
+                <input type="hidden" name="Criteria[${index}].Levels[2].Description" value="" />
             </div>
             <div class="score-cell">
                 <input type="number" name="Criteria[${index}].Levels[3].Score" value="1" />
+                <input type="hidden" name="Criteria[${index}].Levels[3].ScaleName" value="Limited" />
+                <input type="hidden" name="Criteria[${index}].Levels[3].Description" value="" />
             </div>
             <div class="score-cell">
                 <input type="number" name="Criteria[${index}].Levels[4].Score" value="0" />
+                <input type="hidden" name="Criteria[${index}].Levels[4].ScaleName" value="Unsatisfactory" />
+                <input type="hidden" name="Criteria[${index}].Levels[4].Description" value="" />
             </div>
             <div class="delete-cell">
                 <button type="button" class="btn-delete" onclick="deleteCriterion(${index})">🗑️</button>
             </div>
-            <input type="hidden" name="Criteria[${index}].Levels[0].ScaleName" value="Excellent" />
-            <input type="hidden" name="Criteria[${index}].Levels[1].ScaleName" value="Good" />
-            <input type="hidden" name="Criteria[${index}].Levels[2].ScaleName" value="Satisfactory" />
-            <input type="hidden" name="Criteria[${index}].Levels[3].ScaleName" value="Limited" />
-            <input type="hidden" name="Criteria[${index}].Levels[4].ScaleName" value="Unsatisfactory" />
-            <input type="hidden" name="Criteria[${index}].Levels[0].Description" value="" />
-            <input type="hidden" name="Criteria[${index}].Levels[1].Description" value="" />
-            <input type="hidden" name="Criteria[${index}].Levels[2].Description" value="" />
-            <input type="hidden" name="Criteria[${index}].Levels[3].Description" value="" />
-            <input type="hidden" name="Criteria[${index}].Levels[4].Description" value="" />
         `;
 
         criteriaList.appendChild(newRow);

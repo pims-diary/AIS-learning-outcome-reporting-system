@@ -182,7 +182,15 @@ namespace AIS_LO_System.Controllers
                 await _context.SaveChangesAsync();
 
                 TempData["Success"] = $"Rubric uploaded successfully! {rubric.Criteria.Count} criteria imported.";
-                return RedirectToAction(nameof(Preview), new { id = rubric.Id });
+                return RedirectToAction(nameof(Index), new
+                {
+                    assignmentId,
+                    assessmentName,
+                    courseCode,
+                    courseTitle,
+                    year,
+                    trimester
+                });
             }
             catch (Exception ex)
             {
@@ -222,7 +230,6 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
                 return NotFound();
 
-            // Pass assignment data to the view for breadcrumb and navigation
             if (rubric.Assignment != null)
             {
                 ViewBag.AssignmentId = rubric.Assignment.Id;
@@ -240,15 +247,10 @@ namespace AIS_LO_System.Controllers
         // EDIT RUBRIC (POST)
         // ======================================================
         [HttpPost]
+        [ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(Rubric model, int assignmentId)
+        public async Task<IActionResult> EditPost(Rubric model, int assignmentId, List<RubricLevel> performanceLevels)
         {
-            if (!ModelState.IsValid)
-            {
-                TempData["Error"] = "Invalid data submitted.";
-                return View(model);
-            }
-
             var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                 .ThenInclude(c => c.Levels)
@@ -257,7 +259,7 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
                 return NotFound();
 
-            // Update criterion names and scores
+            // Update criterion names and level scores
             foreach (var criterion in rubric.Criteria)
             {
                 var updatedCriterion = model.Criteria
@@ -267,7 +269,6 @@ namespace AIS_LO_System.Controllers
                 {
                     criterion.CriterionName = updatedCriterion.CriterionName;
 
-                    // Update level scores
                     foreach (var level in criterion.Levels)
                     {
                         var updatedLevel = updatedCriterion.Levels
@@ -281,23 +282,25 @@ namespace AIS_LO_System.Controllers
                 }
             }
 
-            // Update performance level names (scale names)
-            var firstCriterion = rubric.Criteria.FirstOrDefault();
-            if (firstCriterion != null && model.Criteria.Any())
+            // Update ScaleNames across ALL criteria using submitted PerformanceLevels
+            if (performanceLevels != null && performanceLevels.Any())
             {
-                var updatedFirstCriterion = model.Criteria.First();
-                var orderedLevels = firstCriterion.Levels.OrderByDescending(l => l.Score).ToList();
-                var updatedLevels = updatedFirstCriterion.Levels.OrderByDescending(l => l.Score).ToList();
+                // Build a score -> scaleName lookup from the submitted performance levels
+                // They come in ordered highest to lowest (4,3,2,1,0)
+                int[] scores = { 4, 3, 2, 1, 0 };
 
-                for (int i = 0; i < orderedLevels.Count && i < updatedLevels.Count; i++)
+                for (int i = 0; i < performanceLevels.Count; i++)
                 {
-                    var score = orderedLevels[i].Score;
-                    var newScaleName = updatedLevels[i].ScaleName;
+                    var newScaleName = performanceLevels[i].ScaleName;
+                    var score = scores[i];
 
+                    // Update this scale name for every criterion at this score
                     foreach (var criterion in rubric.Criteria)
                     {
-                        var levelToUpdate = criterion.Levels.FirstOrDefault(l => l.Score == score);
-                        if (levelToUpdate != null)
+                        var levelToUpdate = criterion.Levels
+                            .FirstOrDefault(l => l.Score == score);
+
+                        if (levelToUpdate != null && !string.IsNullOrEmpty(newScaleName))
                         {
                             levelToUpdate.ScaleName = newScaleName;
                         }
@@ -309,15 +312,11 @@ namespace AIS_LO_System.Controllers
 
             TempData["Success"] = "Rubric updated successfully!";
 
-            // Get the assignment to retrieve all the necessary data
             var assignment = await _context.Assignments.FindAsync(assignmentId);
 
             if (assignment == null)
-            {
                 return RedirectToAction(nameof(Index), new { assignmentId });
-            }
 
-            // Redirect with all the parameters from the Assignment model
             return RedirectToAction(nameof(Index), new
             {
                 assignmentId = assignment.Id,
