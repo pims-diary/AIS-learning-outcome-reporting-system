@@ -1,0 +1,71 @@
+﻿@model AIS_LO_System.Models.Rubric
+
+@{
+    ViewData["Title"] = "Rubric Preview";
+}
+
+<h2>Rubric Preview</h2>
+
+<hr />
+
+<a asp-action="Edit"
+   asp-route-id="@Model.Id"
+   class="btn btn-warning">
+    Edit Rubric
+</a>
+
+@if (Model != null && Model.Criteria.Any())
+{
+    var scaleHeaders = Model.Criteria
+        .First()
+        .Levels
+        .OrderByDescending(l => l.Score)
+        .ToList();
+
+    <div class="rubric-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Criteria</th>
+
+                    @foreach (var level in scaleHeaders)
+                    {
+                        <th>
+                            Score @level.Score <br />
+                            <span class="scale-header">
+                                @level.ScaleName
+                            </span>
+                        </th>
+                    }
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var criterion in Model.Criteria)
+                {
+                    <tr>
+                        <td class="criteria-cell">
+                            @criterion.CriterionName
+                        </td>
+
+                        @foreach (var level in criterion.Levels
+                       .OrderByDescending(l => l.Score))
+                        {
+                            <td>
+                                @level.Description
+                            </td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<br />
+
+<a asp-action="Index"
+   asp-route-assignmentId="@Model.AssignmentId"
+   class="btn btn-secondary">
+    Back to Rubric Management
+</a>

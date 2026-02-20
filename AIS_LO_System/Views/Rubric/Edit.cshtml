@@ -1,0 +1,208 @@
+﻿@model AIS_LO_System.Models.Rubric
+@using System.Linq
+
+@{
+    ViewData["Title"] = "Edit Rubric";
+}
+
+<link rel="stylesheet" href="~/css/edit-rubric.css" />
+
+<div class="edit-rubric-container">
+
+    <!-- Breadcrumb -->
+    <div class="edit-breadcrumb">
+        <a asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            @ViewBag.CourseCode @ViewBag.Year-S@ViewBag.Trimester
+        </a>
+        <span>/</span>
+        <a asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            Assessments
+        </a>
+        <span>/</span>
+        <span>@ViewBag.AssessmentName</span>
+        <span>/</span>
+        <span>Rubric Management</span>
+    </div>
+
+    <!-- Title + Go Back on same row -->
+    <div class="edit-header">
+        <h1>Edit Rubric</h1>
+        <a asp-action="Index"
+           asp-route-assignmentId="@ViewBag.AssignmentId"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester"
+           class="edit-go-back">← Go Back</a>
+    </div>
+
+    <!-- Save and Cancel Buttons -->
+    <div class="edit-actions">
+        <button type="submit" form="rubricForm" class="btn-save">Save Rubric</button>
+        <a asp-action="Index"
+           asp-route-assignmentId="@ViewBag.AssignmentId"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester"
+           class="btn-cancel">Cancel</a>
+    </div>
+
+    <form id="rubricForm" asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
+
+        <!-- Criteria Section -->
+        <div class="edit-criteria-section">
+            <h2>Criteria</h2>
+
+            <!-- Header Row -->
+            <div class="criteria-header-row">
+                <div></div>
+                <div>Criterion Name</div>
+                <div>4</div>
+                <div>3</div>
+                <div>2</div>
+                <div>1</div>
+                <div>0</div>
+                <div></div>
+            </div>
+
+            <!-- Criteria Rows -->
+            <div id="criteriaList">
+                @for (int i = 0; i < Model.Criteria.Count; i++)
+                {
+                    var orderedLevels = Model.Criteria[i].Levels.OrderByDescending(l => l.Score).ToList();
+
+                    <div class="criteria-data-row" data-index="@i">
+                        <input type="hidden" name="Criteria[@i].Id" value="@Model.Criteria[i].Id" />
+
+                        <div class="row-label">C@(i + 1):</div>
+
+                        <div class="name-cell">
+                            <input type="text"
+                                   name="Criteria[@i].CriterionName"
+                                   value="@Model.Criteria[i].CriterionName" />
+                        </div>
+
+                        @for (int j = 0; j < orderedLevels.Count; j++)
+                        {
+                            <input type="hidden" name="Criteria[@i].Levels[@j].Id" value="@orderedLevels[j].Id" />
+                            <input type="hidden" name="Criteria[@i].Levels[@j].Description" value="@orderedLevels[j].Description" />
+                            <input type="hidden" name="Criteria[@i].Levels[@j].ScaleName" value="@orderedLevels[j].ScaleName" />
+
+                            <div class="score-cell">
+                                <input type="number"
+                                       name="Criteria[@i].Levels[@j].Score"
+                                       value="@orderedLevels[j].Score" />
+                            </div>
+                        }
+
+                        <div class="delete-cell">
+                            <button type="button" class="btn-delete" onclick="deleteCriterion(@i)">🗑️</button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <button type="button" class="btn-add-criterion" onclick="addCriterion()">+ Add New Criterion</button>
+        </div>
+
+        <!-- Performance Levels Section -->
+        <div class="edit-performance-section">
+            <h2>Performance Levels</h2>
+
+            @{
+                var performanceLevels = Model.Criteria.FirstOrDefault()?.Levels
+                .OrderByDescending(l => l.Score).ToList();
+            }
+
+            @if (performanceLevels != null)
+            {
+                @for (int i = 0; i < performanceLevels.Count; i++)
+                {
+                    <div class="performance-row">
+                        <div class="perf-score">@performanceLevels[i].Score</div>
+                        <div class="perf-name">
+                            <!-- name must match the controller parameter "performanceLevels" -->
+                            <input type="text"
+                                   name="performanceLevels[@i].ScaleName"
+                                   value="@performanceLevels[i].ScaleName" />
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </form>
+</div>
+
+<script>
+    let criterionCount = @Model.Criteria.Count;
+
+    function addCriterion() {
+        const index = criterionCount;
+        const criteriaList = document.getElementById('criteriaList');
+
+        const newRow = document.createElement('div');
+        newRow.className = 'criteria-data-row';
+        newRow.dataset.index = index;
+
+        newRow.innerHTML = `
+            <div class="row-label">C${index + 1}:</div>
+            <div class="name-cell">
+                <input type="text" name="Criteria[${index}].CriterionName" placeholder="Enter criterion name" />
+            </div>
+            <div class="score-cell">
+                <input type="number" name="Criteria[${index}].Levels[0].Score" value="4" />
+                <input type="hidden" name="Criteria[${index}].Levels[0].ScaleName" value="Excellent" />
+                <input type="hidden" name="Criteria[${index}].Levels[0].Description" value="" />
+            </div>
+            <div class="score-cell">
+                <input type="number" name="Criteria[${index}].Levels[1].Score" value="3" />
+                <input type="hidden" name="Criteria[${index}].Levels[1].ScaleName" value="Good" />
+                <input type="hidden" name="Criteria[${index}].Levels[1].Description" value="" />
+            </div>
+            <div class="score-cell">
+                <input type="number" name="Criteria[${index}].Levels[2].Score" value="2" />
+                <input type="hidden" name="Criteria[${index}].Levels[2].ScaleName" value="Satisfactory" />
+                <input type="hidden" name="Criteria[${index}].Levels[2].Description" value="" />
+            </div>
+            <div class="score-cell">
+                <input type="number" name="Criteria[${index}].Levels[3].Score" value="1" />
+                <input type="hidden" name="Criteria[${index}].Levels[3].ScaleName" value="Limited" />
+                <input type="hidden" name="Criteria[${index}].Levels[3].Description" value="" />
+            </div>
+            <div class="score-cell">
+                <input type="number" name="Criteria[${index}].Levels[4].Score" value="0" />
+                <input type="hidden" name="Criteria[${index}].Levels[4].ScaleName" value="Unsatisfactory" />
+                <input type="hidden" name="Criteria[${index}].Levels[4].Description" value="" />
+            </div>
+            <div class="delete-cell">
+                <button type="button" class="btn-delete" onclick="deleteCriterion(${index})">🗑️</button>
+            </div>
+        `;
+
+        criteriaList.appendChild(newRow);
+        criterionCount++;
+    }
+
+    function deleteCriterion(index) {
+        const row = document.querySelector(`.criteria-data-row[data-index="${index}"]`);
+        if (row && confirm('Are you sure you want to delete this criterion?')) {
+            row.remove();
+        }
+    }
+</script>

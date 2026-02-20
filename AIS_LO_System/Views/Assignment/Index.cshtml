@@ -29,17 +29,35 @@
     <!-- Cards Grid -->
     <div class="card-grid">
 
-        <div class="assignment-card">
-            <img src="~/images/assignment-info.svg" alt="Assignment Info" />
-            <h3>Assignment Information</h3>
-            <p>Essential details of the Assessment</p>
-        </div>
+        <a asp-controller="Assignment"
+           asp-action="Information"
+           asp-route-id="@Model.Id">
 
-        <div class="assignment-card">
-            <img src="~/images/rubric.svg" alt="Rubric" />
-            <h3>Rubric Management</h3>
-            <p>Upload, Edit, or Create the Rubric</p>
-        </div>
+
+            <div class="assignment-card">
+                <img src="~/images/assignment-info.svg" alt="Assignment Info" />
+                <h3>Assignment Information</h3>
+                <p>Essential details of the Assessment</p>
+            </div>
+
+        </a>
+
+        <a asp-controller="Rubric"
+           asp-action="Index"
+           asp-route-assignmentId="@Model.Id"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
+           class="assignment-card-link">
+
+            <div class="assignment-card">
+                <img src="~/images/rubric.svg" alt="Rubric" />
+                <h3>Rubric Management</h3>
+                <p>Upload, Edit, or Create the Rubric</p>
+            </div>
+        </a>
 
         <div class="assignment-card">
             <h3>LO Mapping and Weighting</h3>

@@ -1,0 +1,273 @@
+﻿/* ===================================
+   EDIT RUBRIC PAGE - DEDICATED STYLES
+   =================================== */
+
+* {
+    box-sizing: border-box;
+}
+
+.edit-rubric-container {
+    padding: 40px 60px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    background: #f5f5f5;
+    min-height: 100vh;
+}
+
+/* Breadcrumb */
+.edit-breadcrumb {
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+    .edit-breadcrumb a {
+        color: #0066cc;
+        text-decoration: none;
+    }
+
+        .edit-breadcrumb a:hover {
+            text-decoration: underline;
+        }
+
+    .edit-breadcrumb span {
+        color: #666;
+        margin: 0 5px;
+    }
+
+/* Header */
+.edit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+    .edit-header h1 {
+        font-size: 48px;
+        font-weight: 700;
+        margin: 0;
+        color: #000;
+    }
+
+.edit-go-back {
+    font-size: 18px;
+    color: #000;
+    text-decoration: underline;
+}
+
+/* Action Buttons */
+.edit-actions {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.btn-save {
+    background: #c21c00;
+    color: white;
+    border: 2px solid #c21c00;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+    .btn-save:hover {
+        background: #a01800;
+    }
+
+.btn-cancel {
+    background: transparent;
+    color: #0066cc;
+    border: none;
+    padding: 12px 30px;
+    font-size: 16px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+
+    .btn-cancel:hover {
+        text-decoration: underline;
+    }
+
+/* Criteria Section */
+.edit-criteria-section {
+    background: #fff;
+    padding: 40px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+    .edit-criteria-section h2 {
+        font-size: 32px;
+        font-weight: 700;
+        margin: 0 0 30px 0;
+        color: #000;
+    }
+
+/* Criteria Grid */
+.criteria-header-row {
+    display: grid;
+    grid-template-columns: 60px 400px 80px 80px 80px 80px 80px 100px;
+    gap: 15px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 20px;
+    color: #000;
+}
+
+    .criteria-header-row > div:first-child {
+        /* Empty column for C1: labels */
+    }
+
+    .criteria-header-row > div:nth-child(2) {
+        text-align: left;
+    }
+
+    .criteria-header-row > div {
+        text-align: center;
+    }
+
+.criteria-data-row {
+    display: grid;
+    grid-template-columns: 60px 400px 80px 80px 80px 80px 80px 100px;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.row-label {
+    font-weight: 700;
+    font-size: 18px;
+    color: #000;
+}
+
+.name-cell input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 15px;
+}
+
+    .name-cell input:focus {
+        outline: none;
+        border-color: #0066cc;
+    }
+
+.score-cell input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #333;
+    border-radius: 6px;
+    font-size: 20px;
+    font-weight: 700;
+    text-align: center;
+    background: #fff;
+    cursor: text;
+}
+
+    .score-cell input:focus {
+        outline: none;
+    }
+
+.delete-cell {
+    text-align: center;
+}
+
+.btn-delete {
+    background: transparent;
+    border: 2px solid #c21c00;
+    color: #c21c00;
+    border-radius: 6px;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 20px;
+    width: 100%;
+}
+
+    .btn-delete:hover {
+        background: #c21c00;
+        color: white;
+    }
+
+.btn-add-criterion {
+    background: #c21c00;
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    margin-top: 20px;
+    font-weight: 600;
+}
+
+    .btn-add-criterion:hover {
+        background: #a01800;
+    }
+
+/* Performance Levels Section */
+.edit-performance-section {
+    background: #fff;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+    .edit-performance-section h2 {
+        font-size: 32px;
+        font-weight: 700;
+        margin: 0 0 30px 0;
+        color: #000;
+    }
+
+.performance-row {
+    display: grid;
+    grid-template-columns: 80px 400px;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.perf-score {
+    font-size: 36px;
+    font-weight: 700;
+    color: #000;
+}
+
+.perf-name input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+    text-align: center;
+    background: #fff;
+    font-weight: 500;
+    cursor: text;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+    .criteria-header-row,
+    .criteria-data-row {
+        grid-template-columns: 50px 350px 70px 70px 70px 70px 70px 90px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .edit-rubric-container {
+        padding: 20px 30px;
+    }
+
+    .criteria-header-row,
+    .criteria-data-row {
+        grid-template-columns: 45px 300px 65px 65px 65px 65px 65px 80px;
+        gap: 10px;
+    }
+}

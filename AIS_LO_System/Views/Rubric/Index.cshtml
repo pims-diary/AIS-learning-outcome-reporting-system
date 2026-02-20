@@ -1,0 +1,135 @@
+﻿@model AIS_LO_System.Models.Rubric
+@using System.Linq
+
+@{
+    ViewData["Title"] = "Rubric Management";
+}
+
+<link rel="stylesheet" href="~/css/rubric.css" />
+
+<div class="rubric-page">
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb">
+        <a asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            @ViewBag.CourseCode @ViewBag.Year-S@ViewBag.Trimester
+        </a>
+
+        <span>/</span>
+
+        <a asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            Assessments
+        </a>
+
+        <span>/</span>
+        <span>@ViewBag.AssessmentName</span>
+        <span>/</span>
+        <span class="active">Rubric Management</span>
+    </div>
+
+    <!-- Header -->
+    <div class="header-row">
+        <h1>Rubric Management</h1>
+
+        <a asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester"
+           class="go-back">
+            ← Go Back
+        </a>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+
+        <!-- Upload -->
+        <form asp-action="UploadRubricExcel"
+              method="post"
+              enctype="multipart/form-data">
+
+            <input type="hidden" name="assignmentId" value="@ViewBag.AssignmentId" />
+            <input type="hidden" name="assessmentName" value="@ViewBag.AssessmentName" />
+            <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
+            <input type="hidden" name="courseTitle" value="@ViewBag.CourseTitle" />
+            <input type="hidden" name="year" value="@ViewBag.Year" />
+            <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
+
+            <label class="upload-btn">
+                Upload Rubric
+                <input type="file" name="file" hidden onchange="this.form.submit()" />
+            </label>
+        </form>
+
+        @if (Model != null)
+        {
+            <a asp-action="Edit"
+               asp-route-id="@Model.Id"
+               class="red-btn">
+                Edit Rubric
+            </a>
+        }
+    </div>
+
+    <!-- Preview Section -->
+    <h2 class="preview-title">Rubric Preview</h2>
+
+    @if (Model != null && Model.Criteria != null && Model.Criteria.Count > 0)
+    {
+        <div class="rubric-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th rowspan="2">Criterion</th>
+                        <th colspan="5">Scale (0-4)</th>
+                    </tr>
+                    <tr>
+                        @{
+                            // Get scale names from the first criterion's levels
+                            var headerLevels = Model.Criteria.First().Levels.OrderByDescending(l => l.Score).ToList();
+                        }
+                        @foreach (var level in headerLevels)
+                        {
+                            <th>@level.ScaleName (@level.Score)</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in Model.Criteria)
+                    {
+                        <tr>
+                            <td><strong>@c.CriterionName</strong></td>
+
+                            @{
+                                var orderedLevels = c.Levels.OrderByDescending(l => l.Score).ToList();
+                            }
+
+                            @foreach (var level in orderedLevels)
+                            {
+                                <td>@level.Description</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p class="no-rubric">No rubric uploaded yet.</p>
+    }
+
+</div>
