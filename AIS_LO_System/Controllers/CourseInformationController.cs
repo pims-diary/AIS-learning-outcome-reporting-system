@@ -74,7 +74,7 @@ namespace LOARS.Web.Controllers
             using var stream = System.IO.File.Create(savePath);
             await file.CopyToAsync(stream);
 
-            // redirect back to Outline -> it will now show iframe preview
+            TempData["Success"] = "Course outline uploaded successfully!";
             return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
         }
 
@@ -90,7 +90,6 @@ namespace LOARS.Web.Controllers
 
             var los = LoadLos(courseCode, year, trimester);
 
-            // Provide BOTH names so your cshtml won't crash no matter what it expects
             ViewBag.LearningOutcomes = los;
             ViewBag.LOs = los;
 
@@ -98,7 +97,6 @@ namespace LOARS.Web.Controllers
             return View();
         }
 
-        // If your cshtml links to EditLearningOutcomes, this prevents “local error”
         [HttpGet]
         public IActionResult EditLearningOutcomes(string courseCode, int year, int trimester)
         {
@@ -131,6 +129,7 @@ namespace LOARS.Web.Controllers
 
             SaveLos(courseCode, year, trimester, cleaned);
 
+            TempData["Success"] = "Learning outcomes saved successfully!";
             return RedirectToAction(nameof(LearningOutcomes), new { courseCode, year, trimester });
         }
 
@@ -160,30 +159,27 @@ namespace LOARS.Web.Controllers
             return Path.Combine(dir, $"{courseCode}-{year}-T{trimester}.json");
         }
 
-        private List<string> DefaultLos() => new()
-        {
-            "Analyse client requirements using current analysis techniques.",
-            "Identify and relate whenever required appropriate project control techniques in an industry environment.",
-            "Produce a comprehensive project plan for an industrial IT project; apply project principles and task management, resource management, risk management, project tracking, and project tools in industry environment.",
-            "Implement the industrial IT project following the appropriate project management framework and System Development Life Cycle.",
-            "Produce all relevant documentation.",
-            "Develop both IT and workplace soft-skills, including working in groups, writing formal reports, carrying out individual research and/or delivering oral presentations."
-        };
-
+        // ✅ FIXED: No more DefaultLos() - returns empty list instead!
         private List<string> LoadLos(string courseCode, int year, int trimester)
         {
             var path = GetLosPath(courseCode, year, trimester);
-            if (!System.IO.File.Exists(path)) return DefaultLos();
+
+            // If file doesn't exist, return EMPTY LIST (not defaults)
+            if (!System.IO.File.Exists(path))
+                return new List<string>();
 
             try
             {
                 var json = System.IO.File.ReadAllText(path);
                 var los = JsonSerializer.Deserialize<List<string>>(json);
-                return (los != null && los.Count > 0) ? los : DefaultLos();
+
+                // If deserialization fails or list is null, return EMPTY
+                return los ?? new List<string>();
             }
             catch
             {
-                return DefaultLos();
+                // If there's an error reading, return EMPTY LIST
+                return new List<string>();
             }
         }
 

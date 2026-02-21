@@ -17,6 +17,9 @@ namespace AIS_LO_System.Models
         public int Year { get; set; }
         public int Trimester { get; set; }
 
+        // ✅ NEW: Store selected LO IDs as comma-separated string (e.g., "1,2,3,4")
+        public string? SelectedLearningOutcomeIds { get; set; }
+
         public ICollection<AssignmentFile> Files { get; set; }
     }
 }

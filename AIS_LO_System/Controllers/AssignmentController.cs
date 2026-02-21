@@ -22,6 +22,14 @@ namespace AIS_LO_System.Controllers
     int year,
     int trimester)
         {
+            // Check if assessmentName is provided
+            if (string.IsNullOrEmpty(assessmentName))
+            {
+                // Return to course dashboard or show error
+                TempData["Error"] = "Assessment name is required.";
+                return RedirectToAction("Index", "CourseDashboard", new { courseCode, year, trimester });
+            }
+
             var assignment = _context.Assignments.FirstOrDefault(a =>
                 a.AssessmentName == assessmentName &&
                 a.CourseCode == courseCode &&
@@ -39,9 +47,16 @@ namespace AIS_LO_System.Controllers
                     Trimester = trimester
                 };
 
+
                 _context.Assignments.Add(assignment);
                 _context.SaveChanges();
             }
+            //  VIEWBAG VALUES:
+            ViewBag.AssessmentName = assignment.AssessmentName;
+            ViewBag.CourseCode = assignment.CourseCode;
+            ViewBag.CourseTitle = assignment.CourseTitle;
+            ViewBag.Year = assignment.Year;
+            ViewBag.Trimester = assignment.Trimester;
 
             return View(assignment);
         }

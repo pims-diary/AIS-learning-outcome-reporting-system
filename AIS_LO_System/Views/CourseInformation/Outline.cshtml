@@ -11,10 +11,27 @@
     <div class="top-header">
         <img class="ais-logo" src="~/images/AIS_logo.png" alt="AIS Logo" />
 
+        <!-- ✅ FIXED: CLICKABLE BREADCRUMBS -->
         <div class="crumb">
-            <span>@ViewBag.CourseCode @ViewBag.Year – Tri @ViewBag.Trimester</span>
+            <a asp-controller="LecturerDashboard"
+               asp-action="Index">
+                Home
+            </a>
             <span class="sep">/</span>
-            <span>Course Information</span>
+            <a asp-controller="LecturerDashboard"
+               asp-action="Index"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                @ViewBag.Year – Tri @ViewBag.Trimester
+            </a>
+            <span class="sep">/</span>
+            <a asp-controller="CourseDashboard"
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                @ViewBag.CourseCode
+            </a>
             <span class="sep">/</span>
             <strong>Course Outline</strong>
         </div>
@@ -31,6 +48,11 @@
 
     <div class="content-card">
         <h2 class="page-title">Course Outline</h2>
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="success-msg">@TempData["Success"]</div>
+        }
 
         @if (TempData["Error"] != null)
         {
@@ -63,7 +85,9 @@
                     <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
 
                     <input type="file" name="file" accept="application/pdf" required />
-                    <button type="submit" class="btn-primary">Re-upload Course Outline</button>
+                    <button type="submit" class="btn-primary">
+                        @(string.IsNullOrWhiteSpace(outlineUrl) ? "Upload Course Outline" : "Re-upload Course Outline")
+                    </button>
                 </form>
             }
             else
@@ -74,3 +98,25 @@
         </div>
     </div>
 </div>
+
+<style>
+    .success-msg {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+        padding: 12px 16px;
+        border-radius: 4px;
+        margin-bottom: 16px;
+    }
+
+    /* Make breadcrumb links clickable */
+    .crumb a {
+        color: #333;
+        text-decoration: none;
+    }
+
+        .crumb a:hover {
+            color: #0066cc;
+            text-decoration: underline;
+        }
+</style>
