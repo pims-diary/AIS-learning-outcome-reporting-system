@@ -59,10 +59,23 @@
             </div>
         </a>
 
-        <div class="assignment-card">
-            <h3>LO Mapping and Weighting</h3>
-            <p>Mapping each criterion to LOs and assigning its weight</p>
-        </div>
+
+        <a asp-controller="LOMapping"
+           asp-action="Index"
+           asp-route-assignmentId="@Model.Id"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
+           class="assignment-card-link">
+
+            <div class="assignment-card">
+                <img src="~/images/rubric.svg" alt="LO Mapping" />
+                <h3>LO Mapping and Weighting</h3>
+                <p>Mapping each criterion to LOs and assigning its weight</p>
+            </div>
+        </a>
 
         <div class="assignment-card">
             <h3>Mark Students</h3>

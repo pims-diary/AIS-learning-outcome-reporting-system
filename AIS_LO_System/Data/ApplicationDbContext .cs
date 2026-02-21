@@ -17,6 +17,10 @@ namespace AIS_LO_System.Data
         public DbSet<RubricCriterion> RubricCriteria { get; set; }
         public DbSet<RubricLevel> RubricLevels { get; set; }
 
+        //database set for learning outcomes and their mappings to criteria
+        public DbSet<LearningOutcome> LearningOutcomes { get; set; }
+        public DbSet<CriterionLOMapping> CriterionLOMappings { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Rubric>()

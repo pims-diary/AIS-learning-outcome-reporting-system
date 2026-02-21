@@ -4,7 +4,6 @@
     bool canEdit = (bool)(ViewBag.CanEditLO ?? false);
     bool editMode = (bool)(ViewBag.EditMode ?? false);
 
-    // Controller sets BOTH, so we safely read either
     var los = (ViewBag.LearningOutcomes as List<string>) ??
               (ViewBag.LOs as List<string>) ??
               new List<string>();
@@ -17,10 +16,27 @@
     <div class="top-header">
         <img class="ais-logo" src="~/images/AIS_logo.png" alt="AIS Logo" />
 
+        <!-- ✅ FIXED: CLICKABLE BREADCRUMBS -->
         <div class="crumb">
-            <span>@ViewBag.CourseCode @ViewBag.Year – Tri @ViewBag.Trimester</span>
+            <a asp-controller="LecturerDashboard"
+               asp-action="Index">
+                Home
+            </a>
             <span class="sep">/</span>
-            <span>Course Information</span>
+            <a asp-controller="LecturerDashboard"
+               asp-action="Index"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                @ViewBag.Year – Tri @ViewBag.Trimester
+            </a>
+            <span class="sep">/</span>
+            <a asp-controller="CourseDashboard"
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                @ViewBag.CourseCode
+            </a>
             <span class="sep">/</span>
             <strong>Learning Outcomes</strong>
         </div>
@@ -38,17 +54,33 @@
     <div class="content-card">
         <h2 class="page-title">Learning Outcomes</h2>
 
+        @* Show success message if LOs were saved *@
+        @if (TempData["Success"] != null)
+        {
+            <div class="success-msg">@TempData["Success"]</div>
+        }
+
         @* ---------------------------
            VIEW MODE
            --------------------------- *@
         @if (!editMode)
         {
-            <ol class="lo-list">
-                @foreach (var lo in los)
-                {
-                    <li>@lo</li>
-                }
-            </ol>
+            @* ✅ FIXED: Show "No learning outcomes" when empty *@
+            @if (los.Count == 0)
+            {
+                <div class="empty-state">
+                    <p>No learning outcomes have been added yet.</p>
+                </div>
+            }
+            else
+            {
+                <ol class="lo-list">
+                    @foreach (var lo in los)
+                    {
+                        <li>@lo</li>
+                    }
+                </ol>
+            }
 
             <div class="actions-center">
                 @if (canEdit)
@@ -59,7 +91,7 @@
                        asp-route-courseCode="@ViewBag.CourseCode"
                        asp-route-year="@ViewBag.Year"
                        asp-route-trimester="@ViewBag.Trimester">
-                        Edit Learning Outcomes
+                        @(los.Count == 0 ? "Add Learning Outcomes" : "Edit Learning Outcomes")
                     </a>
                 }
                 else
@@ -100,12 +132,23 @@
                     <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
 
                     <div id="loEditor">
-                        @for (int i = 0; i < los.Count; i++)
+                        @if (los.Count == 0)
                         {
+                            @* Start with one empty field if no LOs exist *@
                             <div class="lo-edit-row">
-                                <textarea name="outcomes" class="lo-text">@los[i]</textarea>
+                                <textarea name="outcomes" class="lo-text" placeholder="Enter learning outcome..."></textarea>
                                 <button type="button" class="btn-remove" onclick="removeRow(this)">✕</button>
                             </div>
+                        }
+                        else
+                        {
+                            @for (int i = 0; i < los.Count; i++)
+                            {
+                                <div class="lo-edit-row">
+                                    <textarea name="outcomes" class="lo-text">@los[i]</textarea>
+                                    <button type="button" class="btn-remove" onclick="removeRow(this)">✕</button>
+                                </div>
+                            }
                         }
                     </div>
 
@@ -133,7 +176,7 @@
                         const row = document.createElement("div");
                         row.className = "lo-edit-row";
                         row.innerHTML = `
-                            <textarea name="outcomes" class="lo-text"></textarea>
+                            <textarea name="outcomes" class="lo-text" placeholder="Enter learning outcome..."></textarea>
                             <button type="button" class="btn-remove" onclick="removeRow(this)">✕</button>
                         `;
                         editor.appendChild(row);
@@ -147,3 +190,33 @@
         }
     </div>
 </div>
+
+<style>
+    /* ✅ ADDED: Styling for empty state */
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #666;
+        font-style: italic;
+    }
+
+    .success-msg {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+        padding: 12px 16px;
+        border-radius: 4px;
+        margin-bottom: 16px;
+    }
+
+    /* Make breadcrumb links clickable */
+    .crumb a {
+        color: #333;
+        text-decoration: none;
+    }
+
+        .crumb a:hover {
+            color: #0066cc;
+            text-decoration: underline;
+        }
+</style>

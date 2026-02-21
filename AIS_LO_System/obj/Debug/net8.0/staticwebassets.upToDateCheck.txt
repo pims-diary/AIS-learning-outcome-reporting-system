@@ -1,5 +1,14 @@
+wwwroot\css\assignment-dashboard.css
+wwwroot\css\assignment-information.css
+wwwroot\css\course.css
+wwwroot\css\courseinfo.css
+wwwroot\css\edit-rubric.css
+wwwroot\css\lo-mapping.css
+wwwroot\css\rubric.css
+wwwroot\css\site.css
 wwwroot\favicon.ico
 wwwroot\images\AIS_logo.png
+wwwroot\js\course.js
 wwwroot\js\site.js
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css.map
@@ -58,4 +67,10 @@ wwwroot\lib\jquery\dist\jquery.js
 wwwroot\lib\jquery\dist\jquery.min.js
 wwwroot\lib\jquery\dist\jquery.min.map
 wwwroot\lib\jquery\LICENSE.txt
-wwwroot\css\site.css
+wwwroot\uploads\assignments\77846730-9595-49bf-ae60-023a1be47e1b.pdf
+wwwroot\uploads\assignments\85d5610c-732a-432d-a111-9231194458fd.pdf
+wwwroot\uploads\assignments\a22ed5b5-c06a-4647-835d-e297870ff95a.docx
+wwwroot\uploads\assignments\bf19961c-d20f-4223-a2b1-7ba4382cbbc1.pdf
+wwwroot\uploads\assignments\f534fa41-7218-4260-b363-3abb684e445f.pdf
+wwwroot\uploads\outlines\COMP720-2026-T1.pdf
+wwwroot\uploads\outlines\SOFT703-2026-T1.pdf
