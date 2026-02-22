@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\source\\repos\\pims-diary\\ais-learning-outcome-reporting-system\\ais_lo_system\\controllers\\courseinformationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\controllers\\courseinformationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\source\\repos\\pims-diary\\ais-learning-outcome-reporting-system\\ais_lo_system\\views\\lomapping\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
       "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\views\\lomapping\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
     },
@@ -17,10 +21,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\source\\repos\\pims-diary\\ais-learning-outcome-reporting-system\\ais_lo_system\\controllers\\lomappingcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\controllers\\lomappingcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\source\\repos\\pims-diary\\ais-learning-outcome-reporting-system\\ais_lo_system\\controllers\\courseinformationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\controllers\\courseinformationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Migrations\\20260221120919_AddSelectedLOsToAssignment.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -78,7 +78,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 11,
+          "SelectedChildIndex": 10,
           "Children": [
             {
               "$type": "Bookmark",
@@ -106,14 +106,6 @@
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
-            },
-            {
-              "$type": "Bookmark",
-              "Name": "ST:0:0:{56df62a4-05a3-4e5b-aa1a-99371ccfb997}"
-            },
-            {
-              "$type": "Bookmark",
               "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
             },
             {
@@ -131,7 +123,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "LOMappingController.cs",
               "DocumentMoniker": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Controllers\\LOMappingController.cs",
               "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\LOMappingController.cs",
@@ -144,20 +136,41 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 1,
               "Title": "Index.cshtml",
               "DocumentMoniker": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Views\\LOMapping\\Index.cshtml",
               "RelativeDocumentMoniker": "AIS_LO_System\\Views\\LOMapping\\Index.cshtml",
               "ToolTip": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Views\\LOMapping\\Index.cshtml",
               "RelativeToolTip": "AIS_LO_System\\Views\\LOMapping\\Index.cshtml",
-              "ViewState": "AgIAADABAAAAAAAAAAAAAJEBAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAEMBAAAAAAAAAADwv0kBAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
               "WhenOpened": "2026-02-21T10:40:48.354Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
+              "Title": "CourseInformationController.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Controllers\\CourseInformationController.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\CourseInformationController.cs",
+              "ToolTip": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Controllers\\CourseInformationController.cs",
+              "RelativeToolTip": "AIS_LO_System\\Controllers\\CourseInformationController.cs",
+              "ViewState": "AgIAADcBAAAAAAAAAAAmwFsBAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T09:58:51.373Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{56df62a4-05a3-4e5b-aa1a-99371ccfb997}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "LearningOutcomes.cshtml",
               "DocumentMoniker": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
               "RelativeDocumentMoniker": "AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
@@ -170,7 +183,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 2,
               "Title": "lo-mapping.css",
               "DocumentMoniker": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
               "RelativeDocumentMoniker": "AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
@@ -179,19 +192,6 @@
               "ViewState": "AgIAAIgBAAAAAAAAAAAQwK0BAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
               "WhenOpened": "2026-02-21T10:43:35.575Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "CourseInformationController.cs",
-              "DocumentMoniker": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Controllers\\CourseInformationController.cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\CourseInformationController.cs",
-              "ToolTip": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Controllers\\CourseInformationController.cs",
-              "RelativeToolTip": "AIS_LO_System\\Controllers\\CourseInformationController.cs",
-              "ViewState": "AgIAAMgAAAAAAAAAAAAmwOwAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T09:58:51.373Z",
               "EditorCaption": ""
             },
             {
@@ -269,7 +269,8 @@
               "RelativeToolTip": "AIS_LO_System\\Data\\ApplicationDbContext .cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T10:34:46.407Z"
+              "WhenOpened": "2026-02-21T10:34:46.407Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -281,7 +282,8 @@
               "RelativeToolTip": "AIS_LO_System\\Models\\RubricCriterion.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T10:33:28.324Z"
+              "WhenOpened": "2026-02-21T10:33:28.324Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -293,7 +295,8 @@
               "RelativeToolTip": "AIS_LO_System\\Models\\CriterionLOMapping.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T10:32:42.395Z"
+              "WhenOpened": "2026-02-21T10:32:42.395Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -305,7 +308,8 @@
               "RelativeToolTip": "AIS_LO_System\\Models\\LearningOutcome.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T10:31:43.689Z"
+              "WhenOpened": "2026-02-21T10:31:43.689Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -315,9 +319,10 @@
               "RelativeDocumentMoniker": "AIS_LO_System\\Views\\CourseInformation\\Outline.cshtml",
               "ToolTip": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\Views\\CourseInformation\\Outline.cshtml",
               "RelativeToolTip": "AIS_LO_System\\Views\\CourseInformation\\Outline.cshtml",
-              "ViewState": "AgIAAEMAAAAAAAAAAAAAAAMAAAAYAAAAAAAAAA==",
+              "ViewState": "AgIAAEEAAAAAAAAAAABBwAMAAAAYAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2026-02-21T10:00:23.137Z"
+              "WhenOpened": "2026-02-21T10:00:23.137Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -325,11 +330,12 @@
               "Title": "AIS_LO_System.csproj",
               "DocumentMoniker": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\AIS_LO_System.csproj",
               "RelativeDocumentMoniker": "AIS_LO_System\\AIS_LO_System.csproj",
-              "ToolTip": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\AIS_LO_System.csproj",
-              "RelativeToolTip": "AIS_LO_System\\AIS_LO_System.csproj",
+              "ToolTip": "C:\\Users\\admin\\source\\repos\\pims-diary\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\AIS_LO_System.csproj*",
+              "RelativeToolTip": "AIS_LO_System\\AIS_LO_System.csproj*",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2026-02-21T09:58:45.295Z"
+              "WhenOpened": "2026-02-21T09:58:45.295Z",
+              "EditorCaption": ""
             }
           ]
         }

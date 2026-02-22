@@ -143,3 +143,16 @@ C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS
 C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\ref\AIS_LO_System.dll
 C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\App_Data\learning-outcomes\SOFT703-2026-T1.json
 C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\App_Data\learning-outcomes\COMP720-2026-T1.json
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.barcodes.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.bouncy-castle-connector.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.forms.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.io.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.kernel.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.layout.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.pdfa.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.sign.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.styledxmlparser.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.svg.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.commons.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\Microsoft.DotNet.PlatformAbstractions.dll
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\Newtonsoft.Json.dll

@@ -3,8 +3,11 @@ using Microsoft.AspNetCore.Mvc;
 using LOARS.Web.Services;
 using System.Text.Json;
 using System.Linq;
-using AIS_LO_System.Data; // ✅ NEW: Add database context
-using AIS_LO_System.Models; // ✅ NEW: Add models
+using AIS_LO_System.Data;
+using AIS_LO_System.Models;
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas.Parser;
+using System.Text.RegularExpressions;
 
 namespace LOARS.Web.Controllers
 {
@@ -12,17 +15,14 @@ namespace LOARS.Web.Controllers
     public class CourseInformationController : Controller
     {
         private readonly IWebHostEnvironment _env;
-        private readonly ApplicationDbContext _context; // ✅ NEW: Database access
+        private readonly ApplicationDbContext _context;
 
-        // ✅ UPDATED: Inject database context
         public CourseInformationController(IWebHostEnvironment env, ApplicationDbContext context)
         {
             _env = env;
             _context = context;
         }
 
-        // For now (testing stage): allow Lecturer to test everything.
-        // Later: replace with admin/moderator + DB toggle.
         private bool AllowOutlineReupload(string courseCode) => true;
         private bool AllowLOEdit(string courseCode) => true;
 
@@ -36,7 +36,6 @@ namespace LOARS.Web.Controllers
 
             ViewBag.CanReupload = AllowOutlineReupload(courseCode);
 
-            // Determine if an outline PDF exists already
             var fileName = GetOutlineFileName(courseCode, year, trimester);
             var physicalPath = Path.Combine(_env.WebRootPath, "uploads", "outlines", fileName);
 
@@ -48,7 +47,7 @@ namespace LOARS.Web.Controllers
         }
 
         // -------------------------
-        // COURSE OUTLINE (UPLOAD)
+        // COURSE OUTLINE (UPLOAD) - ✅ UPDATED WITH PDF EXTRACTION
         // -------------------------
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -76,11 +75,132 @@ namespace LOARS.Web.Controllers
             var fileName = GetOutlineFileName(courseCode, year, trimester);
             var savePath = Path.Combine(dir, fileName);
 
-            using var stream = System.IO.File.Create(savePath);
-            await file.CopyToAsync(stream);
+            // Save the PDF file
+            using (var stream = System.IO.File.Create(savePath))
+            {
+                await file.CopyToAsync(stream);
+            }
 
-            TempData["Success"] = "Course outline uploaded successfully!";
+            // ✅ NEW: Extract Learning Outcomes from PDF
+            try
+            {
+                var extractedLOs = ExtractLearningOutcomesFromPDF(savePath);
+
+                if (extractedLOs.Any())
+                {
+                    // Save to JSON (existing functionality)
+                    SaveLos(courseCode, year, trimester, extractedLOs);
+
+                    // Sync to database
+                    SyncLosToDatabase(courseCode, extractedLOs);
+
+                    TempData["Success"] = $"Course outline uploaded successfully! {extractedLOs.Count} Learning Outcomes auto-extracted.";
+                }
+                else
+                {
+                    TempData["Success"] = "Course outline uploaded successfully! (No Learning Outcomes found in PDF)";
+                }
+            }
+            catch (Exception ex)
+            {
+                // PDF uploaded but extraction failed - that's OK
+                TempData["Success"] = "Course outline uploaded successfully! (Could not auto-extract Learning Outcomes)";
+            }
+
             return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
+        }
+
+        // ✅ NEW: Extract Learning Outcomes from PDF
+        private List<string> ExtractLearningOutcomesFromPDF(string pdfPath)
+        {
+            var learningOutcomes = new List<string>();
+
+            try
+            {
+                using (PdfReader reader = new PdfReader(pdfPath))
+                using (PdfDocument pdfDoc = new PdfDocument(reader))
+                {
+                    // Extract text from all pages
+                    string fullText = "";
+                    for (int i = 1; i <= pdfDoc.GetNumberOfPages(); i++)
+                    {
+                        var page = pdfDoc.GetPage(i);
+                        fullText += PdfTextExtractor.GetTextFromPage(page);
+                    }
+
+                    // Find Learning Outcomes section
+                    learningOutcomes = ExtractLOsFromText(fullText);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't crash
+                Console.WriteLine($"Error extracting LOs from PDF: {ex.Message}");
+            }
+
+            return learningOutcomes;
+        }
+
+        // ✅ NEW: Parse text to extract numbered Learning Outcomes
+        private List<string> ExtractLOsFromText(string text)
+        {
+            var learningOutcomes = new List<string>();
+
+            try
+            {
+                // Find "LEARNING OUTCOMES" section
+                var loSectionMatch = Regex.Match(
+                    text,
+                    @"LEARNING OUTCOMES.*?(?=\n[A-Z][A-Z\s]+\n|\Z)",
+                    RegexOptions.Singleline | RegexOptions.IgnoreCase
+                );
+
+                if (!loSectionMatch.Success)
+                {
+                    // Try alternative headers
+                    loSectionMatch = Regex.Match(
+                        text,
+                        @"(?:Learning Outcomes|Course Learning Outcomes|Upon completion).*?(?=\n[A-Z][A-Z\s]+\n|\Z)",
+                        RegexOptions.Singleline | RegexOptions.IgnoreCase
+                    );
+                }
+
+                if (loSectionMatch.Success)
+                {
+                    string loSection = loSectionMatch.Value;
+
+                    // Extract numbered items (1., 2., 3., etc.)
+                    var numberedItems = Regex.Matches(
+                        loSection,
+                        @"(?:^|\n)\s*(\d+)\.\s+(.+?)(?=(?:\n\s*\d+\.|\Z))",
+                        RegexOptions.Singleline
+                    );
+
+                    foreach (Match match in numberedItems)
+                    {
+                        if (match.Groups.Count >= 3)
+                        {
+                            var loText = match.Groups[2].Value.Trim();
+
+                            // Clean up the text
+                            loText = Regex.Replace(loText, @"\s+", " "); // Remove extra whitespace
+                            loText = loText.Replace("\n", " ").Replace("\r", "");
+
+                            // Skip if too short (probably not a real LO)
+                            if (loText.Length > 20)
+                            {
+                                learningOutcomes.Add(loText);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error parsing LOs from text: {ex.Message}");
+            }
+
+            return learningOutcomes;
         }
 
         // -------------------------
@@ -132,10 +252,10 @@ namespace LOARS.Web.Controllers
                 .Select(x => x.Trim())
                 .ToList();
 
-            // ✅ Save to JSON (existing functionality)
+            // Save to JSON (existing functionality)
             SaveLos(courseCode, year, trimester, cleaned);
 
-            // ✅ NEW: Save to DATABASE so Epic 8 can use them!
+            // Sync to database so Epic 8 can use them
             SyncLosToDatabase(courseCode, cleaned);
 
             TempData["Success"] = "Learning outcomes saved successfully!";
@@ -160,7 +280,6 @@ namespace LOARS.Web.Controllers
         private static string GetOutlineFileName(string courseCode, int year, int trimester)
             => $"{courseCode}-{year}-T{trimester}.pdf";
 
-        // Store LOs in a json file per course/year/tri (temporary until DB)
         private string GetLosPath(string courseCode, int year, int trimester)
         {
             var dir = Path.Combine(_env.ContentRootPath, "App_Data", "learning-outcomes");
@@ -172,7 +291,6 @@ namespace LOARS.Web.Controllers
         {
             var path = GetLosPath(courseCode, year, trimester);
 
-            // If file doesn't exist, return EMPTY LIST (not defaults)
             if (!System.IO.File.Exists(path))
                 return new List<string>();
 
@@ -180,13 +298,10 @@ namespace LOARS.Web.Controllers
             {
                 var json = System.IO.File.ReadAllText(path);
                 var los = JsonSerializer.Deserialize<List<string>>(json);
-
-                // If deserialization fails or list is null, return EMPTY
                 return los ?? new List<string>();
             }
             catch
             {
-                // If there's an error reading, return EMPTY LIST
                 return new List<string>();
             }
         }
@@ -198,19 +313,17 @@ namespace LOARS.Web.Controllers
             System.IO.File.WriteAllText(path, json);
         }
 
-        // ✅ NEW METHOD: Sync LOs to database for Epic 8
+        // Sync LOs to database for Epic 8
         private void SyncLosToDatabase(string courseCode, List<string> loTexts)
         {
             try
             {
-                // Remove all existing LOs for this course
                 var existingLOs = _context.LearningOutcomes
                     .Where(lo => lo.CourseCode == courseCode)
                     .ToList();
 
                 _context.LearningOutcomes.RemoveRange(existingLOs);
 
-                // Add new LOs
                 int orderNumber = 1;
                 foreach (var loText in loTexts)
                 {
@@ -227,8 +340,6 @@ namespace LOARS.Web.Controllers
             }
             catch (Exception ex)
             {
-                // Log error but don't break the flow
-                // JSON is still saved, database sync can be retried
                 Console.WriteLine($"Error syncing LOs to database: {ex.Message}");
             }
         }
