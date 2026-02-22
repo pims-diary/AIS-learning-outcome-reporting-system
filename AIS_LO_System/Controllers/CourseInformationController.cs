@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using LOARS.Web.Services;
 using System.Text.Json;
 using System.Linq;
+using AIS_LO_System.Data; // ✅ NEW: Add database context
+using AIS_LO_System.Models; // ✅ NEW: Add models
 
 namespace LOARS.Web.Controllers
 {
@@ -10,10 +12,13 @@ namespace LOARS.Web.Controllers
     public class CourseInformationController : Controller
     {
         private readonly IWebHostEnvironment _env;
+        private readonly ApplicationDbContext _context; // ✅ NEW: Database access
 
-        public CourseInformationController(IWebHostEnvironment env)
+        // ✅ UPDATED: Inject database context
+        public CourseInformationController(IWebHostEnvironment env, ApplicationDbContext context)
         {
             _env = env;
+            _context = context;
         }
 
         // For now (testing stage): allow Lecturer to test everything.
@@ -127,7 +132,11 @@ namespace LOARS.Web.Controllers
                 .Select(x => x.Trim())
                 .ToList();
 
+            // ✅ Save to JSON (existing functionality)
             SaveLos(courseCode, year, trimester, cleaned);
+
+            // ✅ NEW: Save to DATABASE so Epic 8 can use them!
+            SyncLosToDatabase(courseCode, cleaned);
 
             TempData["Success"] = "Learning outcomes saved successfully!";
             return RedirectToAction(nameof(LearningOutcomes), new { courseCode, year, trimester });
@@ -159,7 +168,6 @@ namespace LOARS.Web.Controllers
             return Path.Combine(dir, $"{courseCode}-{year}-T{trimester}.json");
         }
 
-        // ✅ FIXED: No more DefaultLos() - returns empty list instead!
         private List<string> LoadLos(string courseCode, int year, int trimester)
         {
             var path = GetLosPath(courseCode, year, trimester);
@@ -188,6 +196,41 @@ namespace LOARS.Web.Controllers
             var path = GetLosPath(courseCode, year, trimester);
             var json = JsonSerializer.Serialize(los, new JsonSerializerOptions { WriteIndented = true });
             System.IO.File.WriteAllText(path, json);
+        }
+
+        // ✅ NEW METHOD: Sync LOs to database for Epic 8
+        private void SyncLosToDatabase(string courseCode, List<string> loTexts)
+        {
+            try
+            {
+                // Remove all existing LOs for this course
+                var existingLOs = _context.LearningOutcomes
+                    .Where(lo => lo.CourseCode == courseCode)
+                    .ToList();
+
+                _context.LearningOutcomes.RemoveRange(existingLOs);
+
+                // Add new LOs
+                int orderNumber = 1;
+                foreach (var loText in loTexts)
+                {
+                    var lo = new LearningOutcome
+                    {
+                        CourseCode = courseCode,
+                        LearningOutcomeText = loText,
+                        OrderNumber = orderNumber++
+                    };
+                    _context.LearningOutcomes.Add(lo);
+                }
+
+                _context.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't break the flow
+                // JSON is still saved, database sync can be retried
+                Console.WriteLine($"Error syncing LOs to database: {ex.Message}");
+            }
         }
     }
 }

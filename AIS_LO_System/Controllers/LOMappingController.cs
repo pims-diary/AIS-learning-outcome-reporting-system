@@ -62,19 +62,25 @@ namespace AIS_LO_System.Controllers
                 });
             }
 
-            // Get all learning outcomes for this course
+            // ✅ UPDATED: Get LOs from database (synced from Epic 4)
             var learningOutcomes = await _context.LearningOutcomes
                 .Where(lo => lo.CourseCode == courseCode)
                 .OrderBy(lo => lo.OrderNumber)
                 .ToListAsync();
 
-            // If no LOs exist, create default ones
+            // ✅ UPDATED: If no LOs exist, show error - teacher must add them in Epic 4!
             if (!learningOutcomes.Any())
             {
-                learningOutcomes = await CreateDefaultLearningOutcomes(courseCode);
+                TempData["Error"] = "Please add learning outcomes in Course Information first.";
+                return RedirectToAction("LearningOutcomes", "CourseInformation", new
+                {
+                    courseCode,
+                    year,
+                    trimester
+                });
             }
 
-            // ✅ NEW: Get selected LO IDs from assignment
+            // Get selected LO IDs from assignment
             List<int> selectedLOIds = new List<int>();
             if (!string.IsNullOrEmpty(assignment?.SelectedLearningOutcomeIds))
             {
@@ -96,7 +102,7 @@ namespace AIS_LO_System.Controllers
                 Rubric = rubric,
                 LearningOutcomes = learningOutcomes,
                 AssignmentId = assignmentId,
-                SelectedLOIds = selectedLOIds // ✅ Pass selected LO IDs to view
+                SelectedLOIds = selectedLOIds
             };
 
             return View(viewModel);
@@ -115,7 +121,7 @@ namespace AIS_LO_System.Controllers
             int year,
             int trimester,
             List<MappingInput> mappings,
-            List<int> selectedLOIds) // ✅ NEW: Receive selected LO IDs from form
+            List<int> selectedLOIds)
         {
             try
             {
@@ -125,7 +131,7 @@ namespace AIS_LO_System.Controllers
 
                 if (assignment != null)
                 {
-                    // ✅ NEW: Save selected LO IDs
+                    // Save selected LO IDs
                     if (selectedLOIds != null && selectedLOIds.Any())
                     {
                         assignment.SelectedLearningOutcomeIds = string.Join(",", selectedLOIds);
@@ -209,57 +215,6 @@ namespace AIS_LO_System.Controllers
                 });
             }
         }
-
-        // ======================================================
-        // CREATE DEFAULT LEARNING OUTCOMES
-        // ======================================================
-        private async Task<List<LearningOutcome>> CreateDefaultLearningOutcomes(string courseCode)
-        {
-            var defaultLOs = new List<LearningOutcome>
-            {
-                new LearningOutcome
-                {
-                    CourseCode = courseCode,
-                    OrderNumber = 1,
-                    LearningOutcomeText = "Analyse client requirements using current analysis techniques."
-                },
-                new LearningOutcome
-                {
-                    CourseCode = courseCode,
-                    OrderNumber = 2,
-                    LearningOutcomeText = "Identify and relate whenever required appropriate project control techniques in an industry environment."
-                },
-                new LearningOutcome
-                {
-                    CourseCode = courseCode,
-                    OrderNumber = 3,
-                    LearningOutcomeText = "Produce a comprehensive project plan for an industrial IT project; apply project principles and task management, resource management, risk management, project tracking, and project tools in industry environment."
-                },
-                new LearningOutcome
-                {
-                    CourseCode = courseCode,
-                    OrderNumber = 4,
-                    LearningOutcomeText = "Implement the industrial IT project following the appropriate project management framework and System Development Life Cycle."
-                },
-                new LearningOutcome
-                {
-                    CourseCode = courseCode,
-                    OrderNumber = 5,
-                    LearningOutcomeText = "Produce all relevant documentation."
-                },
-                new LearningOutcome
-                {
-                    CourseCode = courseCode,
-                    OrderNumber = 6,
-                    LearningOutcomeText = "Develop both IT and workplace soft-skills, including working in groups, writing formal reports, carrying out individual research and/or delivering oral presentations."
-                }
-            };
-
-            _context.LearningOutcomes.AddRange(defaultLOs);
-            await _context.SaveChangesAsync();
-
-            return defaultLOs;
-        }
     }
 
     // ======================================================
@@ -270,7 +225,7 @@ namespace AIS_LO_System.Controllers
         public Rubric Rubric { get; set; }
         public List<LearningOutcome> LearningOutcomes { get; set; }
         public int AssignmentId { get; set; }
-        public List<int> SelectedLOIds { get; set; } = new(); // ✅ NEW: Track which LOs are selected
+        public List<int> SelectedLOIds { get; set; } = new();
     }
 
     public class MappingInput
