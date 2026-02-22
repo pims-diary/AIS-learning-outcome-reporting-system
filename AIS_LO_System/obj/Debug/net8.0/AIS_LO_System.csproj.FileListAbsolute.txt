@@ -142,3 +142,4 @@ C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS
 C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\AIS_LO_System.genruntimeconfig.cache
 C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\obj\Debug\net8.0\ref\AIS_LO_System.dll
 C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\App_Data\learning-outcomes\SOFT703-2026-T1.json
+C:\Users\admin\source\repos\pims-diary\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\App_Data\learning-outcomes\COMP720-2026-T1.json
