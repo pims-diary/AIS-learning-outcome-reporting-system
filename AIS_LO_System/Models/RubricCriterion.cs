@@ -10,4 +10,7 @@ public class RubricCriterion
     public string CriterionName { get; set; }
 
     public List<RubricLevel> Levels { get; set; } = new();
+
+    // ✅ NEW: Navigation property for LO mappings
+    public ICollection<CriterionLOMapping> LOMappings { get; set; } = new List<CriterionLOMapping>();
 }

@@ -1,0 +1,401 @@
+﻿@model AIS_LO_System.Controllers.LOMappingViewModel
+@{
+    ViewData["Title"] = "LO Mapping and Weighting";
+}
+
+<link rel="stylesheet" href="~/css/lo-mapping.css" />
+
+<div class="page-shell">
+    <div class="top-header">
+        <!-- Breadcrumb -->
+        <div class="crumb">
+            <a asp-controller="LecturerDashboard" asp-action="Index">Home</a>
+            <span class="sep">/</span>
+            <a asp-controller="CourseDashboard"
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                @ViewBag.CourseCode @ViewBag.Year-T@(ViewBag.Trimester)
+            </a>
+            <span class="sep">/</span>
+            <a asp-controller="Assignment"
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                Assessments
+            </a>
+            <span class="sep">/</span>
+            <span>@ViewBag.AssessmentName</span>
+            <span class="sep">/</span>
+            <strong>LO Mapping and Weighting</strong>
+        </div>
+
+        <a class="backlink"
+           asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            ← Go Back
+        </a>
+    </div>
+
+    <h1 class="page-title">LO Mapping and Weighting</h1>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="success-msg">@TempData["Success"]</div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="error-msg">@TempData["Error"]</div>
+    }
+
+    @if (Model.Rubric == null)
+    {
+        <div class="error-msg">Please create a rubric first before mapping learning outcomes.</div>
+    }
+    else
+    {
+        <form id="mappingForm" asp-action="SaveMappings" method="post">
+            @Html.AntiForgeryToken()
+
+            <input type="hidden" name="assignmentId" value="@ViewBag.AssignmentId" />
+            <input type="hidden" name="assessmentName" value="@ViewBag.AssessmentName" />
+            <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
+            <input type="hidden" name="courseTitle" value="@ViewBag.CourseTitle" />
+            <input type="hidden" name="year" value="@ViewBag.Year" />
+            <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
+
+            <!-- Hidden container for selected LO IDs -->
+            <div id="selectedLOsContainer"></div>
+
+            <!-- ACTION BUTTONS AT TOP -->
+            <div class="top-actions">
+                <button type="submit" class="btn-save">Save Mapping</button>
+                <a class="btn-cancel"
+                   asp-controller="Assignment"
+                   asp-action="Index"
+                   asp-route-assessmentName="@ViewBag.AssessmentName"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-courseTitle="@ViewBag.CourseTitle"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
+                    Cancel
+                </a>
+            </div>
+
+            <!-- ASSESSMENT DETAILS -->
+            <div class="assessment-details">
+                <h3>Assessment Details</h3>
+                <p><strong>Total Marks:</strong> <span id="totalMarks">0</span></p>
+                <p><strong>Rubric Scale:</strong> 4 Levels (0, 1, 2, 3, 4)</p>
+            </div>
+
+            <!-- SELECT RELEVANT LOs -->
+            <div class="lo-selection-section">
+                <h3>Select Learning Outcomes Relevant to This Assessment</h3>
+                <div class="lo-checkboxes">
+                    @foreach (var lo in Model.LearningOutcomes)
+                    {
+                        var isSelected = Model.SelectedLOIds.Contains(lo.Id);
+                        <div class="lo-checkbox-item">
+                            <input type="checkbox"
+                                   id="lo-select-@lo.Id"
+                                   class="lo-select-checkbox"
+                                   data-lo-id="@lo.Id"
+                                   data-lo-number="@lo.OrderNumber"
+                                   onchange="toggleLOColumn(@lo.Id, this.checked)"
+                                   @(isSelected ? "checked" : "") />
+                            <label for="lo-select-@lo.Id">
+                                <strong>LO@(lo.OrderNumber)</strong> - @lo.LearningOutcomeText
+                            </label>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- MAPPING TABLE -->
+            <div class="mapping-section">
+                <h3>Map Criteria to Selected LOs and Assign Weights</h3>
+
+                <table class="mapping-table" id="mappingTable">
+                    <thead>
+                        <tr>
+                            <th class="criterion-col">Criterion</th>
+                            @foreach (var lo in Model.LearningOutcomes)
+                            {
+                                var isSelected = Model.SelectedLOIds.Contains(lo.Id);
+                                <th class="lo-col" data-lo-id="@lo.Id" data-lo-number="@lo.OrderNumber" style="@(isSelected ? "" : "display:none;")">LO@(lo.OrderNumber)</th>
+                            }
+                            <th class="weight-col">Weight (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @{
+                            int mappingIndex = 0;
+                        }
+                        @foreach (var criterion in Model.Rubric.Criteria)
+                        {
+                            var existingMappings = criterion.LOMappings.ToList();
+                            var mappedLOIds = existingMappings.Select(m => m.LearningOutcomeId).ToList();
+                            var weight = existingMappings.FirstOrDefault()?.Weight ?? 0;
+
+                            <tr data-criterion-id="@criterion.Id">
+                                <td class="criterion-col">
+                                    <strong>@criterion.CriterionName</strong>
+                                </td>
+
+                                @foreach (var lo in Model.LearningOutcomes)
+                                {
+                                    var isChecked = mappedLOIds.Contains(lo.Id);
+                                    var isSelected = Model.SelectedLOIds.Contains(lo.Id);
+                                    <td class="lo-col" data-lo-id="@lo.Id" data-lo-number="@lo.OrderNumber" style="@(isSelected ? "" : "display:none;")">
+                                        <input type="checkbox"
+                                               name="mappings[@mappingIndex].SelectedLOIds"
+                                               value="@lo.Id"
+                                               class="lo-mapping-checkbox"
+                                               data-criterion-id="@criterion.Id"
+                                               data-lo-id="@lo.Id"
+                                               data-lo-number="@lo.OrderNumber"
+                                               onchange="updateTotalWeight()"
+                                               @(isChecked ? "checked" : "") />
+                                    </td>
+                                }
+
+                                <td class="weight-col">
+                                    <input type="hidden" name="mappings[@mappingIndex].CriterionId" value="@criterion.Id" />
+                                    <input type="number"
+                                           name="mappings[@mappingIndex].Weight"
+                                           class="weight-input"
+                                           data-criterion-id="@criterion.Id"
+                                           value="@weight"
+                                           min="0.01"
+                                           step="0.01"
+                                           placeholder="0"
+                                           onchange="updateTotalWeight()" />
+                                </td>
+                            </tr>
+
+                            mappingIndex++;
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- WEIGHT SUMMARY & VALIDATION -->
+            <div class="summary-section">
+                <h3>Weight Summary</h3>
+                <p><strong>Total Weight Assigned:</strong> <span id="totalWeightPercent" class="summary-value">0%</span></p>
+                <p><strong>Selected LOs:</strong> <span id="selectedLOsList" class="summary-value">-</span></p>
+
+                <!-- LO Usage Summary -->
+                <div class="lo-usage-section">
+                    <h4>LO Usage:</h4>
+                    <ul id="loUsageList">
+                        <li class="pending">Calculating...</li>
+                    </ul>
+                </div>
+
+                <div class="validation-section">
+                    <h4>Validation:</h4>
+                    <ul id="validationList">
+                        <li class="pending">Checking...</li>
+                    </ul>
+                </div>
+            </div>
+        </form>
+    }
+</div>
+
+<script>
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function () {
+        updateTotalWeight();
+        updateLOUsage();
+        validateMappings();
+        updateSelectedLOsList();
+    });
+
+    // Toggle LO column visibility
+    function toggleLOColumn(loId, isVisible) {
+        const columns = document.querySelectorAll(`[data-lo-id="${loId}"]`);
+        columns.forEach(col => {
+            col.style.display = isVisible ? '' : 'none';
+        });
+        updateSelectedLOsList();
+        updateLOUsage();
+        validateMappings();
+    }
+
+    // Update total weight
+    function updateTotalWeight() {
+        const weightInputs = document.querySelectorAll('.weight-input');
+        let total = 0;
+
+        weightInputs.forEach(input => {
+            const value = parseFloat(input.value) || 0;
+            total += value;
+        });
+
+        document.getElementById('totalMarks').textContent = total.toFixed(0);
+        document.getElementById('totalWeightPercent').textContent = total.toFixed(0) + '%';
+
+        updateLOUsage();
+        validateMappings();
+    }
+
+    // Update selected LOs list
+    function updateSelectedLOsList() {
+        const selectedLOs = [];
+        document.querySelectorAll('.lo-select-checkbox:checked').forEach(checkbox => {
+            const loNumber = checkbox.dataset.loNumber;
+            selectedLOs.push('LO' + loNumber);
+        });
+
+        const selectedLOsText = selectedLOs.length > 0 ? selectedLOs.join(', ') : 'None';
+        document.getElementById('selectedLOsList').textContent = selectedLOsText;
+    }
+
+    // ✅ FIXED: Calculate LO usage by scanning the table directly
+    function updateLOUsage() {
+        const usageList = document.getElementById('loUsageList');
+        usageList.innerHTML = '';
+
+        // Get all unique LO IDs from the table headers
+        const loHeaders = document.querySelectorAll('th.lo-col');
+        const loData = [];
+
+        loHeaders.forEach(header => {
+            const loId = header.dataset.loId;
+            const loNumber = header.dataset.loNumber;
+
+            // Check if this LO is selected
+            const selectCheckbox = document.querySelector(`.lo-select-checkbox[data-lo-id="${loId}"]`);
+            const isSelected = selectCheckbox ? selectCheckbox.checked : false;
+
+            // Count mappings (include hidden checkboxes!)
+            const mappedCount = document.querySelectorAll(
+                `.lo-mapping-checkbox[data-lo-id="${loId}"]:checked`
+            ).length;
+
+            loData.push({ loId, loNumber, isSelected, mappedCount });
+        });
+
+        // Display usage
+        loData.forEach(lo => {
+            let li = document.createElement('li');
+
+            if (!lo.isSelected && lo.mappedCount > 0) {
+                // ERROR: Not selected but has mappings
+                li.className = 'invalid';
+                li.textContent = `LO${lo.loNumber} - Has ${lo.mappedCount} mapping(s) but is not selected`;
+            } else if (lo.isSelected && lo.mappedCount === 0) {
+                // WARNING: Selected but not used
+                li.className = 'warning';
+                li.textContent = `LO${lo.loNumber} - Selected but not used yet`;
+            } else if (lo.isSelected && lo.mappedCount > 0) {
+                // GOOD: Selected and used
+                li.className = 'valid';
+                li.textContent = `LO${lo.loNumber} - Used by ${lo.mappedCount} ${lo.mappedCount === 1 ? 'criterion' : 'criteria'}`;
+            }
+
+            if (li.textContent) {
+                usageList.appendChild(li);
+            }
+        });
+
+        if (usageList.children.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'pending';
+            li.textContent = 'No LOs available';
+            usageList.appendChild(li);
+        }
+    }
+
+    // ✅ FIXED: Validate by scanning table directly
+    function validateMappings() {
+        const validationList = document.getElementById('validationList');
+        validationList.innerHTML = '';
+
+        const criteria = document.querySelectorAll('tbody tr');
+
+        let allCriteriaHaveWeight = true;
+        let allCriteriaHaveMapping = true;
+        const unselectedLOsWithMappings = new Set();
+
+        // Check each criterion
+        criteria.forEach(row => {
+            // Check if criterion has weight
+            const weightInput = row.querySelector('.weight-input');
+            const weight = parseFloat(weightInput.value) || 0;
+            if (weight <= 0) {
+                allCriteriaHaveWeight = false;
+            }
+
+            // Check if criterion has at least one LO mapped
+            const mappingCheckboxes = row.querySelectorAll('.lo-mapping-checkbox:checked');
+            if (mappingCheckboxes.length === 0) {
+                allCriteriaHaveMapping = false;
+            }
+
+            // Check which unselected LOs are being used
+            mappingCheckboxes.forEach(checkbox => {
+                const loId = checkbox.dataset.loId;
+                const loNumber = checkbox.dataset.loNumber;
+                const selectCheckbox = document.querySelector(`.lo-select-checkbox[data-lo-id="${loId}"]`);
+                const isSelected = selectCheckbox ? selectCheckbox.checked : false;
+
+                if (!isSelected) {
+                    unselectedLOsWithMappings.add(loNumber);
+                }
+            });
+        });
+
+        // Display validation results
+        if (allCriteriaHaveWeight) {
+            validationList.innerHTML += '<li class="valid">All criteria have weights assigned</li>';
+        } else {
+            validationList.innerHTML += '<li class="invalid">Some criteria are missing weights</li>';
+        }
+
+        if (allCriteriaHaveMapping) {
+            validationList.innerHTML += '<li class="valid">All criteria mapped to at least one LO</li>';
+        } else {
+            validationList.innerHTML += '<li class="invalid">Some criteria have no LO mappings</li>';
+        }
+
+        // ✅ FIXED: Show specific LOs that have issues
+        if (unselectedLOsWithMappings.size === 0) {
+            validationList.innerHTML += '<li class="valid">Only selected LOs are used in mappings</li>';
+        } else {
+            const loNumbers = Array.from(unselectedLOsWithMappings).map(n => `LO${n}`).join(', ');
+            const plural = unselectedLOsWithMappings.size > 1;
+
+            const li = document.createElement('li');
+            li.className = 'invalid';
+            li.innerHTML = `⚠️ Warning: Some criteria are mapped to ${loNumbers}, but ${plural ? 'they are' : 'it is'} not selected.<br><small>Please either select ${loNumbers} or remove the mappings.</small>`;
+            validationList.appendChild(li);
+        }
+    }
+
+    // Before form submit, add selected LO IDs to form
+    document.getElementById('mappingForm').addEventListener('submit', function(e) {
+        // Clear previous selected LO inputs
+        document.getElementById('selectedLOsContainer').innerHTML = '';
+
+        // Add hidden input for each selected LO
+        document.querySelectorAll('.lo-select-checkbox:checked').forEach(checkbox => {
+            const loId = checkbox.getAttribute('data-lo-id');
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'selectedLOIds';
+            input.value = loId;
+            document.getElementById('selectedLOsContainer').appendChild(input);
+        });
+    });
+</script>
