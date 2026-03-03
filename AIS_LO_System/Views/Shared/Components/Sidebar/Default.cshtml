@@ -1,0 +1,37 @@
+﻿<aside id="sidebar" class="dash-sidebar">
+
+    <div class="sidebar-header">
+        <span class="sidebar-title">Home</span>
+        <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
+    </div>
+
+    @if (Model is LOARS.Web.Models.Dashboard.LecturerDashboardViewModel vm)
+    {
+        foreach (var year in vm.Years.OrderByDescending(y => y))
+        {
+            <div class="year-block">
+                <div class="year-title">
+                    @year
+                </div>
+
+                <div class="trimester-links">
+                    @foreach (var tri in vm.TrimestersByYear[year])
+                    {
+                        var isActive =
+                        vm.SelectedYear == year &&
+                        vm.SelectedTrimester == tri;
+
+                        <a asp-controller="LecturerDashboard"
+                           asp-action="Index"
+                           asp-route-year="@year"
+                           asp-route-trimester="@tri"
+                           class="tri-link @(isActive ? "active" : "")">
+
+                            Trimester @tri
+                        </a>
+                    }
+                </div>
+            </div>
+        }
+    }
+</aside>
