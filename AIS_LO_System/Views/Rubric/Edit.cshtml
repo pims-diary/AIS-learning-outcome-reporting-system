@@ -66,6 +66,9 @@
         <input type="hidden" asp-for="Id" />
         <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
 
+        <!-- Hidden container for deleted criterion IDs -->
+        <div id="deletedCriteria"></div>
+
         <!-- Criteria Section -->
         <div class="edit-criteria-section">
             <h2>Criteria</h2>
@@ -138,7 +141,6 @@
                     <div class="performance-row">
                         <div class="perf-score">@performanceLevels[i].Score</div>
                         <div class="perf-name">
-                            <!-- name must match the controller parameter "performanceLevels" -->
                             <input type="text"
                                    name="performanceLevels[@i].ScaleName"
                                    value="@performanceLevels[i].ScaleName" />
@@ -152,6 +154,7 @@
 
 <script>
     let criterionCount = @Model.Criteria.Count;
+    let deletedIds = [];
 
     function addCriterion() {
         const index = criterionCount;
@@ -162,39 +165,39 @@
         newRow.dataset.index = index;
 
         newRow.innerHTML = `
-            <div class="row-label">C${index + 1}:</div>
-            <div class="name-cell">
-                <input type="text" name="Criteria[${index}].CriterionName" placeholder="Enter criterion name" />
-            </div>
-            <div class="score-cell">
-                <input type="number" name="Criteria[${index}].Levels[0].Score" value="4" />
-                <input type="hidden" name="Criteria[${index}].Levels[0].ScaleName" value="Excellent" />
-                <input type="hidden" name="Criteria[${index}].Levels[0].Description" value="" />
-            </div>
-            <div class="score-cell">
-                <input type="number" name="Criteria[${index}].Levels[1].Score" value="3" />
-                <input type="hidden" name="Criteria[${index}].Levels[1].ScaleName" value="Good" />
-                <input type="hidden" name="Criteria[${index}].Levels[1].Description" value="" />
-            </div>
-            <div class="score-cell">
-                <input type="number" name="Criteria[${index}].Levels[2].Score" value="2" />
-                <input type="hidden" name="Criteria[${index}].Levels[2].ScaleName" value="Satisfactory" />
-                <input type="hidden" name="Criteria[${index}].Levels[2].Description" value="" />
-            </div>
-            <div class="score-cell">
-                <input type="number" name="Criteria[${index}].Levels[3].Score" value="1" />
-                <input type="hidden" name="Criteria[${index}].Levels[3].ScaleName" value="Limited" />
-                <input type="hidden" name="Criteria[${index}].Levels[3].Description" value="" />
-            </div>
-            <div class="score-cell">
-                <input type="number" name="Criteria[${index}].Levels[4].Score" value="0" />
-                <input type="hidden" name="Criteria[${index}].Levels[4].ScaleName" value="Unsatisfactory" />
-                <input type="hidden" name="Criteria[${index}].Levels[4].Description" value="" />
-            </div>
-            <div class="delete-cell">
-                <button type="button" class="btn-delete" onclick="deleteCriterion(${index})">🗑️</button>
-            </div>
-        `;
+                <div class="row-label">C${index + 1}:</div>
+                <div class="name-cell">
+                    <input type="text" name="Criteria[${index}].CriterionName" placeholder="Enter criterion name" />
+                </div>
+                <div class="score-cell">
+                    <input type="number" name="Criteria[${index}].Levels[0].Score" value="4" />
+                    <input type="hidden" name="Criteria[${index}].Levels[0].ScaleName" value="Excellent" />
+                    <input type="hidden" name="Criteria[${index}].Levels[0].Description" value="" />
+                </div>
+                <div class="score-cell">
+                    <input type="number" name="Criteria[${index}].Levels[1].Score" value="3" />
+                    <input type="hidden" name="Criteria[${index}].Levels[1].ScaleName" value="Good" />
+                    <input type="hidden" name="Criteria[${index}].Levels[1].Description" value="" />
+                </div>
+                <div class="score-cell">
+                    <input type="number" name="Criteria[${index}].Levels[2].Score" value="2" />
+                    <input type="hidden" name="Criteria[${index}].Levels[2].ScaleName" value="Satisfactory" />
+                    <input type="hidden" name="Criteria[${index}].Levels[2].Description" value="" />
+                </div>
+                <div class="score-cell">
+                    <input type="number" name="Criteria[${index}].Levels[3].Score" value="1" />
+                    <input type="hidden" name="Criteria[${index}].Levels[3].ScaleName" value="Limited" />
+                    <input type="hidden" name="Criteria[${index}].Levels[3].Description" value="" />
+                </div>
+                <div class="score-cell">
+                    <input type="number" name="Criteria[${index}].Levels[4].Score" value="0" />
+                    <input type="hidden" name="Criteria[${index}].Levels[4].ScaleName" value="Unsatisfactory" />
+                    <input type="hidden" name="Criteria[${index}].Levels[4].Description" value="" />
+                </div>
+                <div class="delete-cell">
+                    <button type="button" class="btn-delete" onclick="deleteCriterion(${index})">🗑️</button>
+                </div>
+            `;
 
         criteriaList.appendChild(newRow);
         criterionCount++;
@@ -202,8 +205,33 @@
 
     function deleteCriterion(index) {
         const row = document.querySelector(`.criteria-data-row[data-index="${index}"]`);
-        if (row && confirm('Are you sure you want to delete this criterion?')) {
+        if (!row) return;
+
+        if (confirm('Are you sure you want to delete this criterion?')) {
+            // Get the criterion ID from hidden input
+            const idInput = row.querySelector('input[name*=".Id"]');
+            if (idInput && idInput.value) {
+                // Track the deleted ID
+                deletedIds.push(idInput.value);
+                // Update the hidden deleted IDs field
+                updateDeletedIdsField();
+            }
+
+            // Remove the row from DOM
             row.remove();
         }
+    }
+
+    function updateDeletedIdsField() {
+        const container = document.getElementById('deletedCriteria');
+        container.innerHTML = '';
+
+        deletedIds.forEach((id, index) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = `DeletedCriteriaIds[${index}]`;
+            input.value = id;
+            container.appendChild(input);
+        });
     }
 </script>
