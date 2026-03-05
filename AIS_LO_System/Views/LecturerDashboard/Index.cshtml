@@ -1,105 +1,42 @@
 ﻿@model LOARS.Web.Models.Dashboard.LecturerDashboardViewModel
+
 @{
     ViewData["Title"] = "Trimester Dashboard";
+    Layout = "_DashboardLayout";
 }
 
-<div class="dash-shell">
-    <!-- Sidebar -->
-    <aside id="sidebar" class="dash-sidebar">
-        <div class="sidebar-header">
-            <span class="sidebar-title">Years</span>
-            <button class="sidebar-close" type="button" onclick="toggleSidebar()">×</button>
+<h1 class="dash-title">@Model.SelectedYear - Trimester @Model.SelectedTrimester</h1>
+
+<section class="courses-panel">
+    <div class="panel-header">
+        <div class="panel-title">Courses</div>
+    </div>
+
+    @if (Model.Courses.Count == 0)
+    {
+        <div class="empty-state">
+            No courses found for this trimester.
         </div>
-
-        <div class="sidebar-content">
-            @foreach (var y in Model.Years)
+    }
+    else
+    {
+        <div class="course-grid">
+            @foreach (var c in Model.Courses)
             {
-                <div class="year-block">
-                    <div class="year-title">@y</div>
-
-                    <div class="trimester-links">
-                        @foreach (var t in Model.TrimestersByYear[y])
-                        {
-                            var isActive = (y == Model.SelectedYear && t == Model.SelectedTrimester);
-                            <a class="tri-link @(isActive ? "active" : "")"
-                               asp-controller="LecturerDashboard"
-                               asp-action="Index"
-                               asp-route-year="@y"
-                               asp-route-trimester="@t">
-                                Trimester @t
-                            </a>
-                        }
+                <a class="course-card"
+                   asp-controller="CourseDashboard"
+                   asp-action="Index"
+                   asp-route-courseCode="@c.Code"
+                   asp-route-year="@Model.SelectedYear"
+                   asp-route-trimester="@Model.SelectedTrimester">
+                    <div class="course-banner"></div>
+                    <div class="course-body">
+                        <div class="course-code">@c.Code</div>
+                        <div class="course-title">@c.Title</div>
+                        <div class="course-school">@c.School</div>
                     </div>
-                </div>
+                </a>
             }
         </div>
-    </aside>
-
-    <!-- Main -->
-    <main class="dash-main">
-        <div class="dash-topbar">
-            <button class="hamburger" type="button" onclick="toggleSidebar()">☰</button>
-
-            <div class="brand width=" 5000" height="5000"">
-                <img src="~/images/AIS_logo.png" alt="AIS" class="brand-logo" />
-            </div>
-
-            <div class="topbar-right">
-                <span class="pill">@User.Identity?.Name</span>
-
-                <form asp-controller="Account"
-                      asp-action="Logout"
-                      method="post"
-                      class="logout-form">
-                    @Html.AntiForgeryToken()
-                    <button type="submit" class="logout-btn">Logout</button>
-                </form>
-            </div>
-
-        </div>
-
-        <div class="dash-content">
-            <h1 class="dash-title">@Model.ContextLabel</h1>
-
-            <section class="courses-panel">
-                <div class="panel-header">
-                    <div class="panel-title">Courses</div>
-                </div>
-
-                @if (Model.Courses.Count == 0)
-                {
-                    <div class="empty-state">
-                        No courses found for this trimester.
-                    </div>
-                }
-                else
-                {
-                    <div class="course-grid">
-                        @foreach (var c in Model.Courses)
-                        {
-                            <a class="course-card"
-                               asp-controller="CourseDashboard"
-                               asp-action="Index"
-                               asp-route-courseCode="@c.Code"
-                               asp-route-year="@Model.SelectedYear"
-                               asp-route-trimester="@Model.SelectedTrimester">
-                                <div class="course-banner"></div>
-                                <div class="course-body">
-                                    <div class="course-code">@c.Code</div>
-                                    <div class="course-title">@c.Title</div>
-                                    <div class="course-school">@c.School</div>
-                                </div>
-                            </a>
-                        }
-                    </div>
-                }
-            </section>
-        </div>
-    </main>
-</div>
-
-<script>
-    function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('open');
     }
-</script>
+</section>

@@ -1,0 +1,112 @@
+﻿@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"]</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+
+<body>
+
+    <div class="dash-shell">
+
+        <!-- Sidebar -->
+        @await Component.InvokeAsync("Sidebar", new
+            {
+                year = ViewBag.Year,
+                trimester = ViewBag.Trimester
+            })
+
+        <!-- Main -->
+        <main class="dash-main">
+
+            <!-- Topbar -->
+            <div class="dash-topbar">
+
+                <!-- LEFT -->
+                <button class="hamburger" onclick="toggleSidebar()">
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <!-- CENTER LOGO -->
+                <div class="brand">
+                    <img src="~/images/AIS_logo.png" class="brand-logo" />
+                </div>
+
+                <!-- RIGHT -->
+                <div class="topbar-right">
+
+                    <button class="icon-btn">
+                        <i class="bi bi-search"></i>
+                    </button>
+
+                    <button class="icon-btn">
+                        <i class="bi bi-bell"></i>
+                    </button>
+
+                    <div class="divider"></div>
+
+                    <div class="user-wrapper" onclick="toggleUserMenu()">
+                        <div class="user-circle">RK</div>
+                        <i class="bi bi-chevron-down user-arrow"></i>
+
+                        <div id="userDropdown" class="user-dropdown">
+
+                            <form asp-controller="Account"
+                                  asp-action="Logout"
+                                  method="post"
+                                  class="logout-form">
+
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                    Logout
+                                </button>
+                            </form>
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="dash-content">
+                @RenderBody()
+            </div>
+
+        </main>
+
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        function toggleYear(year) {
+            document.getElementById('year-' + year)
+                .classList.toggle('open');
+        }
+
+        function toggleUserMenu() {
+            event.stopPropagation();
+            document.getElementById("userDropdown")
+                .classList.toggle("open");
+        }
+
+        // Close when clicking outside
+        document.addEventListener("click", function () {
+            document.getElementById("userDropdown")
+                .classList.remove("open");
+        });
+    </script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

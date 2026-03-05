@@ -249,7 +249,7 @@ namespace AIS_LO_System.Controllers
         [HttpPost]
         [ActionName("Edit")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditPost(Rubric model, int assignmentId, List<RubricLevel> performanceLevels)
+        public async Task<IActionResult> EditPost(Rubric model, int assignmentId, List<RubricLevel> performanceLevels, List<int> deletedCriteriaIds)
         {
             var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
@@ -259,7 +259,20 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
                 return NotFound();
 
-            // Update criterion names and level scores
+            // Delete criteria by ID
+            if (deletedCriteriaIds != null && deletedCriteriaIds.Any())
+            {
+                var criteriaToDelete = rubric.Criteria
+                    .Where(c => deletedCriteriaIds.Contains(c.Id))
+                    .ToList();
+
+                foreach (var criterion in criteriaToDelete)
+                {
+                    _context.RubricCriteria.Remove(criterion);
+                }
+            }
+
+            // Rest of the update logic stays the same...
             foreach (var criterion in rubric.Criteria)
             {
                 var updatedCriterion = model.Criteria
@@ -282,11 +295,9 @@ namespace AIS_LO_System.Controllers
                 }
             }
 
-            // Update ScaleNames across ALL criteria using submitted PerformanceLevels
+            // Update scale names
             if (performanceLevels != null && performanceLevels.Any())
             {
-                // Build a score -> scaleName lookup from the submitted performance levels
-                // They come in ordered highest to lowest (4,3,2,1,0)
                 int[] scores = { 4, 3, 2, 1, 0 };
 
                 for (int i = 0; i < performanceLevels.Count; i++)
@@ -294,7 +305,6 @@ namespace AIS_LO_System.Controllers
                     var newScaleName = performanceLevels[i].ScaleName;
                     var score = scores[i];
 
-                    // Update this scale name for every criterion at this score
                     foreach (var criterion in rubric.Criteria)
                     {
                         var levelToUpdate = criterion.Levels
