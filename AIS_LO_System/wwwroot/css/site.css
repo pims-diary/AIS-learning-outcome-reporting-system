@@ -514,4 +514,41 @@ body {
     .course-grid {
         grid-template-columns: 1fr;
     }
+
+    /* =========================
+   Mark student: Student list
+========================= */
+
+    .status-not-marked {
+        color: #c62828;
+        font-weight: 500;
+    }
+
+
+
+    .action-btn {
+        display: inline-block;
+        background-color: #b32017; /* AIS red */
+        color: #ffffff !important;
+        padding: 6px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        border: none;
+        min-width: 110px;
+        text-align: center;
+        cursor: pointer;
+    }
+
+        .action-btn:hover {
+            background-color: #8f180f; /* darker red on hover */
+            color: #ffffff !important;
+        }
+
+   
+    .status-marked {
+        color: #2e9d49;
+        font-weight: 500;
+    }
 }

@@ -1,0 +1,27 @@
+﻿@{
+    ViewData["Title"] = "Mark Student";
+}
+
+<div class="container mt-4">
+
+    <h2 class="fw-bold">@ViewBag.StudentName</h2>
+
+    <div class="mb-3">
+        <p><strong>Assessment:</strong> @ViewBag.AssessmentName</p>
+        <p><strong>Course:</strong> @ViewBag.CourseCode</p>
+        <p><strong>Student ID:</strong> @ViewBag.StudentId</p>
+    </div>
+
+    <div class="alert alert-info">
+        Rubric marking interface will appear here.
+    </div>
+
+    <a asp-controller="MarkStudents"
+       asp-action="Index"
+       asp-route-courseCode="@ViewBag.CourseCode"
+       asp-route-assessmentName="@ViewBag.AssessmentName"
+       class="btn btn-secondary">
+        Back to Student List
+    </a>
+
+</div>

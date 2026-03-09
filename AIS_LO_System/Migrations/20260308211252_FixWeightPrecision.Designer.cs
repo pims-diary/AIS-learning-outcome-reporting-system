@@ -4,6 +4,7 @@ using AIS_LO_System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AIS_LO_System.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260308211252_FixWeightPrecision")]
+    partial class FixWeightPrecision
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -219,53 +222,6 @@ namespace AIS_LO_System.Migrations
                         });
                 });
 
-            modelBuilder.Entity("AIS_LO_System.Models.StudentAssessmentMark", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AssessmentName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CourseCode")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsMarked")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("StudentRefId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StudentRefId");
-
-                    b.ToTable("StudentAssessmentMarks");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            AssessmentName = "Assignment 1",
-                            CourseCode = "COMP720",
-                            IsMarked = true,
-                            StudentRefId = 2
-                        },
-                        new
-                        {
-                            Id = 2,
-                            AssessmentName = "Assignment 1",
-                            CourseCode = "COMP720",
-                            IsMarked = true,
-                            StudentRefId = 4
-                        });
-                });
-
             modelBuilder.Entity("RubricCriterion", b =>
                 {
                     b.Property<int>("Id")
@@ -356,17 +312,6 @@ namespace AIS_LO_System.Migrations
                         .IsRequired();
 
                     b.Navigation("Assignment");
-                });
-
-            modelBuilder.Entity("AIS_LO_System.Models.StudentAssessmentMark", b =>
-                {
-                    b.HasOne("AIS_LO_System.Models.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentRefId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("RubricCriterion", b =>

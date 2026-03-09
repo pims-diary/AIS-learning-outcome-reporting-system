@@ -4,6 +4,7 @@ using AIS_LO_System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AIS_LO_System.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260308205715_AddStudentTable")]
+    partial class AddStudentTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -107,7 +110,6 @@ namespace AIS_LO_System.Migrations
                         .HasColumnType("int");
 
                     b.Property<decimal>("Weight")
-                        .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
@@ -185,85 +187,6 @@ namespace AIS_LO_System.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Students");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            FullName = "Aarav Sharma",
-                            StudentId = "2026001"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            FullName = "Priya Patel",
-                            StudentId = "2026002"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            FullName = "John Smith",
-                            StudentId = "2026003"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            FullName = "Meera Nair",
-                            StudentId = "2026004"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            FullName = "Ali Khan",
-                            StudentId = "2026005"
-                        });
-                });
-
-            modelBuilder.Entity("AIS_LO_System.Models.StudentAssessmentMark", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AssessmentName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CourseCode")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsMarked")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("StudentRefId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("StudentRefId");
-
-                    b.ToTable("StudentAssessmentMarks");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            AssessmentName = "Assignment 1",
-                            CourseCode = "COMP720",
-                            IsMarked = true,
-                            StudentRefId = 2
-                        },
-                        new
-                        {
-                            Id = 2,
-                            AssessmentName = "Assignment 1",
-                            CourseCode = "COMP720",
-                            IsMarked = true,
-                            StudentRefId = 4
-                        });
                 });
 
             modelBuilder.Entity("RubricCriterion", b =>
@@ -356,17 +279,6 @@ namespace AIS_LO_System.Migrations
                         .IsRequired();
 
                     b.Navigation("Assignment");
-                });
-
-            modelBuilder.Entity("AIS_LO_System.Models.StudentAssessmentMark", b =>
-                {
-                    b.HasOne("AIS_LO_System.Models.Student", "Student")
-                        .WithMany()
-                        .HasForeignKey("StudentRefId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("RubricCriterion", b =>

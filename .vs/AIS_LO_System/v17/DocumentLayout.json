@@ -3,8 +3,52 @@
   "WorkspaceRootPath": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\views\\markstudents\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\views\\markstudents\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\wwwroot\\css\\site.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\wwwroot\\css\\site.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\controllers\\markstudentscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\controllers\\markstudentscontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\controllers\\courseinformationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\controllers\\courseinformationcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\views\\markstudents\\markstudent.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\views\\markstudents\\markstudent.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\models\\markstudents\\studentlistitemviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\models\\markstudents\\studentlistitemviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\data\\applicationdbcontext .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\data\\applicationdbcontext .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\models\\studentassessmentmark.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\models\\studentassessmentmark.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\models\\markstudents\\markstudentsviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\models\\markstudents\\markstudentsviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\views\\assignment\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\views\\assignment\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\models\\criterionlomapping.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\models\\criterionlomapping.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\models\\student.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\models\\student.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\views\\lomapping\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
@@ -35,16 +79,8 @@
       "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\migrations\\20260221103702_addlomappingtables.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\views\\assignment\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
-      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\views\\assignment\\index.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\controllers\\rubriccontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\controllers\\rubriccontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\data\\applicationdbcontext .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\data\\applicationdbcontext .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\models\\rubriccriterion.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -53,10 +89,6 @@
     {
       "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\models\\learningoutcome.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\models\\learningoutcome.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\models\\criterionlomapping.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|solutionrelative:ais_lo_system\\models\\criterionlomapping.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{6F9E70C1-0E72-41B8-A27C-EA5581F6074C}|AIS_LO_System\\AIS_LO_System.csproj|c:\\users\\admin\\documents\\comp720_project\\lo_system\\ais_lo_system\\ais_lo_system\\views\\courseinformation\\outline.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
@@ -78,7 +110,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 4,
+          "SelectedChildIndex": 2,
           "Children": [
             {
               "$type": "Bookmark",
@@ -86,31 +118,144 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "Assignment.cs",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\Assignment.cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Models\\Assignment.cs",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\Assignment.cs",
-              "RelativeToolTip": "AIS_LO_System\\Models\\Assignment.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T12:08:26.208Z"
+              "DocumentIndex": 4,
+              "Title": "MarkStudent.cshtml",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\MarkStudents\\MarkStudent.cshtml",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Views\\MarkStudents\\MarkStudent.cshtml",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\MarkStudents\\MarkStudent.cshtml",
+              "RelativeToolTip": "AIS_LO_System\\Views\\MarkStudents\\MarkStudent.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAGAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-03-08T23:56:30.477Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "LOMappingController.cs",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\LOMappingController.cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\LOMappingController.cs",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\LOMappingController.cs",
-              "RelativeToolTip": "AIS_LO_System\\Controllers\\LOMappingController.cs",
-              "ViewState": "AgIAADoAAAAAAAAAAAAAAO0AAAAAAAAAAAAAAA==",
+              "DocumentIndex": 0,
+              "Title": "Index.cshtml",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\MarkStudents\\Index.cshtml",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Views\\MarkStudents\\Index.cshtml",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\MarkStudents\\Index.cshtml",
+              "RelativeToolTip": "AIS_LO_System\\Views\\MarkStudents\\Index.cshtml",
+              "ViewState": "AgIAAF4AAAAAAAAAAAAIwGwAAABBAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-03-08T21:45:27.476Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "MarkStudentsController.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\MarkStudentsController.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\MarkStudentsController.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\MarkStudentsController.cs",
+              "RelativeToolTip": "AIS_LO_System\\Controllers\\MarkStudentsController.cs",
+              "ViewState": "AgIAADsAAAAAAAAAAAAIwE8AAAAJAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T10:39:15.24Z"
+              "WhenOpened": "2026-03-08T21:44:23.22Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "site.css",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\wwwroot\\css\\site.css",
+              "RelativeDocumentMoniker": "AIS_LO_System\\wwwroot\\css\\site.css",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\wwwroot\\css\\site.css",
+              "RelativeToolTip": "AIS_LO_System\\wwwroot\\css\\site.css",
+              "ViewState": "AgIAAAwCAAAAAAAAAAAgwCICAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
+              "WhenOpened": "2026-03-08T21:45:57.824Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "CourseInformationController.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\CourseInformationController.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\CourseInformationController.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\CourseInformationController.cs",
+              "RelativeToolTip": "AIS_LO_System\\Controllers\\CourseInformationController.cs",
+              "ViewState": "AgIAAF8AAAAAAAAAAAAAAGcAAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T09:58:51.373Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "StudentListItemViewModel.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\MarkStudents\\StudentListItemViewModel.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Models\\MarkStudents\\StudentListItemViewModel.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\MarkStudents\\StudentListItemViewModel.cs",
+              "RelativeToolTip": "AIS_LO_System\\Models\\MarkStudents\\StudentListItemViewModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-08T21:42:58.309Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "ApplicationDbContext .cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Data\\ApplicationDbContext .cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Data\\ApplicationDbContext .cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Data\\ApplicationDbContext .cs",
+              "RelativeToolTip": "AIS_LO_System\\Data\\ApplicationDbContext .cs",
+              "ViewState": "AgIAACcAAAAAAAAAAAAqwEwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T10:34:46.407Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "StudentAssessmentMark.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\StudentAssessmentMark.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Models\\StudentAssessmentMark.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\StudentAssessmentMark.cs",
+              "RelativeToolTip": "AIS_LO_System\\Models\\StudentAssessmentMark.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABgAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-08T23:26:14.164Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "MarkStudentsViewModel.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\MarkStudents\\MarkStudentsViewModel.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Models\\MarkStudents\\MarkStudentsViewModel.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\MarkStudents\\MarkStudentsViewModel.cs",
+              "RelativeToolTip": "AIS_LO_System\\Models\\MarkStudents\\MarkStudentsViewModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAvAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-08T21:43:32.11Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "Index.cshtml",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\Assignment\\Index.cshtml",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Views\\Assignment\\Index.cshtml",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\Assignment\\Index.cshtml",
+              "RelativeToolTip": "AIS_LO_System\\Views\\Assignment\\Index.cshtml",
+              "ViewState": "AgIAAFAAAAAAAAAAAAAUwFoAAAAyAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-02-21T10:46:25.217Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "Student.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\Student.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Models\\Student.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\Student.cs",
+              "RelativeToolTip": "AIS_LO_System\\Models\\Student.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-03-08T20:53:10.983Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
               "Title": "Index.cshtml",
               "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\LOMapping\\Index.cshtml",
               "RelativeDocumentMoniker": "AIS_LO_System\\Views\\LOMapping\\Index.cshtml",
@@ -122,128 +267,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "CourseInformationController.cs",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\CourseInformationController.cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\CourseInformationController.cs",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\CourseInformationController.cs",
-              "RelativeToolTip": "AIS_LO_System\\Controllers\\CourseInformationController.cs",
-              "ViewState": "AgIAADcBAAAAAAAAAAAmwFsBAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T09:58:51.373Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "LearningOutcomes.cshtml",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
-              "RelativeToolTip": "AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
-              "ViewState": "AgIAALoAAAAAAAAAAAAowN4AAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2026-02-21T09:59:51.019Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "lo-mapping.css",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
-              "RelativeDocumentMoniker": "AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
-              "RelativeToolTip": "AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
-              "ViewState": "AgIAAIgBAAAAAAAAAAAQwK0BAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
-              "WhenOpened": "2026-02-21T10:43:35.575Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 16,
-              "Title": "20260221120919_AddSelectedLOsToAssignment.cs",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Migrations\\20260221120919_AddSelectedLOsToAssignment.cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Migrations\\20260221120919_AddSelectedLOsToAssignment.cs",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Migrations\\20260221120919_AddSelectedLOsToAssignment.cs",
-              "RelativeToolTip": "AIS_LO_System\\Migrations\\20260221120919_AddSelectedLOsToAssignment.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAA7AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T12:09:19.718Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 6,
-              "Title": "AssignmentController.cs",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\AssignmentController.cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\AssignmentController.cs",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\AssignmentController.cs",
-              "RelativeToolTip": "AIS_LO_System\\Controllers\\AssignmentController.cs",
-              "ViewState": "AgIAACIAAAAAAAAAAAAAADUAAAAPAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T11:31:00.425Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 9,
-              "Title": "RubricController.cs",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\RubricController.cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\RubricController.cs",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\RubricController.cs",
-              "RelativeToolTip": "AIS_LO_System\\Controllers\\RubricController.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T10:38:32.024Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 8,
-              "Title": "Index.cshtml",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\Assignment\\Index.cshtml",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Views\\Assignment\\Index.cshtml",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\Assignment\\Index.cshtml",
-              "RelativeToolTip": "AIS_LO_System\\Views\\Assignment\\Index.cshtml",
-              "ViewState": "AgIAADYAAAAAAAAAAAAAAE0AAAAMAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
-              "WhenOpened": "2026-02-21T10:46:25.217Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 7,
-              "Title": "20260221103702_AddLOMappingTables.cs",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Migrations\\20260221103702_AddLOMappingTables.cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Migrations\\20260221103702_AddLOMappingTables.cs",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Migrations\\20260221103702_AddLOMappingTables.cs",
-              "RelativeToolTip": "AIS_LO_System\\Migrations\\20260221103702_AddLOMappingTables.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T10:37:02.389Z"
-            },
-            {
-              "$type": "Document",
               "DocumentIndex": 10,
-              "Title": "ApplicationDbContext .cs",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Data\\ApplicationDbContext .cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Data\\ApplicationDbContext .cs",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Data\\ApplicationDbContext .cs",
-              "RelativeToolTip": "AIS_LO_System\\Data\\ApplicationDbContext .cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABIAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T10:34:46.407Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 11,
-              "Title": "RubricCriterion.cs",
-              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\RubricCriterion.cs",
-              "RelativeDocumentMoniker": "AIS_LO_System\\Models\\RubricCriterion.cs",
-              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\RubricCriterion.cs",
-              "RelativeToolTip": "AIS_LO_System\\Models\\RubricCriterion.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-21T10:33:28.324Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 13,
               "Title": "CriterionLOMapping.cs",
               "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\CriterionLOMapping.cs",
               "RelativeDocumentMoniker": "AIS_LO_System\\Models\\CriterionLOMapping.cs",
@@ -255,7 +279,115 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 12,
+              "DocumentIndex": 15,
+              "Title": "LOMappingController.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\LOMappingController.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\LOMappingController.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\LOMappingController.cs",
+              "RelativeToolTip": "AIS_LO_System\\Controllers\\LOMappingController.cs",
+              "ViewState": "AgIAADoAAAAAAAAAAAAAAO0AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T10:39:15.24Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "Assignment.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\Assignment.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Models\\Assignment.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\Assignment.cs",
+              "RelativeToolTip": "AIS_LO_System\\Models\\Assignment.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T12:08:26.208Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "LearningOutcomes.cshtml",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
+              "RelativeToolTip": "AIS_LO_System\\Views\\CourseInformation\\LearningOutcomes.cshtml",
+              "ViewState": "AgIAALoAAAAAAAAAAAAowN4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2026-02-21T09:59:51.019Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "lo-mapping.css",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
+              "RelativeDocumentMoniker": "AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
+              "RelativeToolTip": "AIS_LO_System\\wwwroot\\css\\lo-mapping.css",
+              "ViewState": "AgIAAIgBAAAAAAAAAAAQwK0BAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
+              "WhenOpened": "2026-02-21T10:43:35.575Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "20260221120919_AddSelectedLOsToAssignment.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Migrations\\20260221120919_AddSelectedLOsToAssignment.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Migrations\\20260221120919_AddSelectedLOsToAssignment.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Migrations\\20260221120919_AddSelectedLOsToAssignment.cs",
+              "RelativeToolTip": "AIS_LO_System\\Migrations\\20260221120919_AddSelectedLOsToAssignment.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAA7AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T12:09:19.718Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "AssignmentController.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\AssignmentController.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\AssignmentController.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\AssignmentController.cs",
+              "RelativeToolTip": "AIS_LO_System\\Controllers\\AssignmentController.cs",
+              "ViewState": "AgIAACIAAAAAAAAAAAAAADUAAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T11:31:00.425Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "RubricController.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\RubricController.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Controllers\\RubricController.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Controllers\\RubricController.cs",
+              "RelativeToolTip": "AIS_LO_System\\Controllers\\RubricController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T10:38:32.024Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "20260221103702_AddLOMappingTables.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Migrations\\20260221103702_AddLOMappingTables.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Migrations\\20260221103702_AddLOMappingTables.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Migrations\\20260221103702_AddLOMappingTables.cs",
+              "RelativeToolTip": "AIS_LO_System\\Migrations\\20260221103702_AddLOMappingTables.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T10:37:02.389Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "RubricCriterion.cs",
+              "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\RubricCriterion.cs",
+              "RelativeDocumentMoniker": "AIS_LO_System\\Models\\RubricCriterion.cs",
+              "ToolTip": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\RubricCriterion.cs",
+              "RelativeToolTip": "AIS_LO_System\\Models\\RubricCriterion.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-21T10:33:28.324Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
               "Title": "LearningOutcome.cs",
               "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Models\\LearningOutcome.cs",
               "RelativeDocumentMoniker": "AIS_LO_System\\Models\\LearningOutcome.cs",
@@ -267,7 +399,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 14,
+              "DocumentIndex": 22,
               "Title": "Outline.cshtml",
               "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\Views\\CourseInformation\\Outline.cshtml",
               "RelativeDocumentMoniker": "AIS_LO_System\\Views\\CourseInformation\\Outline.cshtml",
@@ -279,7 +411,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 15,
+              "DocumentIndex": 23,
               "Title": "AIS_LO_System.csproj",
               "DocumentMoniker": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\AIS_LO_System.csproj",
               "RelativeDocumentMoniker": "AIS_LO_System\\AIS_LO_System.csproj",
