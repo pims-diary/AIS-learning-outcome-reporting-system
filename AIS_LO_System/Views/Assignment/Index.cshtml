@@ -43,21 +43,20 @@
 
         </a>
 
-        <a asp-controller="Rubric"
+        <a asp-controller="MarkStudents"
            asp-action="Index"
            asp-route-assignmentId="@Model.Id"
-           asp-route-assessmentName="@Model.AssessmentName"
            asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-assessmentName="@Model.AssessmentName"
            asp-route-year="@Model.Year"
            asp-route-trimester="@Model.Trimester"
            class="assignment-card-link">
 
             <div class="assignment-card">
-                <img src="~/images/rubric.svg" alt="Rubric" />
-                <h3>Rubric Management</h3>
-                <p>Upload, Edit, or Create the Rubric</p>
+                <h3>Mark Students</h3>
+                <p>Enter or Update student scores</p>
             </div>
+
         </a>
 
 
