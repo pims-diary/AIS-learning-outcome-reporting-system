@@ -1,0 +1,115 @@
+﻿@{
+    Layout = null;
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var fullName = User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "Admin";
+    var initials = string.Concat(fullName.Split(' ').Take(2).Select(w => w[0])).ToUpper();
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>@ViewData["Title"] — Admin</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/css/admin.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+</head>
+<body>
+
+    <div class="dash-shell">
+
+        <!-- Admin Sidebar -->
+        <aside id="sidebar" class="admin-sidebar">
+            <div class="admin-sb-top">
+                <button class="admin-sb-close" onclick="toggleSidebar()">✕</button>
+            </div>
+
+            <nav class="admin-sb-nav">
+                <a asp-controller="Admin" asp-action="Dashboard"
+                       class="admin-sb-link @(currentAction == "Dashboard" ? "active" : "")">
+                    Overview
+                </a>
+
+                <div class="admin-sb-section">MANAGE</div>
+
+                <a asp-controller="Admin" asp-action="Courses"
+                       class="admin-sb-link @(currentAction == "Courses" ? "active" : "")">
+                    Courses
+                </a>
+                <a asp-controller="Admin" asp-action="Students"
+                       class="admin-sb-link @(currentAction == "Students" ? "active" : "")">
+                    Students
+                </a>
+                <a asp-controller="Admin" asp-action="Users"
+                       class="admin-sb-link @(currentAction == "Users" ? "active" : "")">
+                    Users
+                </a>
+
+                <div class="admin-sb-section">SETTINGS</div>
+
+                <a asp-controller="Admin" asp-action="Permissions"
+                       class="admin-sb-link @(currentAction == "Permissions" ? "active" : "")">
+                    Permissions
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="dash-main">
+
+            <!-- Topbar -->
+            <div class="dash-topbar">
+                <button class="hamburger" onclick="toggleSidebar()">
+                    <i class="bi bi-list"></i>
+                </button>
+
+                <div class="brand">
+                    <img src="~/images/AIS_logo.png" class="brand-logo" />
+                </div>
+
+                <div class="topbar-right">
+                    <button class="icon-btn"><i class="bi bi-search"></i></button>
+                    <button class="icon-btn"><i class="bi bi-bell"></i></button>
+                    <div class="divider"></div>
+
+                    <div class="user-wrapper" onclick="toggleUserMenu()">
+                        <div class="user-circle">@initials</div>
+                        <i class="bi bi-chevron-down user-arrow"></i>
+
+                        <div id="userDropdown" class="user-dropdown">
+                            <form asp-controller="Account" asp-action="Logout"
+                                  method="post" class="logout-form">
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bi bi-box-arrow-right"></i>
+                                    Logout
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dash-content">
+                @RenderBody()
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+            function toggleSidebar() {
+                document.getElementById('sidebar').classList.toggle('open');
+            }
+            function toggleUserMenu() {
+                event.stopPropagation();
+                document.getElementById("userDropdown").classList.toggle("open");
+            }
+            document.addEventListener("click", function () {
+                document.getElementById("userDropdown").classList.remove("open");
+            });
+    </script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

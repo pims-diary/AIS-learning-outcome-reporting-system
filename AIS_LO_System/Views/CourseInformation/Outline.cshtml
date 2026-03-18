@@ -15,22 +15,22 @@
         <!-- ✅ FIXED: CLICKABLE BREADCRUMBS -->
         <div class="crumb">
             <a asp-controller="LecturerDashboard"
-               asp-action="Index">
+                   asp-action="Index">
                 Home
             </a>
             <span class="sep">/</span>
             <a asp-controller="LecturerDashboard"
-               asp-action="Index"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-action="Index"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.Year – Tri @ViewBag.Trimester
             </a>
             <span class="sep">/</span>
             <a asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-action="Index"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.CourseCode
             </a>
             <span class="sep">/</span>
@@ -38,11 +38,11 @@
         </div>
 
         <a class="backlink"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-controller="CourseDashboard"
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             ← Go Back
         </a>
     </div>
@@ -63,7 +63,19 @@
         <div class="pdf-wrap">
             @if (!string.IsNullOrWhiteSpace(outlineUrl))
             {
-                <iframe class="pdf-frame" src="@outlineUrl" title="Course Outline"></iframe>
+                @if (outlineUrl.EndsWith(".pdf"))
+                {
+                    <iframe class="pdf-frame" src="@outlineUrl" title="Course Outline"></iframe>
+                }
+                else
+                {
+                    <div class="empty" style="padding:40px 20px;">
+                        <p>Word document uploaded.</p>
+                        <a href="@outlineUrl" download class="btn-primary" style="display:inline-block;margin-top:12px;">
+                            Download Course Outline
+                        </a>
+                    </div>
+                }
             }
             else
             {
@@ -85,7 +97,7 @@
                     <input type="hidden" name="year" value="@ViewBag.Year" />
                     <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
 
-                    <input type="file" name="file" accept="application/pdf" required />
+                    <input type="file" name="file" accept=".pdf,.docx" required />
                     <button type="submit" class="btn-primary">
                         @(string.IsNullOrWhiteSpace(outlineUrl) ? "Upload Course Outline" : "Re-upload Course Outline")
                     </button>
