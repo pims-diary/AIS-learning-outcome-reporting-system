@@ -370,7 +370,6 @@ C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\
 C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\Microsoft.SqlServer.Server.dll
 C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\Microsoft.Win32.SystemEvents.dll
 C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\Mono.TextTemplating.dll
-C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\Newtonsoft.Json.dll
 C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\System.CodeDom.dll
 C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\System.Composition.AttributedModel.dll
 C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\System.Composition.Convention.dll
@@ -479,3 +478,6 @@ C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\
 C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\DocumentFormat.OpenXml.dll
 C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\DocumentFormat.OpenXml.Framework.dll
 C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\System.IO.Packaging.dll
+C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\BouncyCastle.Cryptography.dll
+C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\itext.bouncy-castle-adapter.dll
+C:\Users\ronni\source\repos\AIS-learning-outcome-reporting-system\AIS_LO_System\bin\Debug\net8.0\Newtonsoft.Json.dll

@@ -96,24 +96,10 @@ namespace LOARS.Web.Controllers
             using (var stream = System.IO.File.Create(savedPath))
                 await file.CopyToAsync(stream);
 
-            // If Word doc — convert to PDF for browser preview
-            // The converted PDF is what gets served; the .docx is kept for LO extraction
-            if (DocumentService.IsWordDocument(file.FileName))
-            {
-                var pdfPath = DocumentService.ConvertDocxToPdf(savedPath);
-                if (!string.IsNullOrEmpty(pdfPath))
-                {
-                    // Delete the .docx from wwwroot — serve the PDF instead
-                    // Keep a copy outside wwwroot for LO extraction if needed
-                    savedPath = pdfPath;
-                }
-            }
-
-            // Extract Learning Outcomes from the saved file
+            // Extract Learning Outcomes from the uploaded file
             try
             {
                 var extractedLOs = DocumentService.ExtractLearningOutcomes(savedPath);
-
                 if (extractedLOs.Any())
                 {
                     SaveLos(courseCode, year, trimester, extractedLOs);

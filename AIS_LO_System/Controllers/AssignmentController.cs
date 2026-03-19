@@ -106,21 +106,12 @@ namespace AIS_LO_System.Controllers
             using (var stream = new FileStream(savedPath, FileMode.Create))
                 await file.CopyToAsync(stream);
 
-            // If Word doc — convert to PDF so it can be previewed in browser
-            string pdfStoredName = storedName;
-            if (DocumentService.IsWordDocument(file.FileName))
-            {
-                var pdfPath = DocumentService.ConvertDocxToPdf(savedPath);
-                if (!string.IsNullOrEmpty(pdfPath))
-                    pdfStoredName = Path.GetFileName(pdfPath);
-            }
-
             _context.AssignmentFiles.Add(new AssignmentFile
             {
                 AssignmentId = assignment.Id,
                 OriginalFileName = file.FileName,
                 StoredFileName = storedName,
-                FilePath = "/uploads/assignments/" + pdfStoredName, // serve the PDF version
+                FilePath = "/uploads/assignments/" + storedName,
                 VersionNumber = latestVersion + 1,
                 UploadDate = DateTime.Now
             });

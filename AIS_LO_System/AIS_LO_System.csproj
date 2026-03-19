@@ -10,7 +10,6 @@
 		<Folder Include="Views\AssignmentInformation\" />
 		<Folder Include="wwwroot\images\" />
 		<Folder Include="wwwroot\uploads\assignments\" />
-		<Folder Include="wwwroot\uploads\outlines\" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -18,6 +17,7 @@
 		<PackageReference Include="DocumentFormat.OpenXml" Version="3.0.2" />
 		<PackageReference Include="EPPlus" Version="6.2.3" />
 		<PackageReference Include="itext7" Version="8.0.2" />
+		<PackageReference Include="itext7.bouncy-castle-adapter" Version="8.0.2" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.8">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

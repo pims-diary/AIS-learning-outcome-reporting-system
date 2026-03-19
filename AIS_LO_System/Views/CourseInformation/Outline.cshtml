@@ -3,6 +3,10 @@
     Layout = "_DashboardLayout";
     bool canReupload = (bool)(ViewBag.CanReupload ?? false);
     string outlineUrl = ViewBag.OutlineUrl as string;
+    bool hasFile = !string.IsNullOrWhiteSpace(outlineUrl);
+    bool isPdf = hasFile && outlineUrl.EndsWith(".pdf");
+    bool isDocx = hasFile && outlineUrl.EndsWith(".docx");
+    var fileName = hasFile ? System.IO.Path.GetFileName(outlineUrl) : "";
 }
 
 <link rel="stylesheet" href="~/css/courseinfo.css" />
@@ -12,22 +16,15 @@
     <div class="top-header">
         <img class="ais-logo" src="~/images/AIS_logo.png" alt="AIS Logo" />
 
-        <!-- ✅ FIXED: CLICKABLE BREADCRUMBS -->
         <div class="crumb">
-            <a asp-controller="LecturerDashboard"
-                   asp-action="Index">
-                Home
-            </a>
+            <a asp-controller="LecturerDashboard" asp-action="Index">Home</a>
             <span class="sep">/</span>
-            <a asp-controller="LecturerDashboard"
-                   asp-action="Index"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
+            <a asp-controller="LecturerDashboard" asp-action="Index"
+                   asp-route-year="@ViewBag.Year" asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.Year – Tri @ViewBag.Trimester
             </a>
             <span class="sep">/</span>
-            <a asp-controller="CourseDashboard"
-                   asp-action="Index"
+            <a asp-controller="CourseDashboard" asp-action="Index"
                    asp-route-courseCode="@ViewBag.CourseCode"
                    asp-route-year="@ViewBag.Year"
                    asp-route-trimester="@ViewBag.Trimester">
@@ -38,8 +35,7 @@
         </div>
 
         <a class="backlink"
-               asp-controller="CourseDashboard"
-               asp-action="Index"
+               asp-controller="CourseDashboard" asp-action="Index"
                asp-route-courseCode="@ViewBag.CourseCode"
                asp-route-year="@ViewBag.Year"
                asp-route-trimester="@ViewBag.Trimester">
@@ -54,36 +50,44 @@
         {
             <div class="success-msg">@TempData["Success"]</div>
         }
-
         @if (TempData["Error"] != null)
         {
-            <div class="error">@TempData["Error"]</div>
+            <div class="alert alert-danger">@TempData["Error"]</div>
         }
 
-        <div class="pdf-wrap">
-            @if (!string.IsNullOrWhiteSpace(outlineUrl))
-            {
-                @if (outlineUrl.EndsWith(".pdf"))
-                {
-                    <iframe class="pdf-frame" src="@outlineUrl" title="Course Outline"></iframe>
-                }
-                else
-                {
-                    <div class="empty" style="padding:40px 20px;">
-                        <p>Word document uploaded.</p>
-                        <a href="@outlineUrl" download class="btn-primary" style="display:inline-block;margin-top:12px;">
-                            Download Course Outline
-                        </a>
-                    </div>
-                }
-            }
-            else
-            {
-                <div class="empty">No course outline uploaded yet.</div>
-            }
-        </div>
+        @if (isPdf)
+        {
+            <!-- PDF — show inline iframe -->
+            <div class="pdf-wrap">
+                <iframe class="pdf-frame" src="@outlineUrl" title="Course Outline"></iframe>
+            </div>
+        }
+        else if (isDocx)
+        {
+            <!-- Word doc — show download card -->
+            <div class="doc-card">
+                <div class="doc-icon">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <rect width="40" height="40" rx="8" fill="#2B579A" />
+                        <text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle"
+                              fill="white" font-size="13" font-weight="700" font-family="Arial">W</text>
+                    </svg>
+                </div>
+                <div class="doc-info">
+                    <div class="doc-name">@fileName</div>
+                    <div class="doc-type">Microsoft Word Document</div>
+                </div>
+                <a href="@outlineUrl" download class="btn-download">
+                    ↓ Download
+                </a>
+            </div>
+        }
+        else
+        {
+            <div class="empty">No course outline uploaded yet.</div>
+        }
 
-        <div class="actions-center" style="margin-top:16px;">
+        <div class="actions-center" style="margin-top:24px;">
             @if (canReupload)
             {
                 <form asp-controller="CourseInformation"
@@ -92,14 +96,12 @@
                       enctype="multipart/form-data"
                       class="upload-form">
                     @Html.AntiForgeryToken()
-
                     <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
                     <input type="hidden" name="year" value="@ViewBag.Year" />
                     <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
-
                     <input type="file" name="file" accept=".pdf,.docx" required />
                     <button type="submit" class="btn-primary">
-                        @(string.IsNullOrWhiteSpace(outlineUrl) ? "Upload Course Outline" : "Re-upload Course Outline")
+                        @(hasFile ? "Re-upload Course Outline" : "Upload Course Outline")
                     </button>
                 </form>
             }
@@ -114,22 +116,30 @@
 
 <style>
     .success-msg {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-        padding: 12px 16px;
-        border-radius: 4px;
-        margin-bottom: 16px;
+        background: #d4edda; border: 1px solid #c3e6cb;
+        color: #155724; padding: 12px 16px;
+        border-radius: 6px; margin-bottom: 16px;
     }
+    .crumb a { color: #333; text-decoration: none; }
+    .crumb a:hover { color: #0066cc; text-decoration: underline; }
 
-    /* Make breadcrumb links clickable */
-    .crumb a {
-        color: #333;
-        text-decoration: none;
+    /* Word doc download card */
+    .doc-card {
+        display: flex; align-items: center; gap: 16px;
+        background: #f8f9fa; border: 1px solid #e0e0e0;
+        border-radius: 12px; padding: 20px 24px;
+        margin-bottom: 8px;
     }
-
-        .crumb a:hover {
-            color: #0066cc;
-            text-decoration: underline;
-        }
+    .doc-icon { flex-shrink: 0; }
+    .doc-info { flex: 1; }
+    .doc-name { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+    .doc-type { font-size: 13px; color: #666; }
+    .btn-download {
+        display: inline-block; padding: 10px 20px;
+        background: #2B579A; color: #fff;
+        border-radius: 8px; text-decoration: none;
+        font-size: 14px; font-weight: 500;
+        white-space: nowrap;
+    }
+    .btn-download:hover { background: #1e3f73; color: #fff; }
 </style>
