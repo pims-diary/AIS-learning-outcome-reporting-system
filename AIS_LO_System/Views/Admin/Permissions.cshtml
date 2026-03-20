@@ -1,0 +1,77 @@
+﻿@model List<AIS_LO_System.Models.Course>
+
+@{
+    ViewData["Title"] = "Permissions";
+    Layout = "_AdminLayout";
+}
+
+
+<div class="admin-content">
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="admin-alert admin-alert-success">@TempData["Success"]</div>
+    }
+
+    @foreach (var course in Model)
+    {
+        <div class="perm-card">
+            <div class="perm-card-title">@course.Code - @course.Title</div>
+
+            <div class="perm-row">
+                <span class="perm-label">Lecturer can edit learning outcomes</span>
+                <button class="toggle-switch @(course.CanEditLO ? "toggle-on" : "toggle-off")"
+                        data-course-id="@course.Id"
+                        data-permission="CanEditLO"
+                        onclick="togglePerm(this)">
+                    <span class="toggle-thumb"></span>
+                </button>
+            </div>
+            <hr class="perm-divider" />
+            <div class="perm-row">
+                <span class="perm-label">Lecturer can re-upload course outline</span>
+                <button class="toggle-switch @(course.CanReuploadOutline ? "toggle-on" : "toggle-off")"
+                        data-course-id="@course.Id"
+                        data-permission="CanReuploadOutline"
+                        onclick="togglePerm(this)">
+                    <span class="toggle-thumb"></span>
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (!Model.Any())
+    {
+        <div class="admin-panel">
+            <p class="admin-empty">No courses found. Add courses first.</p>
+        </div>
+    }
+
+</div>
+
+@section Scripts {
+    <script>
+        async function togglePerm(btn) {
+            const courseId   = btn.dataset.courseId;
+            const permission = btn.dataset.permission;
+
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
+                        ?? document.cookie.split(';').find(c=>c.includes('CSRF'))?.split('=')[1] ?? '';
+
+            const res = await fetch('/Admin/TogglePermission', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': token
+                },
+                body: `courseId=${courseId}&permission=${permission}&__RequestVerificationToken=${encodeURIComponent(token)}`
+            });
+
+            if (res.ok) {
+                btn.classList.toggle('toggle-on');
+                btn.classList.toggle('toggle-off');
+            }
+        }
+    </script>
+    @Html.AntiForgeryToken()
+}

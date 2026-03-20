@@ -1,33 +1,61 @@
-﻿using LOARS.Web.Models.Dashboard;
-using LOARS.Web.Services;
+﻿using AIS_LO_System.Data;
+using LOARS.Web.Models.Dashboard;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace LOARS.Web.Controllers
 {
     [Authorize(Roles = "Lecturer")]
     public class LecturerDashboardController : Controller
     {
-        [HttpGet]
-        public IActionResult Index(int? year, int? trimester)
+        private readonly ApplicationDbContext _context;
+
+        public LecturerDashboardController(ApplicationDbContext context)
         {
-            // Default context: current year + calculated trimester
-            var defaultYear = DateTime.Now.Year;
-            var defaultTrimester = GetTrimesterFromMonth(DateTime.Now.Month);
+            _context = context;
+        }
 
-            var selectedYear = year ?? defaultYear;
-            var selectedTrimester = trimester ?? defaultTrimester;
+        [HttpGet]
+        public async Task<IActionResult> Index(int? year, int? trimester)
+        {
+            // Load all courses from DB
+            var allCourses = await _context.Courses
+                .OrderByDescending(c => c.Year)
+                .ThenBy(c => c.Trimester)
+                .ThenBy(c => c.Code)
+                .ToListAsync();
 
-            // If selected year not available in data, fallback to newest year
-            var years = FakeTeachingData.GetYears();
-            if (!years.Contains(selectedYear))
-                selectedYear = years.First();
+            // Build year/trimester structure — always show T1, T2, T3 for every year
+            var years = allCourses.Select(c => c.Year).Distinct().OrderByDescending(y => y).ToList();
+            var trimestersByYear = years.ToDictionary(y => y, y => new List<int> { 1, 2, 3 });
 
-            // If selected trimester not available, fallback to first available trimester
-            var trimestersByYear = FakeTeachingData.GetTrimestersByYear();
-            var availableTris = trimestersByYear[selectedYear];
-            if (!availableTris.Contains(selectedTrimester))
-                selectedTrimester = availableTris.First();
+            // Fallback to current date if no data
+            if (!years.Any())
+            {
+                years.Add(DateTime.Now.Year);
+                trimestersByYear[DateTime.Now.Year] = new List<int> { GetTrimesterFromMonth(DateTime.Now.Month) };
+            }
+
+            var selectedYear = year ?? years.First();
+            if (!years.Contains(selectedYear)) selectedYear = years.First();
+
+            var availableTris = trimestersByYear.ContainsKey(selectedYear)
+                ? trimestersByYear[selectedYear]
+                : new List<int> { 1 };
+
+            var selectedTrimester = trimester ?? availableTris.First();
+            if (!availableTris.Contains(selectedTrimester)) selectedTrimester = availableTris.First();
+
+            var courses = allCourses
+                .Where(c => c.Year == selectedYear && c.Trimester == selectedTrimester)
+                .Select(c => new CourseCard
+                {
+                    Code = c.Code,
+                    Title = c.Title,
+                    School = c.School
+                })
+                .ToList();
 
             var vm = new LecturerDashboardViewModel
             {
@@ -35,7 +63,7 @@ namespace LOARS.Web.Controllers
                 SelectedTrimester = selectedTrimester,
                 Years = years,
                 TrimestersByYear = trimestersByYear,
-                Courses = FakeTeachingData.GetCourses(selectedYear, selectedTrimester)
+                Courses = courses
             };
 
             return View(vm);
@@ -43,8 +71,6 @@ namespace LOARS.Web.Controllers
 
         private static int GetTrimesterFromMonth(int month)
         {
-            // Simple assumption:
-            // Tri 1: Jan-Apr, Tri 2: May-Aug, Tri 3: Sep-Dec
             if (month >= 1 && month <= 4) return 1;
             if (month >= 5 && month <= 8) return 2;
             return 3;

@@ -1,25 +1,34 @@
 ﻿using System.Security.Claims;
+using AIS_LO_System.Data;
+using AIS_LO_System.Models;
 using LOARS.Web.Models.Auth;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using BC = BCrypt.Net.BCrypt;
 
 namespace LOARS.Web.Controllers
 {
     public class AccountController : Controller
     {
-        // ✅ Temporary demo credentials (replace later with DB/Identity)
-        private const string LecturerUsername = "lecturer";
-        private const string LecturerPassword = "Password@123";
+        private readonly ApplicationDbContext _context;
+
+        public AccountController(ApplicationDbContext context)
+        {
+            _context = context;
+        }
 
         [HttpGet]
         public IActionResult Login()
         {
-            // If already logged in → go dashboard
             if (User.Identity?.IsAuthenticated == true)
+            {
+                if (User.IsInRole("Admin")) return RedirectToAction("Dashboard", "Admin");
+                if (User.IsInRole("Moderator")) return RedirectToAction("Index", "ModeratorDashboard");
                 return RedirectToAction("Index", "LecturerDashboard");
-
+            }
             return View(new LoginViewModel());
         }
 
@@ -33,20 +42,23 @@ namespace LOARS.Web.Controllers
                 return View(model);
             }
 
-            // Basic credential check (for now)
-            var isValid = model.Username == LecturerUsername && model.Password == LecturerPassword;
+            var user = await _context.AppUsers
+                .FirstOrDefaultAsync(u => u.Username == model.Username.Trim().ToLower());
 
-            if (!isValid)
+            bool valid = user != null && BC.Verify(model.Password, user.PasswordHash);
+
+            if (!valid)
             {
                 TempData["Error"] = "Invalid username or password.";
                 return View(model);
             }
 
-            // Create lecturer identity + role
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name, model.Username),
-                new Claim(ClaimTypes.Role, "Lecturer")
+                new Claim(ClaimTypes.Name, user!.Username),
+                new Claim(ClaimTypes.GivenName, user.FullName),
+                new Claim(ClaimTypes.Role, user.Role.ToString()),
+                new Claim("UserId", user.Id.ToString())
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -55,8 +67,16 @@ namespace LOARS.Web.Controllers
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
             TempData["Success"] = "Login successful.";
-            return RedirectToAction("Index", "LecturerDashboard");
+
+            // Redirect based on the role we just signed in with (not User which hasn't refreshed yet)
+            return user.Role switch
+            {
+                UserRole.Admin => RedirectToAction("Dashboard", "Admin"),
+                UserRole.Moderator => RedirectToAction("Index", "ModeratorDashboard"),
+                _ => RedirectToAction("Index", "LecturerDashboard")
+            };
         }
+
 
         [Authorize]
         [HttpPost]

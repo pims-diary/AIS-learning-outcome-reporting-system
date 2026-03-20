@@ -1,27 +1,47 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AIS_LO_System.Data;
 using LOARS.Web.Models.Dashboard;
-using LOARS.Web.Services;   // For FakeTeachingData
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace AIS_LO_System.ViewComponents
 {
     public class SidebarViewComponent : ViewComponent
     {
-        public IViewComponentResult Invoke(int? year, int? trimester)
+        private readonly ApplicationDbContext _context;
+
+        public SidebarViewComponent(ApplicationDbContext context)
         {
-            var defaultYear = DateTime.Now.Year;
-            var defaultTrimester = GetTrimesterFromMonth(DateTime.Now.Month);
+            _context = context;
+        }
 
-            var selectedYear = year ?? defaultYear;
-            var selectedTrimester = trimester ?? defaultTrimester;
+        public async Task<IViewComponentResult> InvokeAsync(int? year, int? trimester)
+        {
+            var allCourses = await _context.Courses
+                .OrderByDescending(c => c.Year)
+                .ThenBy(c => c.Trimester)
+                .ToListAsync();
 
-            var years = FakeTeachingData.GetYears();
-            var trimestersByYear = FakeTeachingData.GetTrimestersByYear();
+            // Get all years that have at least one course
+            var years = allCourses.Select(c => c.Year).Distinct().OrderByDescending(y => y).ToList();
 
-            if (!years.Contains(selectedYear))
-                selectedYear = years.First();
+            // Always show all 3 trimesters for every year (even if some are empty)
+            var trimestersByYear = years.ToDictionary(y => y, y => new List<int> { 1, 2, 3 });
 
-            if (!trimestersByYear[selectedYear].Contains(selectedTrimester))
-                selectedTrimester = trimestersByYear[selectedYear].First();
+            if (!years.Any())
+            {
+                years.Add(DateTime.Now.Year);
+                trimestersByYear[DateTime.Now.Year] = new List<int> { GetTrimesterFromMonth(DateTime.Now.Month) };
+            }
+
+            var selectedYear = year ?? years.First();
+            if (!years.Contains(selectedYear)) selectedYear = years.First();
+
+            var availableTris = trimestersByYear.ContainsKey(selectedYear)
+                ? trimestersByYear[selectedYear]
+                : new List<int> { 1 };
+
+            var selectedTrimester = trimester ?? availableTris.First();
+            if (!availableTris.Contains(selectedTrimester)) selectedTrimester = availableTris.First();
 
             var vm = new LecturerDashboardViewModel
             {

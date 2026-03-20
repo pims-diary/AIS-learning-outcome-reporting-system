@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\AIS_LO_System.csproj": {}
+    "C:\\Users\\ronni\\source\\repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\AIS_LO_System.csproj": {}
   },
   "projects": {
-    "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\AIS_LO_System.csproj": {
+    "C:\\Users\\ronni\\source\\repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\AIS_LO_System.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\AIS_LO_System.csproj",
+        "projectUniqueName": "C:\\Users\\ronni\\source\\repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\AIS_LO_System.csproj",
         "projectName": "AIS_LO_System",
-        "projectPath": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\AIS_LO_System.csproj",
-        "packagesPath": "C:\\Users\\admin\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\admin\\Documents\\COMP720_Project\\LO_system\\AIS_LO_System\\AIS_LO_System\\obj\\",
+        "projectPath": "C:\\Users\\ronni\\source\\repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\AIS_LO_System.csproj",
+        "packagesPath": "C:\\Users\\ronni\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\ronni\\source\\repos\\AIS-learning-outcome-reporting-system\\AIS_LO_System\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\ronni\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -26,7 +26,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -45,12 +44,20 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "10.0.200"
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "BCrypt.Net-Next": {
+              "target": "Package",
+              "version": "[4.0.3, )"
+            },
+            "DocumentFormat.OpenXml": {
+              "target": "Package",
+              "version": "[3.0.2, )"
+            },
             "EPPlus": {
               "target": "Package",
               "version": "[6.2.3, )"
@@ -74,6 +81,10 @@
             "itext7": {
               "target": "Package",
               "version": "[8.0.2, )"
+            },
+            "itext7.bouncy-castle-adapter": {
+              "target": "Package",
+              "version": "[8.0.2, )"
             }
           },
           "imports": [
@@ -95,7 +106,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
