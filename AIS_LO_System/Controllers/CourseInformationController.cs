@@ -23,8 +23,19 @@ namespace LOARS.Web.Controllers
             _context = context;
         }
 
-        private bool AllowOutlineReupload(string courseCode) => true;
-        private bool AllowLOEdit(string courseCode) => true;
+        private bool AllowOutlineReupload(string courseCode, int year, int trimester)
+        {
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            return course?.CanReuploadOutline ?? true;
+        }
+
+        private bool AllowLOEdit(string courseCode, int year, int trimester)
+        {
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            return course?.CanEditLO ?? true;
+        }
 
         // -------------------------
         // COURSE OUTLINE (VIEW)
@@ -34,7 +45,7 @@ namespace LOARS.Web.Controllers
         {
             SetCourseContext(courseCode, year, trimester);
 
-            ViewBag.CanReupload = AllowOutlineReupload(courseCode);
+            ViewBag.CanReupload = AllowOutlineReupload(courseCode, year, trimester);
 
             // Check for the outline in all supported formats — prefer PDF for browser preview
             var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
@@ -62,7 +73,7 @@ namespace LOARS.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadOutline(IFormFile file, string courseCode, int year, int trimester)
         {
-            if (!AllowOutlineReupload(courseCode))
+            if (!AllowOutlineReupload(courseCode, year, trimester))
                 return Forbid();
 
             if (file == null || file.Length == 0)
@@ -220,7 +231,7 @@ namespace LOARS.Web.Controllers
         {
             SetCourseContext(courseCode, year, trimester);
 
-            ViewBag.CanEditLO = AllowLOEdit(courseCode);
+            ViewBag.CanEditLO = AllowLOEdit(courseCode, year, trimester);
 
             var los = LoadLos(courseCode, year, trimester);
 
@@ -236,7 +247,7 @@ namespace LOARS.Web.Controllers
         {
             SetCourseContext(courseCode, year, trimester);
 
-            ViewBag.CanEditLO = AllowLOEdit(courseCode);
+            ViewBag.CanEditLO = AllowLOEdit(courseCode, year, trimester);
 
             var los = LoadLos(courseCode, year, trimester);
             ViewBag.LearningOutcomes = los;
@@ -253,7 +264,7 @@ namespace LOARS.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult SaveLearningOutcomes(string courseCode, int year, int trimester, List<string> outcomes)
         {
-            if (!AllowLOEdit(courseCode))
+            if (!AllowLOEdit(courseCode, year, trimester))
                 return Forbid();
 
             var cleaned = (outcomes ?? new List<string>())

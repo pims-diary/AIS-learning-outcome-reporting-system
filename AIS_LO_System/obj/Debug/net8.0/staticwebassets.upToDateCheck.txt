@@ -71,4 +71,5 @@ wwwroot\lib\jquery\dist\jquery.min.js
 wwwroot\lib\jquery\dist\jquery.min.map
 wwwroot\lib\jquery\LICENSE.txt
 wwwroot\uploads\outlines\COMP720-2026-T1.docx
+wwwroot\uploads\outlines\INFO712-2026-T1.pdf
 wwwroot\uploads\outlines\SOFT703-2026-T1.docx
