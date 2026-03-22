@@ -115,7 +115,9 @@
                             {
                                 <tr>
                                     <td class="text-start">@criterion.CriterionTitle</td>
-                                    <td>@criterion.Weight</td>
+                                    <td class="criterion-weight" data-weight="@criterion.Weight">
+                                        @criterion.Weight
+                                    </td>
                                     <td>@criterion.LOs</td>
 
                                     @foreach (var level in Model.Levels)
@@ -126,18 +128,22 @@
                                                 <button type="button"
                                                         class="level-btn"
                                                         data-criterion-id="@criterion.CriterionId"
-                                                        data-level="@level">
+                                                        data-level="@level"
+                                                        data-weight="@criterion.Weight">
                                                     @level
                                                 </button>
-                                            }
-                                            else
+                                                }
+                                            
+                                                else
                                             {
                                                 <span class="text-muted">-</span>
                                             }
                                         </td>
                                     }
 
-                                    <td>@criterion.CalculatedMarks</td>
+                                    <td class="calculated-marks" data-criterion-id="@criterion.CriterionId">
+                                        0
+                                    </td>
                                 </tr>
                             }
                         }
@@ -201,14 +207,27 @@
         buttons.forEach(button => {
             button.addEventListener("click", function () {
                 const criterionId = this.getAttribute("data-criterion-id");
+                const selectedLevel = parseFloat(this.getAttribute("data-level"));
+                const weight = parseFloat(this.getAttribute("data-weight"));
 
+                // remove selected from same criterion row
                 document.querySelectorAll(".level-btn").forEach(btn => {
                     if (btn.getAttribute("data-criterion-id") === criterionId) {
                         btn.classList.remove("selected");
                     }
                 });
 
+                // highlight clicked button
                 this.classList.add("selected");
+
+                // calculate row marks = selected level × weight
+                const calculated = selectedLevel * weight;
+
+                // show row marks in Calculated Marks column
+                const marksCell = document.querySelector(`.calculated-marks[data-criterion-id='${criterionId}']`);
+                if (marksCell) {
+                    marksCell.textContent = calculated.toFixed(2);
+                }
             });
         });
     });
