@@ -63,7 +63,14 @@ namespace AIS_LO_System.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> MarkStudent(int studentId, string courseCode, string assessmentName)
+        public async Task<IActionResult> MarkStudent(
+    int studentId,
+    int assignmentId,
+    string courseCode,
+    string courseTitle,
+    string assessmentName,
+    int year,
+    int trimester)
         {
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Id == studentId);
@@ -71,12 +78,76 @@ namespace AIS_LO_System.Controllers
             if (student == null)
                 return NotFound();
 
-            ViewBag.StudentName = student.FullName;
-            ViewBag.StudentId = student.StudentId;
-            ViewBag.CourseCode = courseCode;
-            ViewBag.AssessmentName = assessmentName;
+            var rubric = await _context.Rubrics
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.Levels)
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.LOMappings)
+                        .ThenInclude(m => m.LearningOutcome)
+                .FirstOrDefaultAsync(r => r.AssignmentId == assignmentId);
 
-            return View();
+            if (rubric == null)
+            {
+                TempData["Error"] = "No rubric found for this assignment.";
+                return RedirectToAction("Index", new
+                {
+                    assignmentId,
+                    courseCode,
+                    courseTitle,
+                    assessmentName,
+                    year,
+                    trimester
+                });
+            }
+
+            var criteria = rubric.Criteria
+                .OrderBy(c => c.Id)
+                .Select(c => new RubricCriterionMarkingViewModel
+                {
+                    CriterionId = c.Id,
+                    CriterionTitle = c.CriterionName,
+                    Weight = c.LOMappings != null && c.LOMappings.Any()
+                        ? c.LOMappings.First().Weight
+                        : 0,
+                    LOs = c.LOMappings != null && c.LOMappings.Any()
+                        ? string.Join(", ", c.LOMappings
+                            .Where(m => m.LearningOutcome != null)
+                            .Select(m => m.LearningOutcome.LearningOutcomeText))
+                        : "Not Mapped",
+                    AvailableLevels = c.Levels
+                        .OrderByDescending(l => l.Score)
+                        .Select(l => l.Score)
+                        .ToList(),
+                    SelectedLevel = null,
+                    CalculatedMarks = 0
+                })
+                .ToList();
+
+            var allLevels = rubric.Criteria
+                .SelectMany(c => c.Levels)
+                .Select(l => l.Score)
+                .Distinct()
+                .OrderByDescending(s => s)
+                .ToList();
+
+            var vm = new MarkStudentViewModel
+            {
+                StudentInternalId = student.Id,
+                StudentId = student.StudentId,
+                StudentName = student.FullName,
+                AssignmentId = assignmentId,
+                CourseCode = courseCode,
+                CourseTitle = courseTitle,
+                AssessmentName = assessmentName,
+                Year = year,
+                Trimester = trimester,
+                Criteria = criteria,
+                Levels = allLevels,
+                TotalWeight = criteria.Sum(c => c.Weight),
+                TotalScore = 0
+            };
+
+            return View(vm);
         }
     }
 }

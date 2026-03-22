@@ -104,8 +104,12 @@
                                         <a asp-controller="MarkStudents"
                                            asp-action="MarkStudent"
                                            asp-route-studentId="@student.InternalId"
+                                           asp-route-assignmentId="@ViewBag.AssignmentId"
                                            asp-route-courseCode="@Model.CourseCode"
+                                           asp-route-courseTitle="@ViewBag.CourseTitle"
                                            asp-route-assessmentName="@Model.AssessmentName"
+                                           asp-route-year="@Model.Year"
+                                           asp-route-trimester="@Model.Trimester"
                                            class="btn btn-primary action-btn">
                                             @(student.IsMarked ? "View" : "Mark Student")
                                         </a>
