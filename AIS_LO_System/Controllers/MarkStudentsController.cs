@@ -16,15 +16,9 @@ namespace AIS_LO_System.Controllers
             _context = context;
         }
 
+
         [HttpGet]
-        public async Task<IActionResult> Index(
-            int assignmentId,
-            string courseCode,
-            string courseTitle,
-            string assessmentName,
-            int year,
-            int trimester,
-            string? searchTerm)
+        public async Task<IActionResult> Index(string courseCode, string assessmentName, int year, int trimester, string? searchTerm)
         {
             var query = _context.Students.AsQueryable();
 
@@ -63,25 +57,13 @@ namespace AIS_LO_System.Controllers
                 Students = students
             };
 
-            ViewBag.AssignmentId = assignmentId;
-            ViewBag.CourseCode = courseCode;
-            ViewBag.CourseTitle = courseTitle;
-            ViewBag.AssessmentName = assessmentName;
-            ViewBag.Year = year;
-            ViewBag.Trimester = trimester;
+            ViewBag.AssignmentId = 1; // temporary
 
             return View(vm);
         }
 
         [HttpGet]
-        public async Task<IActionResult> MarkStudent(
-            int studentId,
-            int assignmentId,
-            string courseCode,
-            string courseTitle,
-            string assessmentName,
-            int year,
-            int trimester)
+        public async Task<IActionResult> MarkStudent(int studentId, string courseCode, string assessmentName)
         {
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Id == studentId);
@@ -91,13 +73,8 @@ namespace AIS_LO_System.Controllers
 
             ViewBag.StudentName = student.FullName;
             ViewBag.StudentId = student.StudentId;
-
-            ViewBag.AssignmentId = assignmentId;
             ViewBag.CourseCode = courseCode;
-            ViewBag.CourseTitle = courseTitle;
             ViewBag.AssessmentName = assessmentName;
-            ViewBag.Year = year;
-            ViewBag.Trimester = trimester;
 
             return View();
         }

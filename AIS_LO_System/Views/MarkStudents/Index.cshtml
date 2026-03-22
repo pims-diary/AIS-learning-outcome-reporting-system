@@ -7,45 +7,10 @@
 <div class="container mt-4">
 
     <!-- Breadcrumb -->
-    <div class="breadcrumb mb-3">
-
-        <a class="crumb-link"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            @ViewBag.CourseCode @ViewBag.CourseTitle
-        </a>
-
-        <span>/</span>
-
-        <a class="crumb-link"
-           asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            Assessments
-        </a>
-
-        <span>/</span>
-
-        <a class="crumb-link"
-           asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            @Model.AssessmentName
-        </a>
-
-        <span>/</span>
-        <span>Mark Students</span>
+    <div class="mb-2">
+        <small class="text-muted">
+            @Model.CourseCode / @Model.AssessmentName / Mark Students
+        </small>
     </div>
 
     <!-- Page Title + Back Button -->
@@ -54,13 +19,9 @@
 
         <a class="btn btn-outline-secondary"
            asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            ← Back
+           asp-action="Dashboard"
+           asp-route-id="@ViewBag.AssignmentId">
+            Back
         </a>
     </div>
 
@@ -70,6 +31,7 @@
 
             <!-- Student List Header -->
             <div class="d-flex justify-content-between align-items-center mb-3">
+
                 <div>
                     <h5 class="fw-bold mb-1">Student List</h5>
                     <small class="text-muted">
@@ -83,9 +45,7 @@
                       asp-action="Index"
                       class="d-flex gap-2">
 
-                    <input type="hidden" name="assignmentId" value="@ViewBag.AssignmentId" />
                     <input type="hidden" name="courseCode" value="@Model.CourseCode" />
-                    <input type="hidden" name="courseTitle" value="@ViewBag.CourseTitle" />
                     <input type="hidden" name="assessmentName" value="@Model.AssessmentName" />
                     <input type="hidden" name="year" value="@Model.Year" />
                     <input type="hidden" name="trimester" value="@Model.Trimester" />
@@ -101,12 +61,16 @@
                     <button type="submit" class="btn btn-outline-secondary">
                         Search
                     </button>
+
                 </form>
+
             </div>
 
             <!-- Students Table -->
             <div class="table-responsive">
+
                 <table class="table align-middle">
+
                     <thead>
                         <tr>
                             <th>Student ID</th>
@@ -140,13 +104,9 @@
                                         <a asp-controller="MarkStudents"
                                            asp-action="MarkStudent"
                                            asp-route-studentId="@student.InternalId"
-                                           asp-route-assignmentId="@ViewBag.AssignmentId"
                                            asp-route-courseCode="@Model.CourseCode"
-                                           asp-route-courseTitle="@ViewBag.CourseTitle"
                                            asp-route-assessmentName="@Model.AssessmentName"
-                                           asp-route-year="@Model.Year"
-                                           asp-route-trimester="@Model.Trimester"
-                                           class="action-btn">
+                                           class="btn btn-primary action-btn">
                                             @(student.IsMarked ? "View" : "Mark Student")
                                         </a>
                                     </td>
@@ -162,7 +122,9 @@
                             </tr>
                         }
                     </tbody>
+
                 </table>
+
             </div>
 
         </div>
@@ -170,16 +132,26 @@
 
 </div>
 
+
+<!-- Script: restore full list when search cleared -->
 <script>
+
     document.addEventListener("DOMContentLoaded", function () {
+
         const searchInput = document.getElementById("studentSearch");
 
         if (searchInput) {
+
             searchInput.addEventListener("input", function () {
+
                 if (this.value.trim() === "") {
                     this.form.submit();
                 }
+
             });
+
         }
+
     });
+
 </script>

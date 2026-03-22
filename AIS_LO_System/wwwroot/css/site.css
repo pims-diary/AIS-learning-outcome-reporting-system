@@ -546,26 +546,9 @@ body {
             color: #ffffff !important;
         }
 
-    .breadcrumb {
-        font-size: 14px;
-        color: #777;
-    }
-
-    .crumb-link {
-        color: #b32017;
-        text-decoration: none;
-        font-weight: 500;
-    }
-
-        .crumb-link:hover {
-            color: #8f180f;
-            text-decoration: underline;
-        }
-
    
     .status-marked {
         color: #2e9d49;
         font-weight: 500;
     }
-
 }
