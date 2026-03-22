@@ -20,6 +20,8 @@ namespace AIS_LO_System.Data
         public DbSet<RubricCriterion> RubricCriteria { get; set; }
         public DbSet<RubricLevel> RubricLevels { get; set; }
 
+        public DbSet<StudentCriterionMark> StudentCriterionMarks { get; set; }
+
         //database set for learning outcomes and their mappings to criteria
         public DbSet<LearningOutcome> LearningOutcomes { get; set; }
         public DbSet<CriterionLOMapping> CriterionLOMappings { get; set; }
@@ -34,6 +36,14 @@ namespace AIS_LO_System.Data
             modelBuilder.Entity<CriterionLOMapping>()
             .Property(c => c.Weight)
             .HasPrecision(18, 2);
+
+            modelBuilder.Entity<StudentCriterionMark>()
+    .Property(x => x.Weight)
+    .HasPrecision(18, 2);
+
+            modelBuilder.Entity<StudentCriterionMark>()
+                .Property(x => x.CalculatedScore)
+                .HasPrecision(18, 2);
 
 
             modelBuilder.Entity<Student>().HasData(

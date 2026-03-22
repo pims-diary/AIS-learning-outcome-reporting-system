@@ -69,105 +69,120 @@
     <div class="card shadow-sm mb-4">
         <div class="card-body">
 
-            <div class="row mb-3">
-                <div class="col-md-3">
-                    <strong>Student ID:</strong> @Model.StudentId
-                </div>
-                <div class="col-md-3">
-                    <strong>Assessment:</strong> @Model.AssessmentName
-                </div>
-                <div class="col-md-3">
-                    <strong>Rubric Scale:</strong>
-                    @if (Model.Levels.Any())
-                    {
-                        <span>@Model.Levels.Max() – @Model.Levels.Min()</span>
-                    }
-                    else
-                    {
-                        <span>N/A</span>
-                    }
-                </div>
-                <div class="col-md-3">
-                    <strong>Total Weight:</strong> @Model.TotalWeight
-                </div>
-            </div>
+            <form asp-controller="MarkStudents" asp-action="SaveMarks" method="post">
+                @Html.AntiForgeryToken()
 
-            <!-- Rubric Table -->
-            <div class="table-responsive">
-                <table class="table table-bordered align-middle text-center">
-                    <thead>
-                        <tr>
-                            <th class="text-start">Criteria</th>
-                            <th>Weight</th>
-                            <th>LOs</th>
-                            @foreach (var level in Model.Levels)
-                            {
-                                <th>@level</th>
-                            }
-                            <th>Calculated Marks</th>
-                        </tr>
-                    </thead>
+                <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
+                <input type="hidden" name="studentId" value="@Model.StudentInternalId" />
+                <input type="hidden" name="courseCode" value="@Model.CourseCode" />
+                <input type="hidden" name="courseTitle" value="@Model.CourseTitle" />
+                <input type="hidden" name="assessmentName" value="@Model.AssessmentName" />
+                <input type="hidden" name="year" value="@Model.Year" />
+                <input type="hidden" name="trimester" value="@Model.Trimester" />
+                <input type="hidden" id="selectedLevelsJson" name="selectedLevelsJson" />
 
-                    <tbody>
-                        @if (Model.Criteria.Any())
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Student ID:</strong> @Model.StudentId
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Assessment:</strong> @Model.AssessmentName
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Rubric Scale:</strong>
+                        @if (Model.Levels.Any())
                         {
-                            foreach (var criterion in Model.Criteria)
-                            {
-                                <tr>
-                                    <td class="text-start">@criterion.CriterionTitle</td>
-
-                                    <td>@criterion.Weight</td>
-
-                                    <td>@criterion.LOs</td>
-
-                                    @foreach (var level in Model.Levels)
-                                    {
-                                        <td>
-                                            @if (criterion.AvailableLevels.Contains(level))
-                                            {
-                                                <button type="button"
-                                                        class="level-btn"
-                                                        data-criterion-id="@criterion.CriterionId"
-                                                        data-level="@level"
-                                                        data-weight="@criterion.Weight">
-                                                    @level
-                                                </button>
-                                            }
-                                            else
-                                            {
-                                                <span class="text-muted">-</span>
-                                            }
-                                        </td>
-                                    }
-
-                                    <td class="calculated-marks" data-criterion-id="@criterion.CriterionId">0.00</td>
-                                </tr>
-                            }
+                            <span>@Model.Levels.Max() – @Model.Levels.Min()</span>
                         }
                         else
                         {
-                            <tr>
-                                <td colspan="@(Model.Levels.Count + 4)" class="text-center text-muted">
-                                    No rubric criteria found.
-                                </td>
-                            </tr>
+                            <span>N/A</span>
                         }
-                    </tbody>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Total Weight:</strong> @Model.TotalWeight
+                    </div>
+                </div>
 
-                    <tfoot>
-                        <tr>
-                            <th colspan="@(Model.Levels.Count + 3)" class="text-end">Total Score</th>
-                            <th id="total-score">0.00</th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+                <!-- Rubric Table -->
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle text-center">
+                        <thead>
+                            <tr>
+                                <th class="text-start">Criteria</th>
+                                <th>Weight</th>
+                                <th>LOs</th>
+                                @foreach (var level in Model.Levels)
+                                {
+                                    <th>@level</th>
+                                }
+                                <th>Calculated Marks</th>
+                            </tr>
+                        </thead>
 
-            <!-- Comments -->
-            <div class="mt-3">
-                <label class="form-label fw-semibold">Comments</label>
-                <textarea class="form-control" rows="3" placeholder="Add comments here..." disabled></textarea>
-            </div>
+                        <tbody>
+                            @if (Model.Criteria.Any())
+                            {
+                                foreach (var criterion in Model.Criteria)
+                                {
+                                    <tr>
+                                        <td class="text-start">@criterion.CriterionTitle</td>
+                                        <td>@criterion.Weight</td>
+                                        <td>@criterion.LOs</td>
+
+                                        @foreach (var level in Model.Levels)
+                                        {
+                                            <td>
+                                                @if (criterion.AvailableLevels.Contains(level))
+                                                {
+                                                    <button type="button"
+                                                            class="level-btn"
+                                                            data-criterion-id="@criterion.CriterionId"
+                                                            data-level="@level"
+                                                            data-weight="@criterion.Weight">
+                                                        @level
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                        }
+
+                                        <td class="calculated-marks" data-criterion-id="@criterion.CriterionId">0.00</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="@(Model.Levels.Count + 4)" class="text-center text-muted">
+                                        No rubric criteria found.
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+
+                        <tfoot>
+                            <tr>
+                                <th colspan="@(Model.Levels.Count + 3)" class="text-end">Total Score</th>
+                                <th id="total-score">0.00</th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Comments -->
+                <div class="mt-3">
+                    <label class="form-label fw-semibold">Comments</label>
+                    <textarea class="form-control" rows="3" name="comment" placeholder="Add comments here..."></textarea>
+                </div>
+
+                <div class="mt-3 text-end">
+                    <button type="submit" class="btn btn-danger">Save Marks</button>
+                </div>
+            </form>
 
         </div>
     </div>
@@ -198,6 +213,7 @@
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const buttons = document.querySelectorAll(".level-btn");
+        const selectedLevels = {};
 
         function updateTotalScore() {
             let total = 0;
@@ -213,6 +229,15 @@
             if (totalScoreCell) {
                 totalScoreCell.textContent = total.toFixed(2);
             }
+        }
+
+        function updateHiddenJson() {
+            const arr = Object.keys(selectedLevels).map(key => ({
+                criterionId: parseInt(key),
+                selectedLevel: selectedLevels[key]
+            }));
+
+            document.getElementById("selectedLevelsJson").value = JSON.stringify(arr);
         }
 
         buttons.forEach(function (button) {
@@ -236,6 +261,8 @@
                     marksCell.textContent = calculated.toFixed(2);
                 }
 
+                selectedLevels[criterionId] = selectedLevel;
+                updateHiddenJson();
                 updateTotalScore();
             });
         });
