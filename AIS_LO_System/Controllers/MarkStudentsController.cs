@@ -213,18 +213,21 @@ namespace AIS_LO_System.Controllers
          PropertyNameCaseInsensitive = true
      }) ?? new List<CriterionSelectionInput>();
 
+           
+
             if (!parsed.Any())
             {
                 TempData["Error"] = "Please select at least one level before saving.";
+
                 return RedirectToAction("MarkStudent", new
                 {
-                    studentId,
-                    assignmentId,
-                    courseCode,
-                    courseTitle,
-                    assessmentName,
-                    year,
-                    trimester
+                    studentId = studentId,
+                    assignmentId = assignmentId,
+                    courseCode = courseCode,
+                    courseTitle = courseTitle,
+                    assessmentName = assessmentName,
+                    year = year,
+                    trimester = trimester
                 });
             }
 
