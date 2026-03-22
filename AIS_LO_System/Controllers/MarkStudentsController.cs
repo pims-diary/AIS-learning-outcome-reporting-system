@@ -16,16 +16,15 @@ namespace AIS_LO_System.Controllers
             _context = context;
         }
 
-
         [HttpGet]
         public async Task<IActionResult> Index(
-    int assignmentId,
-    string courseCode,
-    string courseTitle,
-    string assessmentName,
-    int year,
-    int trimester,
-    string? searchTerm)
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester,
+            string? searchTerm)
         {
             var query = _context.Students.AsQueryable();
 
@@ -76,13 +75,13 @@ namespace AIS_LO_System.Controllers
 
         [HttpGet]
         public async Task<IActionResult> MarkStudent(
-    int studentId,
-    int assignmentId,
-    string courseCode,
-    string courseTitle,
-    string assessmentName,
-    int year,
-    int trimester)
+            int studentId,
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester)
         {
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Id == studentId);
@@ -175,15 +174,15 @@ namespace AIS_LO_System.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveMarks(
-    int assignmentId,
-    int studentId,
-    string courseCode,
-    string courseTitle,
-    string assessmentName,
-    int year,
-    int trimester,
-    string? comment,
-    string selectedLevelsJson)
+            int assignmentId,
+            int studentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester,
+            string? comment,
+            string selectedLevelsJson)
         {
             var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
             if (student == null)
@@ -196,7 +195,15 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
             {
                 TempData["Error"] = "Rubric not found.";
-                return RedirectToAction("Index", new { assignmentId, courseCode, courseTitle, assessmentName, year, trimester });
+                return RedirectToAction("Index", new
+                {
+                    assignmentId,
+                    courseCode,
+                    courseTitle,
+                    assessmentName,
+                    year,
+                    trimester
+                });
             }
 
             var existingMarks = await _context.StudentCriterionMarks
@@ -207,13 +214,11 @@ namespace AIS_LO_System.Controllers
                 _context.StudentCriterionMarks.RemoveRange(existingMarks);
 
             var parsed = System.Text.Json.JsonSerializer.Deserialize<List<CriterionSelectionInput>>(
-     selectedLevelsJson ?? "[]",
-     new System.Text.Json.JsonSerializerOptions
-     {
-         PropertyNameCaseInsensitive = true
-     }) ?? new List<CriterionSelectionInput>();
-
-           
+                selectedLevelsJson ?? "[]",
+                new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? new List<CriterionSelectionInput>();
 
             if (!parsed.Any())
             {
@@ -221,13 +226,13 @@ namespace AIS_LO_System.Controllers
 
                 return RedirectToAction("MarkStudent", new
                 {
-                    studentId = studentId,
-                    assignmentId = assignmentId,
-                    courseCode = courseCode,
-                    courseTitle = courseTitle,
-                    assessmentName = assessmentName,
-                    year = year,
-                    trimester = trimester
+                    studentId,
+                    assignmentId,
+                    courseCode,
+                    courseTitle,
+                    assessmentName,
+                    year,
+                    trimester
                 });
             }
 
@@ -279,7 +284,61 @@ namespace AIS_LO_System.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = "Marks saved successfully.";
-            return RedirectToAction("Index", new { assignmentId, courseCode, courseTitle, assessmentName, year, trimester });
+            return RedirectToAction("Index", new
+            {
+                assignmentId,
+                courseCode,
+                courseTitle,
+                assessmentName,
+                year,
+                trimester
+            });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ClearMarks(
+            int assignmentId,
+            int studentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester)
+        {
+            var existingMarks = await _context.StudentCriterionMarks
+                .Where(x => x.AssignmentId == assignmentId && x.StudentRefId == studentId)
+                .ToListAsync();
+
+            if (existingMarks.Any())
+            {
+                _context.StudentCriterionMarks.RemoveRange(existingMarks);
+            }
+
+            var status = await _context.StudentAssessmentMarks
+                .FirstOrDefaultAsync(x =>
+                    x.StudentRefId == studentId &&
+                    x.CourseCode == courseCode &&
+                    x.AssessmentName == assessmentName);
+
+            if (status != null)
+            {
+                status.IsMarked = false;
+            }
+
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Marks cleared successfully.";
+
+            return RedirectToAction("Index", new
+            {
+                assignmentId,
+                courseCode,
+                courseTitle,
+                assessmentName,
+                year,
+                trimester
+            });
         }
     }
 

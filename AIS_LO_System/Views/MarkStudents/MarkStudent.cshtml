@@ -185,14 +185,34 @@
                 </div>
 
                 <!-- Comments -->
+                
                 <div class="mt-3">
                     <label class="form-label fw-semibold">Comments</label>
                     <textarea class="form-control" rows="3" name="comment" placeholder="Add comments here...">@Model.Comment</textarea>
                 </div>
 
-                <div class="mt-3 text-end">
+                <!-- Save Marks -->
+                <div class="mt-3 d-flex justify-content-end gap-2">
                     <button type="submit" class="btn btn-danger">Save Marks</button>
+
+                    <!-- Clear Button -->
+                    <button type="button"
+                            class="btn btn-outline-danger"
+                            onclick="document.getElementById('clearMarksForm').submit();">
+                        Clear Marks
+                    </button>
                 </div>
+            </form>
+
+            <form id="clearMarksForm" asp-controller="MarkStudents" asp-action="ClearMarks" method="post" style="display:none;">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
+                <input type="hidden" name="studentId" value="@Model.StudentInternalId" />
+                <input type="hidden" name="courseCode" value="@Model.CourseCode" />
+                <input type="hidden" name="courseTitle" value="@Model.CourseTitle" />
+                <input type="hidden" name="assessmentName" value="@Model.AssessmentName" />
+                <input type="hidden" name="year" value="@Model.Year" />
+                <input type="hidden" name="trimester" value="@Model.Trimester" />
             </form>
 
         </div>
