@@ -115,9 +115,9 @@
                             {
                                 <tr>
                                     <td class="text-start">@criterion.CriterionTitle</td>
-                                    <td class="criterion-weight" data-weight="@criterion.Weight">
-                                        @criterion.Weight
-                                    </td>
+
+                                    <td>@criterion.Weight</td>
+
                                     <td>@criterion.LOs</td>
 
                                     @foreach (var level in Model.Levels)
@@ -132,25 +132,22 @@
                                                         data-weight="@criterion.Weight">
                                                     @level
                                                 </button>
-                                                }
-                                            
-                                                else
+                                            }
+                                            else
                                             {
                                                 <span class="text-muted">-</span>
                                             }
                                         </td>
                                     }
 
-                                    <td class="calculated-marks" data-criterion-id="@criterion.CriterionId">
-                                        0
-                                    </td>
+                                    <td class="calculated-marks" data-criterion-id="@criterion.CriterionId">0.00</td>
                                 </tr>
                             }
                         }
                         else
                         {
                             <tr>
-                                <td colspan="9" class="text-center text-muted">
+                                <td colspan="@(Model.Levels.Count + 4)" class="text-center text-muted">
                                     No rubric criteria found.
                                 </td>
                             </tr>
@@ -160,7 +157,7 @@
                     <tfoot>
                         <tr>
                             <th colspan="@(Model.Levels.Count + 3)" class="text-end">Total Score</th>
-                            <th>@Model.TotalScore</th>
+                            <th id="total-score">0.00</th>
                         </tr>
                     </tfoot>
                 </table>
@@ -174,7 +171,6 @@
 
         </div>
     </div>
-    
 
 </div>
 
@@ -202,32 +198,45 @@
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const buttons = document.querySelectorAll(".level-btn");
-        console.log("Buttons found:", buttons.length);
 
-        buttons.forEach(button => {
+        function updateTotalScore() {
+            let total = 0;
+
+            document.querySelectorAll(".calculated-marks").forEach(function (cell) {
+                const value = parseFloat(cell.textContent);
+                if (!isNaN(value)) {
+                    total += value;
+                }
+            });
+
+            const totalScoreCell = document.getElementById("total-score");
+            if (totalScoreCell) {
+                totalScoreCell.textContent = total.toFixed(2);
+            }
+        }
+
+        buttons.forEach(function (button) {
             button.addEventListener("click", function () {
                 const criterionId = this.getAttribute("data-criterion-id");
                 const selectedLevel = parseFloat(this.getAttribute("data-level"));
                 const weight = parseFloat(this.getAttribute("data-weight"));
 
-                // remove selected from same criterion row
-                document.querySelectorAll(".level-btn").forEach(btn => {
+                document.querySelectorAll(".level-btn").forEach(function (btn) {
                     if (btn.getAttribute("data-criterion-id") === criterionId) {
                         btn.classList.remove("selected");
                     }
                 });
 
-                // highlight clicked button
                 this.classList.add("selected");
 
-                // calculate row marks = selected level × weight
                 const calculated = selectedLevel * weight;
 
-                // show row marks in Calculated Marks column
-                const marksCell = document.querySelector(`.calculated-marks[data-criterion-id='${criterionId}']`);
+                const marksCell = document.querySelector(".calculated-marks[data-criterion-id='" + criterionId + "']");
                 if (marksCell) {
                     marksCell.textContent = calculated.toFixed(2);
                 }
+
+                updateTotalScore();
             });
         });
     });
