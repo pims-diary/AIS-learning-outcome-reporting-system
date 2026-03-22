@@ -19,6 +19,8 @@ namespace AIS_LO_System.Models.MarkStudents
         public decimal TotalWeight { get; set; }
         public decimal TotalScore { get; set; }
 
+        public string? Comment { get; set; }
+
         public List<int> Levels { get; set; } = new();
         public List<RubricCriterionMarkingViewModel> Criteria { get; set; } = new();
     }

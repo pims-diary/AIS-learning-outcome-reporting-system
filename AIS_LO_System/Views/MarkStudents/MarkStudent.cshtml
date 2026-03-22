@@ -135,8 +135,10 @@
                                             <td>
                                                 @if (criterion.AvailableLevels.Contains(level))
                                                 {
+                                                    var isSelected = criterion.SelectedLevel == level ? "selected" : "";
+
                                                     <button type="button"
-                                                            class="level-btn"
+                                                            class="level-btn @isSelected"
                                                             data-criterion-id="@criterion.CriterionId"
                                                             data-level="@level"
                                                             data-weight="@criterion.Weight">
@@ -150,7 +152,9 @@
                                             </td>
                                         }
 
-                                        <td class="calculated-marks" data-criterion-id="@criterion.CriterionId">0.00</td>
+                                        <td class="calculated-marks" data-criterion-id="@criterion.CriterionId">
+                                            @criterion.CalculatedMarks.ToString("0.00")
+                                        </td>
                                     </tr>
                                 }
                             }
@@ -167,7 +171,7 @@
                         <tfoot>
                             <tr>
                                 <th colspan="@(Model.Levels.Count + 3)" class="text-end">Total Score</th>
-                                <th id="total-score">0.00</th>
+                                <th id="total-score">@Model.TotalScore.ToString("0.00")</th>
                             </tr>
                         </tfoot>
                     </table>
@@ -176,7 +180,7 @@
                 <!-- Comments -->
                 <div class="mt-3">
                     <label class="form-label fw-semibold">Comments</label>
-                    <textarea class="form-control" rows="3" name="comment" placeholder="Add comments here..."></textarea>
+                    <textarea class="form-control" rows="3" name="comment" placeholder="Add comments here...">@Model.Comment</textarea>
                 </div>
 
                 <div class="mt-3 text-end">
@@ -233,12 +237,23 @@
 
         function updateHiddenJson() {
             const arr = Object.keys(selectedLevels).map(key => ({
-                criterionId: parseInt(key),
-                selectedLevel: selectedLevels[key]
+                CriterionId: parseInt(key),
+                SelectedLevel: selectedLevels[key]
             }));
 
-            document.getElementById("selectedLevelsJson").value = JSON.stringify(arr);
+            const hidden = document.getElementById("selectedLevelsJson");
+            if (hidden) {
+                hidden.value = JSON.stringify(arr);
+            }
         }
+
+        document.querySelectorAll(".level-btn.selected").forEach(function (btn) {
+            const criterionId = btn.getAttribute("data-criterion-id");
+            const selectedLevel = parseFloat(btn.getAttribute("data-level"));
+            selectedLevels[criterionId] = selectedLevel;
+        });
+
+        updateHiddenJson();
 
         buttons.forEach(function (button) {
             button.addEventListener("click", function () {

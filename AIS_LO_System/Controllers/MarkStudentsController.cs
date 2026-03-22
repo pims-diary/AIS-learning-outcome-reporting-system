@@ -18,7 +18,14 @@ namespace AIS_LO_System.Controllers
 
 
         [HttpGet]
-        public async Task<IActionResult> Index(string courseCode, string assessmentName, int year, int trimester, string? searchTerm)
+        public async Task<IActionResult> Index(
+    int assignmentId,
+    string courseCode,
+    string courseTitle,
+    string assessmentName,
+    int year,
+    int trimester,
+    string? searchTerm)
         {
             var query = _context.Students.AsQueryable();
 
@@ -57,7 +64,12 @@ namespace AIS_LO_System.Controllers
                 Students = students
             };
 
-            ViewBag.AssignmentId = 1; // temporary
+            ViewBag.AssignmentId = assignmentId;
+            ViewBag.CourseCode = courseCode;
+            ViewBag.CourseTitle = courseTitle;
+            ViewBag.AssessmentName = assessmentName;
+            ViewBag.Year = year;
+            ViewBag.Trimester = trimester;
 
             return View(vm);
         }
@@ -100,26 +112,35 @@ namespace AIS_LO_System.Controllers
                 });
             }
 
+            var savedMarks = await _context.StudentCriterionMarks
+                .Where(x => x.AssignmentId == assignmentId && x.StudentRefId == studentId)
+                .ToListAsync();
+
             var criteria = rubric.Criteria
                 .OrderBy(c => c.Id)
-                .Select(c => new RubricCriterionMarkingViewModel
+                .Select(c =>
                 {
-                    CriterionId = c.Id,
-                    CriterionTitle = c.CriterionName,
-                    Weight = c.LOMappings != null && c.LOMappings.Any()
-                        ? c.LOMappings.First().Weight
-                        : 0,
-                    LOs = c.LOMappings != null && c.LOMappings.Any()
-                        ? string.Join(", ", c.LOMappings
-                            .Where(m => m.LearningOutcome != null)
-                            .Select(m => m.LearningOutcome.LearningOutcomeText))
-                        : "Not Mapped",
-                    AvailableLevels = c.Levels
-                        .OrderByDescending(l => l.Score)
-                        .Select(l => l.Score)
-                        .ToList(),
-                    SelectedLevel = null,
-                    CalculatedMarks = 0
+                    var saved = savedMarks.FirstOrDefault(x => x.RubricCriterionId == c.Id);
+
+                    return new RubricCriterionMarkingViewModel
+                    {
+                        CriterionId = c.Id,
+                        CriterionTitle = c.CriterionName,
+                        Weight = c.LOMappings != null && c.LOMappings.Any()
+                            ? c.LOMappings.First().Weight
+                            : 0,
+                        LOs = c.LOMappings != null && c.LOMappings.Any()
+                            ? string.Join(", ", c.LOMappings
+                                .Where(m => m.LearningOutcome != null)
+                                .Select(m => m.LearningOutcome.LearningOutcomeText))
+                            : "Not Mapped",
+                        AvailableLevels = c.Levels
+                            .OrderByDescending(l => l.Score)
+                            .Select(l => l.Score)
+                            .ToList(),
+                        SelectedLevel = saved?.SelectedLevel,
+                        CalculatedMarks = saved?.CalculatedScore ?? 0
+                    };
                 })
                 .ToList();
 
@@ -144,7 +165,8 @@ namespace AIS_LO_System.Controllers
                 Criteria = criteria,
                 Levels = allLevels,
                 TotalWeight = criteria.Sum(c => c.Weight),
-                TotalScore = 0
+                TotalScore = criteria.Sum(c => c.CalculatedMarks),
+                Comment = savedMarks.FirstOrDefault()?.Comment
             };
 
             return View(vm);
@@ -184,8 +206,27 @@ namespace AIS_LO_System.Controllers
             if (existingMarks.Any())
                 _context.StudentCriterionMarks.RemoveRange(existingMarks);
 
-            var parsed = System.Text.Json.JsonSerializer.Deserialize<List<CriterionSelectionInput>>(selectedLevelsJson)
-                         ?? new List<CriterionSelectionInput>();
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<List<CriterionSelectionInput>>(
+     selectedLevelsJson ?? "[]",
+     new System.Text.Json.JsonSerializerOptions
+     {
+         PropertyNameCaseInsensitive = true
+     }) ?? new List<CriterionSelectionInput>();
+
+            if (!parsed.Any())
+            {
+                TempData["Error"] = "Please select at least one level before saving.";
+                return RedirectToAction("MarkStudent", new
+                {
+                    studentId,
+                    assignmentId,
+                    courseCode,
+                    courseTitle,
+                    assessmentName,
+                    year,
+                    trimester
+                });
+            }
 
             foreach (var item in parsed)
             {
