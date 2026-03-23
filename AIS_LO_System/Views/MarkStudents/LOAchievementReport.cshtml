@@ -1,4 +1,6 @@
-﻿@{
+﻿@model AIS_LO_System.Models.MarkStudents.LOAchievementReportViewModel
+
+@{
     ViewData["Title"] = "LO Achievement Report";
 }
 
@@ -8,10 +10,10 @@
         <a class="crumb-link"
            asp-controller="CourseDashboard"
            asp-action="Index"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
-            @ViewBag.CourseCode @ViewBag.CourseTitle
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
+            @Model.CourseCode @Model.CourseTitle
         </a>
 
         <span>/</span>
@@ -19,11 +21,11 @@
         <a class="crumb-link"
            asp-controller="Assignment"
            asp-action="Index"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
             Assessments
         </a>
 
@@ -32,12 +34,12 @@
         <a class="crumb-link"
            asp-controller="MarkStudents"
            asp-action="Index"
-           asp-route-assignmentId="@ViewBag.AssignmentId"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+           asp-route-assignmentId="@Model.AssignmentId"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
             Mark Students
         </a>
 
@@ -46,17 +48,17 @@
     </div>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="fw-bold mb-0">LO Achievement Report</h2>
+        <h2 class="fw-bold mb-0">LO Achievement Report for @Model.StudentName</h2>
 
         <a asp-controller="MarkStudents"
            asp-action="MarkStudent"
-           asp-route-studentId="@ViewBag.StudentId"
-           asp-route-assignmentId="@ViewBag.AssignmentId"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester"
+           asp-route-studentId="@Model.StudentInternalId"
+           asp-route-assignmentId="@Model.AssignmentId"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
            class="btn btn-outline-secondary">
             ← Back
         </a>
@@ -64,13 +66,63 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <p><strong>Student ID:</strong> @ViewBag.StudentId</p>
-            <p><strong>Assessment:</strong> @ViewBag.AssessmentName</p>
-            <p><strong>Course:</strong> @ViewBag.CourseCode</p>
 
-            <div class="alert alert-info mb-0">
-                LO Achievement Report page placeholder created successfully.
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <h4 class="fw-bold mb-3">LO Achievement Report for @Model.StudentName</h4>
+
+                    <p class="mb-1"><strong>Student ID:</strong> @Model.StudentId</p>
+                    <p class="mb-1"><strong>Assessment:</strong> @Model.AssessmentName</p>
+                    <p class="mb-1"><strong>Course:</strong> @Model.CourseCode</p>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="border rounded p-3 bg-light">
+                        <p class="mb-2"><strong>Individual Assignment</strong></p>
+                        <p class="mb-2">Assessment Weight: @Model.AssessmentWeight.ToString("0")%</p>
+                        <p class="mb-2">Overall LO Status:</p>
+                        <p class="fw-bold text-danger mb-0">@Model.OverallStatusText</p>
+                    </div>
+                </div>
             </div>
+
+            <hr />
+
+            <h5 class="fw-bold">LO Achievement Results</h5>
+
+            @if (Model.LearningOutcomes.Any())
+            {
+                <table class="table table-bordered align-middle">
+                    <thead>
+                        <tr>
+                            <th>LO</th>
+                            <th>Learning Outcome</th>
+                            <th>Achieved Score</th>
+                            <th>Max Score</th>
+                            <th>Percentage</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var lo in Model.LearningOutcomes)
+                        {
+                            <tr>
+                                <td>@lo.Label</td>
+                                <td>@lo.LearningOutcomeText</td>
+                                <td>@lo.AchievedScore.ToString("0.00")</td>
+                                <td>@lo.MaxScore.ToString("0.00")</td>
+                                <td>@lo.Percentage.ToString("0.##")%</td>
+                                <td>@lo.Status</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No learning outcomes found for this course.</p>
+            }
+
         </div>
     </div>
 

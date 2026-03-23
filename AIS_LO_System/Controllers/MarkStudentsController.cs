@@ -172,7 +172,7 @@ namespace AIS_LO_System.Controllers
         }
 
         [HttpGet]
-        public IActionResult LOAchievementReport(
+        public async Task<IActionResult> LOAchievementReport(
     int studentId,
     int assignmentId,
     string courseCode,
@@ -181,15 +181,109 @@ namespace AIS_LO_System.Controllers
     int year,
     int trimester)
         {
-            ViewBag.StudentId = studentId;
-            ViewBag.AssignmentId = assignmentId;
-            ViewBag.CourseCode = courseCode;
-            ViewBag.CourseTitle = courseTitle;
-            ViewBag.AssessmentName = assessmentName;
-            ViewBag.Year = year;
-            ViewBag.Trimester = trimester;
+            var student = await _context.Students
+                .FirstOrDefaultAsync(s => s.Id == studentId);
 
-            return View();
+            if (student == null)
+                return NotFound();
+
+            var learningOutcomes = await _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode)
+                .OrderBy(lo => lo.OrderNumber)
+                .ToListAsync();
+
+            var mappings = await _context.CriterionLOMappings
+                .Include(m => m.RubricCriterion)
+                    .ThenInclude(c => c.Levels)
+                .Include(m => m.LearningOutcome)
+                .Where(m => m.LearningOutcome.CourseCode == courseCode)
+                .ToListAsync();
+
+            var savedMarks = await _context.StudentCriterionMarks
+                .Where(x => x.AssignmentId == assignmentId && x.StudentRefId == studentId)
+                .ToListAsync();
+
+            var loItems = learningOutcomes.Select(lo =>
+            {
+                var loMappings = mappings
+                    .Where(m => m.LearningOutcomeId == lo.Id)
+                    .ToList();
+
+                decimal achievedScore = 0;
+                decimal maxScore = 0;
+
+                foreach (var mapping in loMappings)
+                {
+                    var saved = savedMarks.FirstOrDefault(x => x.RubricCriterionId == mapping.RubricCriterionId);
+
+                    if (saved != null)
+                    {
+                        achievedScore += saved.CalculatedScore;
+                    }
+
+                    var maxLevel = mapping.RubricCriterion?.Levels?
+                        .OrderByDescending(l => l.Score)
+                        .FirstOrDefault();
+
+                    if (maxLevel != null)
+                    {
+                        maxScore += maxLevel.Score * mapping.Weight;
+                    }
+                }
+
+                var percentage = maxScore > 0
+                    ? Math.Round((achievedScore / maxScore) * 100, 2)
+                    : 0;
+
+                string status;
+                if (percentage >= 70)
+                    status = "Achieved";
+                else if (percentage >= 50)
+                    status = "Partially Achieved";
+                else
+                    status = "Not Achieved";
+
+                return new LOAchievementItemViewModel
+                {
+                    LearningOutcomeId = lo.Id,
+                    Label = $"LO{lo.OrderNumber}",
+                    LearningOutcomeText = lo.LearningOutcomeText,
+                    AchievedScore = achievedScore,
+                    MaxScore = maxScore,
+                    Percentage = percentage,
+                    Status = status
+                };
+            }).ToList();
+
+
+            var achievedCount = loItems.Count(x => x.Status == "Achieved");
+            var partialCount = loItems.Count(x => x.Status == "Partially Achieved");
+            var notAchievedCount = loItems.Count(x => x.Status == "Not Achieved");
+            var totalLOCount = loItems.Count;
+
+            string overallStatusText = $"{achievedCount} of {totalLOCount} Learning Outcomes Achieved";
+
+            var vm = new LOAchievementReportViewModel
+            {
+                StudentInternalId = student.Id,
+                StudentId = student.StudentId,
+                StudentName = student.FullName,
+                AssignmentId = assignmentId,
+                CourseCode = courseCode,
+                CourseTitle = courseTitle,
+                AssessmentName = assessmentName,
+                Year = year,
+                Trimester = trimester,
+                AssessmentWeight = 30, // temporary fixed value for now
+                AchievedCount = achievedCount,
+                PartialCount = partialCount,
+                NotAchievedCount = notAchievedCount,
+                TotalLOCount = totalLOCount,
+                OverallStatusText = overallStatusText,
+                LearningOutcomes = loItems
+            };
+
+            return View(vm);
         }
 
         [HttpPost]
