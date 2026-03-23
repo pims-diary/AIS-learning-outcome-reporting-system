@@ -1,6 +1,0 @@
-# Visual Studio cache
-# .vs/
-
-# Build results
-# bin/
-# obj/
