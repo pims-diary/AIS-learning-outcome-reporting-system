@@ -20,14 +20,14 @@
             <a asp-controller="LecturerDashboard" asp-action="Index">Home</a>
             <span class="sep">/</span>
             <a asp-controller="LecturerDashboard" asp-action="Index"
-                   asp-route-year="@ViewBag.Year" asp-route-trimester="@ViewBag.Trimester">
+               asp-route-year="@ViewBag.Year" asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.Year – Tri @ViewBag.Trimester
             </a>
             <span class="sep">/</span>
             <a asp-controller="CourseDashboard" asp-action="Index"
-                   asp-route-courseCode="@ViewBag.CourseCode"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.CourseCode
             </a>
             <span class="sep">/</span>
@@ -35,10 +35,10 @@
         </div>
 
         <a class="backlink"
-               asp-controller="CourseDashboard" asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+           asp-controller="CourseDashboard" asp-action="Index"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
             ← Go Back
         </a>
     </div>
@@ -64,7 +64,7 @@
         }
         else if (isDocx)
         {
-            <!-- Word doc — show download card -->
+            <!-- Word doc — inline preview + download -->
             <div class="doc-card">
                 <div class="doc-icon">
                     <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
@@ -81,6 +81,35 @@
                     ↓ Download
                 </a>
             </div>
+
+            <!-- Inline document preview -->
+            <div id="docx-loading" class="docx-loading">
+                <div class="loading-spinner"></div>
+                <span>Loading document preview…</span>
+            </div>
+            <div id="docx-preview" class="docx-preview-frame" style="display:none;"></div>
+
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+            <script>
+                (function () {
+                    const url = "@outlineUrl";
+                    const loading = document.getElementById("docx-loading");
+                    const preview = document.getElementById("docx-preview");
+
+                    fetch(url)
+                        .then(r => r.arrayBuffer())
+                        .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
+                        .then(result => {
+                            preview.innerHTML = result.value;
+                            preview.style.display = "block";
+                            loading.style.display = "none";
+                        })
+                        .catch(err => {
+                            loading.innerHTML = "<span style='color:#999;'>Could not preview this document. Please use the download button above.</span>";
+                            console.error("DOCX preview error:", err);
+                        });
+                })();
+            </script>
         }
         else
         {
@@ -142,4 +171,54 @@
         white-space: nowrap;
     }
     .btn-download:hover { background: #1e3f73; color: #fff; }
+
+    /* DOCX inline preview */
+    .docx-preview-frame {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 32px 40px;
+        margin-top: 16px;
+        max-height: 700px;
+        overflow-y: auto;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 14px;
+        line-height: 1.7;
+        color: #1a1a1a;
+    }
+    .docx-preview-frame h1, .docx-preview-frame h2, .docx-preview-frame h3 {
+        color: #2B579A;
+        margin-top: 20px;
+    }
+    .docx-preview-frame table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+    }
+    .docx-preview-frame td, .docx-preview-frame th {
+        border: 1px solid #d0d0d0;
+        padding: 8px 12px;
+        text-align: left;
+    }
+    .docx-preview-frame img {
+        max-width: 100%;
+        height: auto;
+    }
+    .docx-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 40px 20px;
+        color: #888;
+        font-size: 14px;
+    }
+    .loading-spinner {
+        width: 22px; height: 22px;
+        border: 3px solid #e0e0e0;
+        border-top-color: #2B579A;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
 </style>
