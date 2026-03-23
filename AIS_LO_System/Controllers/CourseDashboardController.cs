@@ -1,25 +1,17 @@
-﻿using AIS_LO_System.Data;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using LOARS.Web.Services;
 
 namespace LOARS.Web.Controllers
 {
     [Authorize(Roles = "Lecturer")]
     public class CourseDashboardController : Controller
     {
-        private readonly ApplicationDbContext _context;
-
-        public CourseDashboardController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
-
         [HttpGet]
-        public async Task<IActionResult> Index(string courseCode, int year, int trimester)
+        public IActionResult Index(string courseCode, int year, int trimester)
         {
-            var course = await _context.Courses
-                .FirstOrDefaultAsync(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            var courses = FakeTeachingData.GetCourses(year, trimester);
+            var course = courses.FirstOrDefault(c => c.Code == courseCode);
 
             ViewBag.CourseCode = courseCode;
             ViewBag.CourseTitle = course?.Title ?? "";

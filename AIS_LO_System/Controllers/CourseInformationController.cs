@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using AIS_LO_System.Services;
+using LOARS.Web.Services;
 using System.Text.Json;
 using System.Linq;
 using AIS_LO_System.Data;
@@ -47,27 +47,18 @@ namespace LOARS.Web.Controllers
 
             ViewBag.CanReupload = AllowOutlineReupload(courseCode, year, trimester);
 
-            // Check for the outline in all supported formats — prefer PDF for browser preview
-            var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
-            var baseName = GetOutlineBaseName(courseCode, year, trimester);
+            var fileName = GetOutlineFileName(courseCode, year, trimester);
+            var physicalPath = Path.Combine(_env.WebRootPath, "uploads", "outlines", fileName);
 
-            string? outlineUrl = null;
-            foreach (var ext in new[] { ".pdf", ".docx" })
-            {
-                var filePath = Path.Combine(dir, baseName + ext);
-                if (System.IO.File.Exists(filePath))
-                {
-                    outlineUrl = $"/uploads/outlines/{baseName}{ext}";
-                    break;
-                }
-            }
+            ViewBag.OutlineUrl = System.IO.File.Exists(physicalPath)
+                ? $"/uploads/outlines/{fileName}"
+                : null;
 
-            ViewBag.OutlineUrl = outlineUrl;
             return View();
         }
 
         // -------------------------
-        // COURSE OUTLINE (UPLOAD) — supports PDF and Word (.docx)
+        // COURSE OUTLINE (UPLOAD) - ✅ UPDATED WITH PDF EXTRACTION
         // -------------------------
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -78,53 +69,53 @@ namespace LOARS.Web.Controllers
 
             if (file == null || file.Length == 0)
             {
-                TempData["Error"] = "Please choose a PDF or Word document.";
+                TempData["Error"] = "Please choose a PDF file.";
                 return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
             }
 
-            if (!DocumentService.IsAllowed(file.FileName))
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (ext != ".pdf")
             {
-                TempData["Error"] = "Only PDF and Word documents (.docx) are supported.";
+                TempData["Error"] = "Only PDF files are supported.";
                 return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
             }
 
             var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
             Directory.CreateDirectory(dir);
 
-            // Keep the original extension — do NOT rename or convert
-            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-            var baseName = GetOutlineBaseName(courseCode, year, trimester);
-            var savedPath = Path.Combine(dir, baseName + ext);
+            var fileName = GetOutlineFileName(courseCode, year, trimester);
+            var savePath = Path.Combine(dir, fileName);
 
-            // Delete any previous version (different extension) before saving
-            foreach (var old in new[] { ".pdf", ".docx" })
+            // Save the PDF file
+            using (var stream = System.IO.File.Create(savePath))
             {
-                var oldPath = Path.Combine(dir, baseName + old);
-                if (System.IO.File.Exists(oldPath))
-                    System.IO.File.Delete(oldPath);
+                await file.CopyToAsync(stream);
             }
 
-            using (var stream = System.IO.File.Create(savedPath))
-                await file.CopyToAsync(stream);
-
-            // Extract Learning Outcomes from the uploaded file
+            // ✅ NEW: Extract Learning Outcomes from PDF
             try
             {
-                var extractedLOs = DocumentService.ExtractLearningOutcomes(savedPath);
+                var extractedLOs = ExtractLearningOutcomesFromPDF(savePath);
+
                 if (extractedLOs.Any())
                 {
+                    // Save to JSON (existing functionality)
                     SaveLos(courseCode, year, trimester, extractedLOs);
+
+                    // Sync to database
                     SyncLosToDatabase(courseCode, extractedLOs);
-                    TempData["Success"] = $"Course outline uploaded! {extractedLOs.Count} Learning Outcomes auto-extracted.";
+
+                    TempData["Success"] = $"Course outline uploaded successfully! {extractedLOs.Count} Learning Outcomes auto-extracted.";
                 }
                 else
                 {
-                    TempData["Success"] = "Course outline uploaded! (No Learning Outcomes found — add them manually)";
+                    TempData["Success"] = "Course outline uploaded successfully! (No Learning Outcomes found in PDF)";
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                TempData["Success"] = "Course outline uploaded!";
+                // PDF uploaded but extraction failed - that's OK
+                TempData["Success"] = "Course outline uploaded successfully! (Could not auto-extract Learning Outcomes)";
             }
 
             return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
@@ -291,16 +282,12 @@ namespace LOARS.Web.Controllers
             ViewBag.Year = year;
             ViewBag.Trimester = trimester;
 
-            var course = _context.Courses
-                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            var course = FakeTeachingData.GetCourses(year, trimester)
+                .FirstOrDefault(c => c.Code == courseCode);
 
             ViewBag.CourseTitle = course?.Title ?? "";
         }
 
-        private static string GetOutlineBaseName(string courseCode, int year, int trimester)
-            => $"{courseCode}-{year}-T{trimester}";
-
-        // Keep for backwards compatibility with any existing .pdf files
         private static string GetOutlineFileName(string courseCode, int year, int trimester)
             => $"{courseCode}-{year}-T{trimester}.pdf";
 

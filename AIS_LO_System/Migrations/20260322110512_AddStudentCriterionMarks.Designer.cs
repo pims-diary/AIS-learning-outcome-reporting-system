@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AIS_LO_System.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260318051640_AddAdminRolesAndCourses")]
-    partial class AddAdminRolesAndCourses
+    [Migration("20260322110512_AddStudentCriterionMarks")]
+    partial class AddStudentCriterionMarks
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,49 +24,6 @@ namespace AIS_LO_System.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("AIS_LO_System.Models.AppUser", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Username")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Username")
-                        .IsUnique();
-
-                    b.ToTable("AppUsers");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            FullName = "Administrator",
-                            PasswordHash = "$2a$11$8KzaNdKIMyOkASKQHxSO6.bKHQAiqTpnbNYUSGBuKZRtbOWTfDXSS",
-                            Role = 0,
-                            Username = "admin"
-                        });
-                });
 
             modelBuilder.Entity("AIS_LO_System.Models.Assignment", b =>
                 {
@@ -138,56 +95,6 @@ namespace AIS_LO_System.Migrations
                     b.ToTable("AssignmentFiles");
                 });
 
-            modelBuilder.Entity("AIS_LO_System.Models.Course", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("CanEditLO")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("CanReuploadOutline")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int?>("LecturerId")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ModeratorId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("School")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<int>("Trimester")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Year")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LecturerId");
-
-                    b.HasIndex("ModeratorId");
-
-                    b.ToTable("Courses");
-                });
-
             modelBuilder.Entity("AIS_LO_System.Models.CriterionLOMapping", b =>
                 {
                     b.Property<int>("Id")
@@ -237,30 +144,6 @@ namespace AIS_LO_System.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("LearningOutcomes");
-                });
-
-            modelBuilder.Entity("AIS_LO_System.Models.LecturerCourseEnrolment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CourseId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CourseId");
-
-                    b.HasIndex("UserId", "CourseId")
-                        .IsUnique();
-
-                    b.ToTable("LecturerCourseEnrolments");
                 });
 
             modelBuilder.Entity("AIS_LO_System.Models.Rubric", b =>
@@ -386,7 +269,7 @@ namespace AIS_LO_System.Migrations
                         });
                 });
 
-            modelBuilder.Entity("AIS_LO_System.Models.StudentCourseEnrolment", b =>
+            modelBuilder.Entity("AIS_LO_System.Models.StudentCriterionMark", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -394,20 +277,36 @@ namespace AIS_LO_System.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("CourseId")
+                    b.Property<int>("AssignmentId")
                         .HasColumnType("int");
 
-                    b.Property<int>("StudentId")
+                    b.Property<decimal>("CalculatedScore")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RubricCriterionId")
                         .HasColumnType("int");
+
+                    b.Property<int>("SelectedLevel")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentRefId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseId");
+                    b.HasIndex("RubricCriterionId");
 
-                    b.HasIndex("StudentId", "CourseId")
-                        .IsUnique();
+                    b.HasIndex("StudentRefId");
 
-                    b.ToTable("StudentCourseEnrolments");
+                    b.ToTable("StudentCriterionMarks");
                 });
 
             modelBuilder.Entity("RubricCriterion", b =>
@@ -472,23 +371,6 @@ namespace AIS_LO_System.Migrations
                     b.Navigation("Assignment");
                 });
 
-            modelBuilder.Entity("AIS_LO_System.Models.Course", b =>
-                {
-                    b.HasOne("AIS_LO_System.Models.AppUser", "Lecturer")
-                        .WithMany()
-                        .HasForeignKey("LecturerId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("AIS_LO_System.Models.AppUser", "Moderator")
-                        .WithMany()
-                        .HasForeignKey("ModeratorId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Lecturer");
-
-                    b.Navigation("Moderator");
-                });
-
             modelBuilder.Entity("AIS_LO_System.Models.CriterionLOMapping", b =>
                 {
                     b.HasOne("AIS_LO_System.Models.LearningOutcome", "LearningOutcome")
@@ -506,25 +388,6 @@ namespace AIS_LO_System.Migrations
                     b.Navigation("LearningOutcome");
 
                     b.Navigation("RubricCriterion");
-                });
-
-            modelBuilder.Entity("AIS_LO_System.Models.LecturerCourseEnrolment", b =>
-                {
-                    b.HasOne("AIS_LO_System.Models.Course", "Course")
-                        .WithMany("LecturerEnrolments")
-                        .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("AIS_LO_System.Models.AppUser", "User")
-                        .WithMany("CourseEnrolments")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Course");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("AIS_LO_System.Models.Rubric", b =>
@@ -549,21 +412,21 @@ namespace AIS_LO_System.Migrations
                     b.Navigation("Student");
                 });
 
-            modelBuilder.Entity("AIS_LO_System.Models.StudentCourseEnrolment", b =>
+            modelBuilder.Entity("AIS_LO_System.Models.StudentCriterionMark", b =>
                 {
-                    b.HasOne("AIS_LO_System.Models.Course", "Course")
-                        .WithMany("StudentEnrolments")
-                        .HasForeignKey("CourseId")
+                    b.HasOne("RubricCriterion", "RubricCriterion")
+                        .WithMany()
+                        .HasForeignKey("RubricCriterionId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("AIS_LO_System.Models.Student", "Student")
-                        .WithMany("CourseEnrolments")
-                        .HasForeignKey("StudentId")
+                        .WithMany()
+                        .HasForeignKey("StudentRefId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Course");
+                    b.Navigation("RubricCriterion");
 
                     b.Navigation("Student");
                 });
@@ -590,21 +453,9 @@ namespace AIS_LO_System.Migrations
                     b.Navigation("RubricCriterion");
                 });
 
-            modelBuilder.Entity("AIS_LO_System.Models.AppUser", b =>
-                {
-                    b.Navigation("CourseEnrolments");
-                });
-
             modelBuilder.Entity("AIS_LO_System.Models.Assignment", b =>
                 {
                     b.Navigation("Files");
-                });
-
-            modelBuilder.Entity("AIS_LO_System.Models.Course", b =>
-                {
-                    b.Navigation("LecturerEnrolments");
-
-                    b.Navigation("StudentEnrolments");
                 });
 
             modelBuilder.Entity("AIS_LO_System.Models.LearningOutcome", b =>
@@ -615,11 +466,6 @@ namespace AIS_LO_System.Migrations
             modelBuilder.Entity("AIS_LO_System.Models.Rubric", b =>
                 {
                     b.Navigation("Criteria");
-                });
-
-            modelBuilder.Entity("AIS_LO_System.Models.Student", b =>
-                {
-                    b.Navigation("CourseEnrolments");
                 });
 
             modelBuilder.Entity("RubricCriterion", b =>

@@ -13,20 +13,20 @@
     <!-- Breadcrumb -->
     <div class="breadcrumb">
         <a asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+           asp-action="Index"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
             @ViewBag.CourseCode @ViewBag.Year-S@ViewBag.Trimester
         </a>
         <span>/</span>
         <a asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="@ViewBag.AssessmentName"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+           asp-action="Index"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
             Assessments
         </a>
         <span>/</span>
@@ -40,46 +40,17 @@
         <h1>Assignment Information</h1>
     </div>
 
-    <!-- File Preview / Download -->
+    <!-- PDF Preview -->
     <div class="assignment-preview">
         @{
             var latest = Model.Files?
-                .OrderByDescending(f => f.VersionNumber)
-                .FirstOrDefault();
-            bool isDocxFile = latest != null &&
-                (latest.FilePath.EndsWith(".docx") || latest.OriginalFileName.EndsWith(".docx"));
+            .OrderByDescending(f => f.VersionNumber)
+            .FirstOrDefault();
         }
 
         @if (latest != null)
         {
-            @if (isDocxFile)
-            {
-                <div style="display:flex;align-items:center;gap:16px;background:#f8f9fa;
-                    border:1px solid #e0e0e0;border-radius:12px;padding:24px;margin-bottom:16px;">
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                        <rect width="40" height="40" rx="8" fill="#2B579A" />
-                        <text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle"
-                              fill="white" font-size="13" font-weight="700" font-family="Arial">W</text>
-                    </svg>
-                    <div style="flex:1;">
-                        <div style="font-size:15px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">
-                            @latest.OriginalFileName
-                        </div>
-                        <div style="font-size:13px;color:#666;">
-                            Microsoft Word Document · Version @latest.VersionNumber
-                        </div>
-                    </div>
-                    <a href="@latest.FilePath" download
-                           style="display:inline-block;padding:10px 20px;background:#2B579A;color:#fff;
-                        border-radius:8px;text-decoration:none;font-size:14px;font-weight:500;">
-                        ↓ Download
-                    </a>
-                </div>
-            }
-            else
-            {
-                <iframe src="@latest.FilePath" width="100%" height="700px"></iframe>
-            }
+            <iframe src="@latest.FilePath" width="100%" height="700px"></iframe>
         }
         else
         {
@@ -95,7 +66,7 @@
               id="reuploadForm">
 
             <input type="hidden" name="assignmentId" value="@Model.Id" />
-            <input type="file" name="file" accept=".pdf,.docx"
+            <input type="file" name="file" accept=".pdf"
                    id="fileInput"
                    style="display:none"
                    onchange="document.getElementById('reuploadForm').submit()" />
@@ -103,15 +74,15 @@
             <button type="button"
                     onclick="document.getElementById('fileInput').click()"
                     style="background-color: #c21c00;
-                color: white;
-                padding: 15px 50px;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: 500;
-                cursor: pointer;
-                border: none;
-                display: block;
-                margin: 0 auto;">
+               color: white;
+               padding: 15px 50px;
+               border-radius: 12px;
+               font-size: 18px;
+               font-weight: 500;
+               cursor: pointer;
+               border: none;
+               display: block;
+               margin: 0 auto;">
                 Re-upload Assignment
             </button>
 

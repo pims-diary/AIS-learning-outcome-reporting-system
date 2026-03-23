@@ -1,5 +1,4 @@
 using AIS_LO_System.Data;
-using AIS_LO_System.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,49 +23,6 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// -------------------------------------------------------
-// Startup seeder: ensures the admin account has a valid
-// BCrypt hash. Runs once on app start, safe to leave in.
-// -------------------------------------------------------
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
-
-    var admin = db.AppUsers.FirstOrDefault(u => u.Username == "admin");
-    if (admin == null)
-    {
-        db.AppUsers.Add(new AppUser
-        {
-            FullName = "Administrator",
-            Username = "admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
-            Role = UserRole.Admin
-        });
-        db.SaveChanges();
-    }
-    else if (!BCrypt.Net.BCrypt.Verify("Admin@123", admin.PasswordHash))
-    {
-        admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123");
-        db.SaveChanges();
-    }
-
-    // Default lecturer account for development
-    var lecturer = db.AppUsers.FirstOrDefault(u => u.Username == "lecturer");
-    if (lecturer == null)
-    {
-        db.AppUsers.Add(new AppUser
-        {
-            FullName = "Default Lecturer",
-            Username = "lecturer",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password@123"),
-            Role = UserRole.Lecturer
-        });
-        db.SaveChanges();
-    }
-}
-// -------------------------------------------------------
-
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -81,6 +37,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Default route ? go to login (for now)
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}");
