@@ -1,0 +1,77 @@
+﻿@{
+    ViewData["Title"] = "LO Achievement Report";
+}
+
+<div class="container mt-4">
+
+    <div class="breadcrumb mb-3">
+        <a class="crumb-link"
+           asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            @ViewBag.CourseCode @ViewBag.CourseTitle
+        </a>
+
+        <span>/</span>
+
+        <a class="crumb-link"
+           asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            Assessments
+        </a>
+
+        <span>/</span>
+
+        <a class="crumb-link"
+           asp-controller="MarkStudents"
+           asp-action="Index"
+           asp-route-assignmentId="@ViewBag.AssignmentId"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
+            Mark Students
+        </a>
+
+        <span>/</span>
+        <span>LO Achievement Report</span>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="fw-bold mb-0">LO Achievement Report</h2>
+
+        <a asp-controller="MarkStudents"
+           asp-action="MarkStudent"
+           asp-route-studentId="@ViewBag.StudentId"
+           asp-route-assignmentId="@ViewBag.AssignmentId"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester"
+           class="btn btn-outline-secondary">
+            ← Back
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <p><strong>Student ID:</strong> @ViewBag.StudentId</p>
+            <p><strong>Assessment:</strong> @ViewBag.AssessmentName</p>
+            <p><strong>Course:</strong> @ViewBag.CourseCode</p>
+
+            <div class="alert alert-info mb-0">
+                LO Achievement Report page placeholder created successfully.
+            </div>
+        </div>
+    </div>
+
+</div>

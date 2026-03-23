@@ -171,6 +171,27 @@ namespace AIS_LO_System.Controllers
             return View(vm);
         }
 
+        [HttpGet]
+        public IActionResult LOAchievementReport(
+    int studentId,
+    int assignmentId,
+    string courseCode,
+    string courseTitle,
+    string assessmentName,
+    int year,
+    int trimester)
+        {
+            ViewBag.StudentId = studentId;
+            ViewBag.AssignmentId = assignmentId;
+            ViewBag.CourseCode = courseCode;
+            ViewBag.CourseTitle = courseTitle;
+            ViewBag.AssessmentName = assessmentName;
+            ViewBag.Year = year;
+            ViewBag.Trimester = trimester;
+
+            return View();
+        }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SaveMarks(
