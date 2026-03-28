@@ -366,3 +366,9 @@ FodyWeavers.xsd
 bin/
 
 obj/
+
+.vs/
+
+bin/
+
+obj/
