@@ -3,6 +3,10 @@
     Layout = "_DashboardLayout";
     bool canReupload = (bool)(ViewBag.CanReupload ?? false);
     string outlineUrl = ViewBag.OutlineUrl as string;
+    bool hasFile = !string.IsNullOrWhiteSpace(outlineUrl);
+    bool isPdf = hasFile && outlineUrl.EndsWith(".pdf");
+    bool isDocx = hasFile && outlineUrl.EndsWith(".docx");
+    var fileName = hasFile ? System.IO.Path.GetFileName(outlineUrl) : "";
 }
 
 <link rel="stylesheet" href="~/css/courseinfo.css" />
@@ -12,22 +16,15 @@
     <div class="top-header">
         <img class="ais-logo" src="~/images/AIS_logo.png" alt="AIS Logo" />
 
-        <!-- ✅ FIXED: CLICKABLE BREADCRUMBS -->
         <div class="crumb">
-            <a asp-controller="LecturerDashboard"
-               asp-action="Index">
-                Home
-            </a>
+            <a asp-controller="LecturerDashboard" asp-action="Index">Home</a>
             <span class="sep">/</span>
-            <a asp-controller="LecturerDashboard"
-               asp-action="Index"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+            <a asp-controller="LecturerDashboard" asp-action="Index"
+               asp-route-year="@ViewBag.Year" asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.Year – Tri @ViewBag.Trimester
             </a>
             <span class="sep">/</span>
-            <a asp-controller="CourseDashboard"
-               asp-action="Index"
+            <a asp-controller="CourseDashboard" asp-action="Index"
                asp-route-courseCode="@ViewBag.CourseCode"
                asp-route-year="@ViewBag.Year"
                asp-route-trimester="@ViewBag.Trimester">
@@ -38,8 +35,7 @@
         </div>
 
         <a class="backlink"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
+           asp-controller="CourseDashboard" asp-action="Index"
            asp-route-courseCode="@ViewBag.CourseCode"
            asp-route-year="@ViewBag.Year"
            asp-route-trimester="@ViewBag.Trimester">
@@ -54,24 +50,73 @@
         {
             <div class="success-msg">@TempData["Success"]</div>
         }
-
         @if (TempData["Error"] != null)
         {
-            <div class="error">@TempData["Error"]</div>
+            <div class="alert alert-danger">@TempData["Error"]</div>
         }
 
-        <div class="pdf-wrap">
-            @if (!string.IsNullOrWhiteSpace(outlineUrl))
-            {
+        @if (isPdf)
+        {
+            <!-- PDF — show inline iframe -->
+            <div class="pdf-wrap">
                 <iframe class="pdf-frame" src="@outlineUrl" title="Course Outline"></iframe>
-            }
-            else
-            {
-                <div class="empty">No course outline uploaded yet.</div>
-            }
-        </div>
+            </div>
+        }
+        else if (isDocx)
+        {
+            <!-- Word doc — inline preview + download -->
+            <div class="doc-card">
+                <div class="doc-icon">
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                        <rect width="40" height="40" rx="8" fill="#2B579A" />
+                        <text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle"
+                              fill="white" font-size="13" font-weight="700" font-family="Arial">W</text>
+                    </svg>
+                </div>
+                <div class="doc-info">
+                    <div class="doc-name">@fileName</div>
+                    <div class="doc-type">Microsoft Word Document</div>
+                </div>
+                <a href="@outlineUrl" download class="btn-download">
+                    ↓ Download
+                </a>
+            </div>
 
-        <div class="actions-center" style="margin-top:16px;">
+            <!-- Inline document preview -->
+            <div id="docx-loading" class="docx-loading">
+                <div class="loading-spinner"></div>
+                <span>Loading document preview…</span>
+            </div>
+            <div id="docx-preview" class="docx-preview-frame" style="display:none;"></div>
+
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+            <script>
+                (function () {
+                    const url = "@outlineUrl";
+                    const loading = document.getElementById("docx-loading");
+                    const preview = document.getElementById("docx-preview");
+
+                    fetch(url)
+                        .then(r => r.arrayBuffer())
+                        .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
+                        .then(result => {
+                            preview.innerHTML = result.value;
+                            preview.style.display = "block";
+                            loading.style.display = "none";
+                        })
+                        .catch(err => {
+                            loading.innerHTML = "<span style='color:#999;'>Could not preview this document. Please use the download button above.</span>";
+                            console.error("DOCX preview error:", err);
+                        });
+                })();
+            </script>
+        }
+        else
+        {
+            <div class="empty">No course outline uploaded yet.</div>
+        }
+
+        <div class="actions-center" style="margin-top:24px;">
             @if (canReupload)
             {
                 <form asp-controller="CourseInformation"
@@ -80,14 +125,12 @@
                       enctype="multipart/form-data"
                       class="upload-form">
                     @Html.AntiForgeryToken()
-
                     <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
                     <input type="hidden" name="year" value="@ViewBag.Year" />
                     <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
-
-                    <input type="file" name="file" accept="application/pdf" required />
+                    <input type="file" name="file" accept=".pdf,.docx" required />
                     <button type="submit" class="btn-primary">
-                        @(string.IsNullOrWhiteSpace(outlineUrl) ? "Upload Course Outline" : "Re-upload Course Outline")
+                        @(hasFile ? "Re-upload Course Outline" : "Upload Course Outline")
                     </button>
                 </form>
             }
@@ -102,22 +145,80 @@
 
 <style>
     .success-msg {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-        padding: 12px 16px;
-        border-radius: 4px;
-        margin-bottom: 16px;
+        background: #d4edda; border: 1px solid #c3e6cb;
+        color: #155724; padding: 12px 16px;
+        border-radius: 6px; margin-bottom: 16px;
     }
+    .crumb a { color: #333; text-decoration: none; }
+    .crumb a:hover { color: #0066cc; text-decoration: underline; }
 
-    /* Make breadcrumb links clickable */
-    .crumb a {
-        color: #333;
-        text-decoration: none;
+    /* Word doc download card */
+    .doc-card {
+        display: flex; align-items: center; gap: 16px;
+        background: #f8f9fa; border: 1px solid #e0e0e0;
+        border-radius: 12px; padding: 20px 24px;
+        margin-bottom: 8px;
     }
+    .doc-icon { flex-shrink: 0; }
+    .doc-info { flex: 1; }
+    .doc-name { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+    .doc-type { font-size: 13px; color: #666; }
+    .btn-download {
+        display: inline-block; padding: 10px 20px;
+        background: #2B579A; color: #fff;
+        border-radius: 8px; text-decoration: none;
+        font-size: 14px; font-weight: 500;
+        white-space: nowrap;
+    }
+    .btn-download:hover { background: #1e3f73; color: #fff; }
 
-        .crumb a:hover {
-            color: #0066cc;
-            text-decoration: underline;
-        }
+    /* DOCX inline preview */
+    .docx-preview-frame {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 32px 40px;
+        margin-top: 16px;
+        max-height: 700px;
+        overflow-y: auto;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 14px;
+        line-height: 1.7;
+        color: #1a1a1a;
+    }
+    .docx-preview-frame h1, .docx-preview-frame h2, .docx-preview-frame h3 {
+        color: #2B579A;
+        margin-top: 20px;
+    }
+    .docx-preview-frame table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+    }
+    .docx-preview-frame td, .docx-preview-frame th {
+        border: 1px solid #d0d0d0;
+        padding: 8px 12px;
+        text-align: left;
+    }
+    .docx-preview-frame img {
+        max-width: 100%;
+        height: auto;
+    }
+    .docx-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 40px 20px;
+        color: #888;
+        font-size: 14px;
+    }
+    .loading-spinner {
+        width: 22px; height: 22px;
+        border: 3px solid #e0e0e0;
+        border-top-color: #2B579A;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @@keyframes spin { to { transform: rotate(360deg); } }
 </style>
