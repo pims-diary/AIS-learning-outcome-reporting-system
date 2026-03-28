@@ -80,9 +80,10 @@
 
         <a asp-controller="MarkStudents"
            asp-action="Index"
-           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-assignmentId="@Model.Id"
            asp-route-courseCode="@Model.CourseCode"
            asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-assessmentName="@Model.AssessmentName"
            asp-route-year="@Model.Year"
            asp-route-trimester="@Model.Trimester"
            class="assignment-card-link">
