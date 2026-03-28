@@ -14,5 +14,7 @@ namespace AIS_LO_System.Models
         [Required]
         [StringLength(100)]
         public string FullName { get; set; } = string.Empty;
+
+        public ICollection<StudentCourseEnrolment> CourseEnrolments { get; set; } = new List<StudentCourseEnrolment>();
     }
 }

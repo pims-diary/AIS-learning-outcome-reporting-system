@@ -1,0 +1,49 @@
+﻿@{
+    ViewData["Title"] = "Admin Dashboard";
+    Layout = "_AdminLayout";
+}
+
+
+<div class="admin-content">
+
+    <h1 class="admin-welcome">Welcome Admin!</h1>
+
+    <div class="admin-stat-grid">
+        <div class="admin-stat-card">
+            <div class="stat-label">Total Courses</div>
+            <div class="stat-value">@ViewBag.TotalCourses</div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="stat-label">Lecturers</div>
+            <div class="stat-value">@ViewBag.TotalLecturers</div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="stat-label">Moderators</div>
+            <div class="stat-value">@ViewBag.TotalModerators</div>
+        </div>
+    </div>
+
+    <div class="admin-panel">
+        <div class="admin-panel-title">Recent Activity</div>
+        <table class="admin-activity-table">
+            <tbody>
+                <tr>
+                    <td class="activity-action">Rubric Approved</td>
+                    <td class="activity-detail">SOFT708 - Assignment 1</td>
+                    <td class="activity-time">2h ago</td>
+                </tr>
+                <tr>
+                    <td class="activity-action">LO Mapping flagged</td>
+                    <td class="activity-detail">SOFT606 - Assignment 2</td>
+                    <td class="activity-time">5h ago</td>
+                </tr>
+                <tr>
+                    <td class="activity-action">Lecturer Assigned</td>
+                    <td class="activity-detail">SOFT606 - P. Gunadasa</td>
+                    <td class="activity-time">Yesterday</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
