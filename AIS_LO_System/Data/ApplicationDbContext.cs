@@ -34,6 +34,7 @@ namespace AIS_LO_System.Data
 
         // Marking
         public DbSet<StudentAssessmentMark> StudentAssessmentMarks { get; set; }
+        public DbSet<StudentCriterionMark> StudentCriterionMarks { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -75,6 +76,15 @@ namespace AIS_LO_System.Data
                 .Property(c => c.Weight)
                 .HasPrecision(18, 2);
 
+            // StudentCriterionMark precision (from Priyanka's branch)
+            modelBuilder.Entity<StudentCriterionMark>()
+                .Property(x => x.Weight)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<StudentCriterionMark>()
+                .Property(x => x.CalculatedScore)
+                .HasPrecision(18, 2);
+
             // Rubric cascade
             modelBuilder.Entity<Rubric>()
                 .HasMany(r => r.Criteria)
@@ -89,7 +99,6 @@ namespace AIS_LO_System.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Seed: default admin user — password is "Admin@123"
-            // BCrypt hash pre-computed: BCrypt.HashPassword("Admin@123")
             modelBuilder.Entity<AppUser>().HasData(
                 new AppUser
                 {
@@ -101,23 +110,19 @@ namespace AIS_LO_System.Data
                 }
             );
 
-            // Seed: courses (migrated from FakeTeachingData)
+            // Seed: courses
             modelBuilder.Entity<Course>().HasData(
-                // 2026 T1
                 new Course { Id = 1, Code = "INFO712", Title = "Management Information Systems", Year = 2026, Trimester = 1, School = "Information Technology", CanEditLO = true, CanReuploadOutline = true },
                 new Course { Id = 2, Code = "SOFT703", Title = "Web Applications Development", Year = 2026, Trimester = 1, School = "Information Technology", CanEditLO = true, CanReuploadOutline = true },
                 new Course { Id = 3, Code = "COMP720", Title = "Information Technology Project", Year = 2026, Trimester = 1, School = "Information Technology", CanEditLO = true, CanReuploadOutline = true },
-                // 2026 T2
                 new Course { Id = 4, Code = "COMP701", Title = "Software Engineering", Year = 2026, Trimester = 2, School = "Information Technology", CanEditLO = true, CanReuploadOutline = true },
                 new Course { Id = 5, Code = "COMP703", Title = "Web App Dev (ASP.NET)", Year = 2026, Trimester = 2, School = "Information Technology", CanEditLO = true, CanReuploadOutline = true },
-                // 2025 T1
                 new Course { Id = 6, Code = "COMP610", Title = "Database Systems", Year = 2025, Trimester = 1, School = "Information Technology", CanEditLO = true, CanReuploadOutline = true },
                 new Course { Id = 7, Code = "COMP611", Title = "Systems Analysis", Year = 2025, Trimester = 1, School = "Information Technology", CanEditLO = true, CanReuploadOutline = true },
-                // 2024 T2
                 new Course { Id = 8, Code = "INFO600", Title = "Intro to IT", Year = 2024, Trimester = 2, School = "Information Technology", CanEditLO = true, CanReuploadOutline = true }
             );
 
-            // Seed: existing students
+            // Seed: students
             modelBuilder.Entity<Student>().HasData(
                 new Student { Id = 1, StudentId = "2026001", FullName = "Aarav Sharma" },
                 new Student { Id = 2, StudentId = "2026002", FullName = "Priya Patel" },
@@ -126,6 +131,7 @@ namespace AIS_LO_System.Data
                 new Student { Id = 5, StudentId = "2026005", FullName = "Ali Khan" }
             );
 
+            // Seed: assessment marks
             modelBuilder.Entity<StudentAssessmentMark>().HasData(
                 new StudentAssessmentMark { Id = 1, StudentRefId = 2, CourseCode = "COMP720", AssessmentName = "Assignment 1", IsMarked = true },
                 new StudentAssessmentMark { Id = 2, StudentRefId = 4, CourseCode = "COMP720", AssessmentName = "Assignment 1", IsMarked = true }
