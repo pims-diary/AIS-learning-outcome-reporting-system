@@ -1,4 +1,6 @@
-﻿namespace AIS_LO_System.Models.MarkStudents
+﻿using System.Collections.Generic;
+
+namespace AIS_LO_System.Models.MarkStudents
 {
     public class LOAchievementItemViewModel
     {
@@ -11,5 +13,7 @@
         public decimal Percentage { get; set; }
 
         public string Status { get; set; } = "Not Calculated";
+
+        public List<LOInsightItemViewModel> Insights { get; set; } = new();
     }
 }

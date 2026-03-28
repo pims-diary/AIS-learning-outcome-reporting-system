@@ -212,6 +212,8 @@ namespace AIS_LO_System.Controllers
                 decimal achievedScore = 0;
                 decimal maxScore = 0;
 
+                var insights = new List<LOInsightItemViewModel>();
+
                 foreach (var mapping in loMappings)
                 {
                     var saved = savedMarks.FirstOrDefault(x => x.RubricCriterionId == mapping.RubricCriterionId);
@@ -228,6 +230,26 @@ namespace AIS_LO_System.Controllers
                     if (maxLevel != null)
                     {
                         maxScore += maxLevel.Score * mapping.Weight;
+                    }
+
+                    if (saved != null && saved.SelectedLevel <= 2)
+                    {
+                        string rubricLabel = saved.SelectedLevel switch
+                        {
+                            4 => "Excellent",
+                            3 => "Good",
+                            2 => "Satisfactory",
+                            1 => "Poor",
+                            0 => "Unsatisfactory",
+                            _ => "Unknown"
+                        };
+
+                        insights.Add(new LOInsightItemViewModel
+                        {
+                            CriterionTitle = mapping.RubricCriterion?.CriterionName ?? "Unknown Criterion",
+                            RubricScore = saved.SelectedLevel,
+                            RubricLabel = rubricLabel
+                        });
                     }
                 }
 
@@ -251,10 +273,10 @@ namespace AIS_LO_System.Controllers
                     AchievedScore = achievedScore,
                     MaxScore = maxScore,
                     Percentage = percentage,
-                    Status = status
+                    Status = status,
+                    Insights = insights
                 };
             }).ToList();
-
 
             var achievedCount = loItems.Count(x => x.Status == "Achieved");
             var partialCount = loItems.Count(x => x.Status == "Partially Achieved");
@@ -274,7 +296,7 @@ namespace AIS_LO_System.Controllers
                 AssessmentName = assessmentName,
                 Year = year,
                 Trimester = trimester,
-                AssessmentWeight = 30, // temporary fixed value for now
+                AssessmentWeight = 30,
                 AchievedCount = achievedCount,
                 PartialCount = partialCount,
                 NotAchievedCount = notAchievedCount,
@@ -285,6 +307,8 @@ namespace AIS_LO_System.Controllers
 
             return View(vm);
         }
+
+
 
         [HttpPost]
         [ValidateAntiForgeryToken]
