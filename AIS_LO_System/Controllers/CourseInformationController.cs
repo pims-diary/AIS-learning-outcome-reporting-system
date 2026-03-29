@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LOARS.Web.Services;
+using AIS_LO_System.Services;
 using System.Text.Json;
 using System.Linq;
 using AIS_LO_System.Data;
@@ -23,8 +23,19 @@ namespace LOARS.Web.Controllers
             _context = context;
         }
 
-        private bool AllowOutlineReupload(string courseCode) => true;
-        private bool AllowLOEdit(string courseCode) => true;
+        private bool AllowOutlineReupload(string courseCode, int year, int trimester)
+        {
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            return course?.CanReuploadOutline ?? true;
+        }
+
+        private bool AllowLOEdit(string courseCode, int year, int trimester)
+        {
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            return course?.CanEditLO ?? true;
+        }
 
         // -------------------------
         // COURSE OUTLINE (VIEW)
@@ -34,77 +45,86 @@ namespace LOARS.Web.Controllers
         {
             SetCourseContext(courseCode, year, trimester);
 
-            ViewBag.CanReupload = AllowOutlineReupload(courseCode);
+            ViewBag.CanReupload = AllowOutlineReupload(courseCode, year, trimester);
 
-            var fileName = GetOutlineFileName(courseCode, year, trimester);
-            var physicalPath = Path.Combine(_env.WebRootPath, "uploads", "outlines", fileName);
+            // Check for the outline in all supported formats — prefer PDF for browser preview
+            var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
+            var baseName = GetOutlineBaseName(courseCode, year, trimester);
 
-            ViewBag.OutlineUrl = System.IO.File.Exists(physicalPath)
-                ? $"/uploads/outlines/{fileName}"
-                : null;
+            string? outlineUrl = null;
+            foreach (var ext in new[] { ".pdf", ".docx" })
+            {
+                var filePath = Path.Combine(dir, baseName + ext);
+                if (System.IO.File.Exists(filePath))
+                {
+                    outlineUrl = $"/uploads/outlines/{baseName}{ext}";
+                    break;
+                }
+            }
 
+            ViewBag.OutlineUrl = outlineUrl;
             return View();
         }
 
         // -------------------------
-        // COURSE OUTLINE (UPLOAD) - ✅ UPDATED WITH PDF EXTRACTION
+        // COURSE OUTLINE (UPLOAD) — supports PDF and Word (.docx)
         // -------------------------
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadOutline(IFormFile file, string courseCode, int year, int trimester)
         {
-            if (!AllowOutlineReupload(courseCode))
+            if (!AllowOutlineReupload(courseCode, year, trimester))
                 return Forbid();
 
             if (file == null || file.Length == 0)
             {
-                TempData["Error"] = "Please choose a PDF file.";
+                TempData["Error"] = "Please choose a PDF or Word document.";
                 return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
             }
 
-            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (ext != ".pdf")
+            if (!DocumentService.IsAllowed(file.FileName))
             {
-                TempData["Error"] = "Only PDF files are supported.";
+                TempData["Error"] = "Only PDF and Word documents (.docx) are supported.";
                 return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
             }
 
             var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
             Directory.CreateDirectory(dir);
 
-            var fileName = GetOutlineFileName(courseCode, year, trimester);
-            var savePath = Path.Combine(dir, fileName);
+            // Keep the original extension — do NOT rename or convert
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var baseName = GetOutlineBaseName(courseCode, year, trimester);
+            var savedPath = Path.Combine(dir, baseName + ext);
 
-            // Save the PDF file
-            using (var stream = System.IO.File.Create(savePath))
+            // Delete any previous version (different extension) before saving
+            foreach (var old in new[] { ".pdf", ".docx" })
             {
-                await file.CopyToAsync(stream);
+                var oldPath = Path.Combine(dir, baseName + old);
+                if (System.IO.File.Exists(oldPath))
+                    System.IO.File.Delete(oldPath);
             }
 
-            // ✅ NEW: Extract Learning Outcomes from PDF
+            using (var stream = System.IO.File.Create(savedPath))
+                await file.CopyToAsync(stream);
+
+            // Extract Learning Outcomes from the uploaded file
             try
             {
-                var extractedLOs = ExtractLearningOutcomesFromPDF(savePath);
-
+                var extractedLOs = DocumentService.ExtractLearningOutcomes(savedPath);
                 if (extractedLOs.Any())
                 {
-                    // Save to JSON (existing functionality)
                     SaveLos(courseCode, year, trimester, extractedLOs);
-
-                    // Sync to database
                     SyncLosToDatabase(courseCode, extractedLOs);
-
-                    TempData["Success"] = $"Course outline uploaded successfully! {extractedLOs.Count} Learning Outcomes auto-extracted.";
+                    TempData["Success"] = $"Course outline uploaded! {extractedLOs.Count} Learning Outcomes auto-extracted.";
                 }
                 else
                 {
-                    TempData["Success"] = "Course outline uploaded successfully! (No Learning Outcomes found in PDF)";
+                    TempData["Success"] = "Course outline uploaded! (No Learning Outcomes found — add them manually)";
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                // PDF uploaded but extraction failed - that's OK
-                TempData["Success"] = "Course outline uploaded successfully! (Could not auto-extract Learning Outcomes)";
+                TempData["Success"] = "Course outline uploaded!";
             }
 
             return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
@@ -211,7 +231,7 @@ namespace LOARS.Web.Controllers
         {
             SetCourseContext(courseCode, year, trimester);
 
-            ViewBag.CanEditLO = AllowLOEdit(courseCode);
+            ViewBag.CanEditLO = AllowLOEdit(courseCode, year, trimester);
 
             var los = LoadLos(courseCode, year, trimester);
 
@@ -227,7 +247,7 @@ namespace LOARS.Web.Controllers
         {
             SetCourseContext(courseCode, year, trimester);
 
-            ViewBag.CanEditLO = AllowLOEdit(courseCode);
+            ViewBag.CanEditLO = AllowLOEdit(courseCode, year, trimester);
 
             var los = LoadLos(courseCode, year, trimester);
             ViewBag.LearningOutcomes = los;
@@ -244,7 +264,7 @@ namespace LOARS.Web.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult SaveLearningOutcomes(string courseCode, int year, int trimester, List<string> outcomes)
         {
-            if (!AllowLOEdit(courseCode))
+            if (!AllowLOEdit(courseCode, year, trimester))
                 return Forbid();
 
             var cleaned = (outcomes ?? new List<string>())
@@ -271,12 +291,16 @@ namespace LOARS.Web.Controllers
             ViewBag.Year = year;
             ViewBag.Trimester = trimester;
 
-            var course = FakeTeachingData.GetCourses(year, trimester)
-                .FirstOrDefault(c => c.Code == courseCode);
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
 
             ViewBag.CourseTitle = course?.Title ?? "";
         }
 
+        private static string GetOutlineBaseName(string courseCode, int year, int trimester)
+            => $"{courseCode}-{year}-T{trimester}";
+
+        // Keep for backwards compatibility with any existing .pdf files
         private static string GetOutlineFileName(string courseCode, int year, int trimester)
             => $"{courseCode}-{year}-T{trimester}.pdf";
 

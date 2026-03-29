@@ -1,5 +1,6 @@
 ﻿using AIS_LO_System.Models;
 using AIS_LO_System.Data;
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -16,16 +17,14 @@ namespace AIS_LO_System.Controllers
 
         [HttpGet]
         public IActionResult Index(
-    string assessmentName,
-    string courseCode,
-    string courseTitle,
-    int year,
-    int trimester)
+            string assessmentName,
+            string courseCode,
+            string courseTitle,
+            int year,
+            int trimester)
         {
-            // Check if assessmentName is provided
             if (string.IsNullOrEmpty(assessmentName))
             {
-                // Return to course dashboard or show error
                 TempData["Error"] = "Assessment name is required.";
                 return RedirectToAction("Index", "CourseDashboard", new { courseCode, year, trimester });
             }
@@ -46,12 +45,10 @@ namespace AIS_LO_System.Controllers
                     Year = year,
                     Trimester = trimester
                 };
-
-
                 _context.Assignments.Add(assignment);
                 _context.SaveChanges();
             }
-            //  VIEWBAG VALUES:
+
             ViewBag.AssessmentName = assignment.AssessmentName;
             ViewBag.CourseCode = assignment.CourseCode;
             ViewBag.CourseTitle = assignment.CourseTitle;
@@ -61,17 +58,6 @@ namespace AIS_LO_System.Controllers
             return View(assignment);
         }
 
-        private string GetTrimesterDateRange(int year, int trimester)
-        {
-            return trimester switch
-            {
-                1 => $"February – April {year}",
-                2 => $"July – September {year}",
-                3 => $"November – February {year + 1}",
-                _ => year.ToString()
-            };
-        }
-
         [HttpGet]
         public IActionResult Information(int id)
         {
@@ -79,10 +65,8 @@ namespace AIS_LO_System.Controllers
                 .Include(a => a.Files)
                 .FirstOrDefault(a => a.Id == id);
 
-            if (assignment == null)
-                return NotFound();
+            if (assignment == null) return NotFound();
 
-            // Pass ViewBag data for breadcrumb
             ViewBag.CourseCode = assignment.CourseCode;
             ViewBag.CourseTitle = assignment.CourseTitle;
             ViewBag.Year = assignment.Year;
@@ -98,36 +82,29 @@ namespace AIS_LO_System.Controllers
             if (file == null || file.Length == 0)
                 return RedirectToAction("Information", new { id = assignmentId });
 
-            // Only PDF
-            if (Path.GetExtension(file.FileName).ToLower() != ".pdf")
+            if (!DocumentService.IsAllowed(file.FileName))
             {
-                TempData["Error"] = "Only PDF files are allowed.";
+                TempData["Error"] = "Only PDF and Word documents (.docx) are allowed.";
                 return RedirectToAction("Information", new { id = assignmentId });
             }
 
-            var assignment = _context.Assignments
-                .FirstOrDefault(a => a.Id == assignmentId);
-
-            if (assignment == null)
-                return NotFound();
+            var assignment = _context.Assignments.FirstOrDefault(a => a.Id == assignmentId);
+            if (assignment == null) return NotFound();
 
             var latestVersion = _context.AssignmentFiles
                 .Where(f => f.AssignmentId == assignment.Id)
                 .OrderByDescending(f => f.VersionNumber)
                 .FirstOrDefault()?.VersionNumber ?? 0;
 
-            var folder = Path.Combine(Directory.GetCurrentDirectory(),
-                                      "wwwroot", "uploads", "assignments");
-
+            var folder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "assignments");
             Directory.CreateDirectory(folder);
 
-            var storedName = Guid.NewGuid() + ".pdf";
-            var path = Path.Combine(folder, storedName);
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var storedName = Guid.NewGuid() + ext;
+            var savedPath = Path.Combine(folder, storedName);
 
-            using (var stream = new FileStream(path, FileMode.Create))
-            {
+            using (var stream = new FileStream(savedPath, FileMode.Create))
                 await file.CopyToAsync(stream);
-            }
 
             _context.AssignmentFiles.Add(new AssignmentFile
             {
@@ -140,6 +117,10 @@ namespace AIS_LO_System.Controllers
             });
 
             await _context.SaveChangesAsync();
+
+            TempData["Success"] = DocumentService.IsWordDocument(file.FileName)
+                ? "Word document uploaded and converted to PDF successfully."
+                : "PDF uploaded successfully.";
 
             return RedirectToAction("Information", new { id = assignment.Id });
         }
