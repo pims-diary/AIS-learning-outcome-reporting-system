@@ -1,0 +1,421 @@
+﻿@model AIS_LO_System.Models.MarkStudents.LOAchievementReportViewModel
+
+@{
+    ViewData["Title"] = "LO Achievement Report";
+}
+
+<div class="container mt-4 lo-report-page">
+
+    <div class="breadcrumb mb-3 small">
+        <a class="crumb-link"
+           asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
+            @Model.CourseCode @Model.CourseTitle
+        </a>
+        <span>/</span>
+
+        <a class="crumb-link"
+           asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
+            Assessments
+        </a>
+        <span>/</span>
+
+        <a class="crumb-link"
+           asp-controller="MarkStudents"
+           asp-action="Index"
+           asp-route-assignmentId="@Model.AssignmentId"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
+            Mark Students
+        </a>
+        <span>/</span>
+        <span>LO Achievement Report</span>
+    </div>
+
+    <div class="report-card">
+        <div class="report-header d-flex justify-content-between align-items-start mb-3">
+            <h2 class="report-title">LO Achievement Report for <em>@Model.StudentName</em></h2>
+
+            <a asp-controller="MarkStudents"
+               asp-action="MarkStudent"
+               asp-route-studentId="@Model.StudentInternalId"
+               asp-route-assignmentId="@Model.AssignmentId"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               class="back-link">
+                ← Go Back
+            </a>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="chart-box">
+                    <div class="y-axis-label top">100</div>
+                    <div class="chart-grid">
+                        <div class="grid-line line-80"></div>
+                        <div class="grid-line line-60"></div>
+                        <div class="grid-line line-40"></div>
+                        <div class="grid-line line-20"></div>
+
+                        <div class="bars-wrap">
+                            @foreach (var lo in Model.LearningOutcomes)
+                            {
+                                var barClass = lo.Status == "Achieved"
+                                ? "bar-achieved"
+                                : lo.Status == "Partially Achieved"
+                                ? "bar-partial"
+                                : "bar-not-achieved";
+
+                                <div class="bar-item">
+                                    <div class="bar-percent">@lo.Percentage.ToString("0.##")%</div>
+                                    <div class="bar @barClass" style="height:@lo.Percentage%;"></div>
+                                    <div class="bar-label">@lo.Label</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="summary-panel">
+                    <p><strong>Individual Assignment</strong></p>
+                    <p><strong>Assessment Weight:</strong> @Model.AssessmentWeight.ToString("0")%</p>
+                    <p><strong>Overall LO Status:</strong></p>
+                    <p class="summary-highlight">@Model.OverallStatusText</p>
+
+                    <div class="legend mt-3">
+                        <div class="legend-item">
+                            <span class="legend-box achieved-box"></span> Achieved
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-box partial-box"></span> Partially Achieved
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-box not-box"></span> Not Achieved
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 class="section-title">Learning Outcome Insights</h3>
+
+        @foreach (var lo in Model.LearningOutcomes)
+        {
+            <div class="lo-insight-block mb-4">
+                <p class="mb-1"><strong>@lo.Label: @lo.Percentage.ToString("0.##")% Achieved</strong></p>
+
+                @if (!lo.Insights.Any())
+                {
+                    <p class="text-muted fst-italic ms-3 mb-0">No significant weaknesses identified.</p>
+                }
+                else
+                {
+                    @if (lo.Status == "Not Achieved")
+                    {
+                        <p class="ms-3 mb-2">Low achievement in @lo.Label is mainly due to:</p>
+                    }
+                    else if (lo.Status == "Partially Achieved")
+                    {
+                        <p class="ms-3 mb-2">Partial achievement in @lo.Label is mainly due to:</p>
+                    }
+
+                    @foreach (var insight in lo.Insights)
+                    {
+                        <div class="ms-4 mb-2">
+                            <div><strong>@insight.CriterionTitle</strong></div>
+                            <div class="ms-3">
+                                • Rubric Score:
+                                <span class="insight-score">@insight.RubricScore (@insight.RubricLabel)</span>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        }
+
+        <h3 class="section-title mt-4">LO Achievement Results</h3>
+
+        @if (Model.LearningOutcomes.Any())
+        {
+            <table class="table table-bordered align-middle lo-table">
+                <thead>
+                    <tr>
+                        <th>LO</th>
+                        <th>Learning Outcome</th>
+                        <th>Achieved Score</th>
+                        <th>Max Score</th>
+                        <th>Percentage</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var lo in Model.LearningOutcomes)
+                    {
+                        var statusClass = lo.Status == "Achieved"
+                        ? "status-achieved"
+                        : lo.Status == "Partially Achieved"
+                        ? "status-partial"
+                        : "status-not-achieved";
+
+                        <tr>
+                            <td>@lo.Label</td>
+                            <td>@lo.LearningOutcomeText</td>
+                            <td>@lo.AchievedScore.ToString("0.00")</td>
+                            <td>@lo.MaxScore.ToString("0.00")</td>
+                            <td>@lo.Percentage.ToString("0.##")%</td>
+                            <td><span class="status-pill @statusClass">@lo.Status</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p class="text-muted">No learning outcomes found for this course.</p>
+        }
+
+        <div class="report-actions mt-4">
+            <button type="button" class="btn report-btn">Download PDF</button>
+
+            <a asp-controller="MarkStudents"
+               asp-action="MarkStudent"
+               asp-route-studentId="@Model.StudentInternalId"
+               asp-route-assignmentId="@Model.AssignmentId"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               class="btn report-btn">
+                Cancel
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .lo-report-page {
+        max-width: 1000px;
+    }
+
+    .report-card {
+        background: #fff;
+        border: 1px solid #e5e5e5;
+        border-radius: 8px;
+        padding: 28px;
+    }
+
+    .report-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .back-link {
+        color: #111;
+        text-decoration: underline;
+        font-weight: 600;
+    }
+
+    .chart-box {
+        position: relative;
+        padding-left: 28px;
+        padding-top: 18px;
+    }
+
+    .y-axis-label.top {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-size: 0.85rem;
+        color: #c62828;
+        font-weight: 700;
+    }
+
+    .chart-grid {
+        position: relative;
+        height: 260px;
+        border-left: 2px solid #555;
+        border-bottom: 2px solid #555;
+        margin-top: 10px;
+    }
+
+    .grid-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px solid #bbb;
+    }
+
+    .line-80 {
+        top: 20%;
+    }
+
+    .line-60 {
+        top: 40%;
+    }
+
+    .line-40 {
+        top: 60%;
+    }
+
+    .line-20 {
+        top: 80%;
+    }
+
+    .bars-wrap {
+        position: absolute;
+        left: 20px;
+        right: 20px;
+        bottom: 0;
+        top: 0;
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-end;
+        padding-bottom: 30px;
+    }
+
+    .bar-item {
+        width: 60px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .bar {
+        width: 36px;
+        min-height: 2px;
+        border: 1px solid #555;
+    }
+
+    .bar-percent {
+        font-size: 0.85rem;
+        color: #c62828;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .bar-label {
+        margin-top: 8px;
+        font-size: 0.85rem;
+        color: #c62828;
+        font-weight: 600;
+    }
+
+    .bar-achieved {
+        background: #7fc62d;
+    }
+
+    .bar-partial {
+        background: #e5ef00;
+    }
+
+    .bar-not-achieved {
+        background: #ff3d3d;
+    }
+
+    .summary-panel {
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .summary-highlight {
+        color: #b32017;
+        font-weight: 700;
+    }
+
+    .legend-item {
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+    }
+
+    .legend-box {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 8px;
+    }
+
+    .achieved-box {
+        background: #2dbb4f;
+    }
+
+    .partial-box {
+        background: #e5ef00;
+    }
+
+    .not-box {
+        background: #ff3d3d;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 18px;
+    }
+
+    .insight-score {
+        color: #d32f2f;
+        font-weight: 600;
+    }
+
+    .status-pill {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .status-achieved {
+        background-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-partial {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-not-achieved {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    .report-actions {
+        display: flex;
+        justify-content: center;
+        gap: 18px;
+    }
+
+    .report-btn {
+        min-width: 120px;
+        background: #b32017;
+        color: #fff;
+        border: none;
+    }
+
+        .report-btn:hover {
+            background: #8f1a12;
+            color: #fff;
+        }
+</style>
