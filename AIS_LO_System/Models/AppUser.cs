@@ -21,6 +21,12 @@ namespace AIS_LO_System.Models
         [Required]
         public UserRole Role { get; set; }
 
+        [StringLength(150)]
+        public string? Email { get; set; }
+
+        /// <summary>Manually toggled by Admin. Inactive users cannot log in.</summary>
+        public bool IsActive { get; set; } = true;
+
         public ICollection<LecturerCourseEnrolment> CourseEnrolments { get; set; } = new List<LecturerCourseEnrolment>();
     }
 }

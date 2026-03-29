@@ -31,8 +31,13 @@ namespace AIS_LO_System.Controllers
         // =============================================
         // COURSES
         // =============================================
-        public async Task<IActionResult> Courses(string? search, string? trimester)
+        public async Task<IActionResult> Courses(string? search, string? trimester, string? status)
         {
+            var now = DateTime.Now;
+            // Determine current trimester from month: T1=Jan-Apr, T2=May-Aug, T3=Sep-Dec
+            int currentYear = now.Year;
+            int currentTrimester = now.Month <= 4 ? 1 : now.Month <= 8 ? 2 : 3;
+
             var query = _context.Courses
                 .Include(c => c.Lecturer)
                 .Include(c => c.Moderator)
@@ -47,6 +52,16 @@ namespace AIS_LO_System.Controllers
                 if (parts.Length == 2 && int.TryParse(parts[0], out int yr) && int.TryParse(parts[1], out int tri))
                     query = query.Where(c => c.Year == yr && c.Trimester == tri);
             }
+
+            // Active = current year AND current trimester
+            if (status == "active")
+                query = query.Where(c => c.Year == currentYear && c.Trimester == currentTrimester);
+            else if (status == "inactive")
+                query = query.Where(c => !(c.Year == currentYear && c.Trimester == currentTrimester));
+
+            ViewBag.Status = status ?? "all";
+            ViewBag.CurrentYear = currentYear;
+            ViewBag.CurrentTrimester = currentTrimester;
 
             ViewBag.Lecturers = await _context.AppUsers.Where(u => u.Role == UserRole.Lecturer).ToListAsync();
             ViewBag.Moderators = await _context.AppUsers.Where(u => u.Role == UserRole.Moderator).ToListAsync();
@@ -124,8 +139,10 @@ namespace AIS_LO_System.Controllers
         // =============================================
         // STUDENTS
         // =============================================
-        public async Task<IActionResult> Students(string? search, int? courseId)
+        public async Task<IActionResult> Students(string? search, int? courseId, string? status)
         {
+            int currentYear = DateTime.Now.Year;
+
             var query = _context.Students
                 .Include(s => s.CourseEnrolments)
                     .ThenInclude(e => e.Course)
@@ -136,6 +153,15 @@ namespace AIS_LO_System.Controllers
 
             if (courseId.HasValue)
                 query = query.Where(s => s.CourseEnrolments.Any(e => e.CourseId == courseId));
+
+            // Active = enrolled in at least one course in the current year
+            if (status == "active")
+                query = query.Where(s => s.CourseEnrolments.Any(e => e.Course.Year == currentYear));
+            else if (status == "inactive")
+                query = query.Where(s => !s.CourseEnrolments.Any(e => e.Course.Year == currentYear));
+
+            ViewBag.Status = status ?? "all";
+            ViewBag.CurrentYear = currentYear;
 
             ViewBag.Courses = await _context.Courses
                 .OrderByDescending(c => c.Year).ThenBy(c => c.Trimester).ThenBy(c => c.Code)
@@ -227,7 +253,7 @@ namespace AIS_LO_System.Controllers
         // =============================================
         // USERS
         // =============================================
-        public async Task<IActionResult> Users(string? search, string? role)
+        public async Task<IActionResult> Users(string? search, string? role, string? status)
         {
             var query = _context.AppUsers.AsQueryable();
 
@@ -236,6 +262,12 @@ namespace AIS_LO_System.Controllers
 
             if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, out var roleEnum))
                 query = query.Where(u => u.Role == roleEnum);
+
+            // Active/Inactive filter (manual IsActive toggle)
+            if (status == "active") query = query.Where(u => u.IsActive);
+            if (status == "inactive") query = query.Where(u => !u.IsActive);
+
+            ViewBag.Status = status ?? "all";
 
             ViewBag.Courses = await _context.Courses
                 .OrderByDescending(c => c.Year).ThenBy(c => c.Code).ToListAsync();
@@ -246,7 +278,7 @@ namespace AIS_LO_System.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddUser(string fullName, string username,
-            string password, UserRole role, List<int> courseIds)
+            string? email, string password, UserRole role, List<int> courseIds)
         {
             if (string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(username) ||
                 string.IsNullOrWhiteSpace(password))
@@ -265,6 +297,7 @@ namespace AIS_LO_System.Controllers
             {
                 FullName = fullName.Trim(),
                 Username = username.Trim().ToLower(),
+                Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLower(),
                 PasswordHash = BC.HashPassword(password),
                 Role = role
             };
@@ -333,8 +366,29 @@ namespace AIS_LO_System.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleUserActive(int id)
+        {
+            var user = await _context.AppUsers.FindAsync(id);
+            if (user == null) return NotFound();
+
+            // Prevent deactivating the last active admin
+            if (user.Role == UserRole.Admin && user.IsActive &&
+                await _context.AppUsers.CountAsync(u => u.Role == UserRole.Admin && u.IsActive) <= 1)
+            {
+                TempData["Error"] = "Cannot deactivate the last active admin account.";
+                return RedirectToAction(nameof(Users));
+            }
+
+            user.IsActive = !user.IsActive;
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"{user.FullName} has been marked as {(user.IsActive ? "Active" : "Inactive")}.";
+            return RedirectToAction(nameof(Users));
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditUser(int id, string fullName, UserRole role,
-            string? newPassword, List<int> courseIds)
+            string? email, string? newPassword, List<int> courseIds)
         {
             var user = await _context.AppUsers.FindAsync(id);
             if (user == null) return NotFound();
@@ -349,6 +403,7 @@ namespace AIS_LO_System.Controllers
 
             user.FullName = fullName.Trim();
             user.Role = role;
+            user.Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLower();
 
             if (!string.IsNullOrWhiteSpace(newPassword))
                 user.PasswordHash = BC.HashPassword(newPassword);

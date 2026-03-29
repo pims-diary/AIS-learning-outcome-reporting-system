@@ -53,6 +53,12 @@ namespace LOARS.Web.Controllers
                 return View(model);
             }
 
+            if (!user!.IsActive)
+            {
+                TempData["Error"] = "Your account has been deactivated. Please contact an administrator.";
+                return View(model);
+            }
+
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, user!.Username),
