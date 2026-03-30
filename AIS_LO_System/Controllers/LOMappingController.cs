@@ -96,13 +96,23 @@ namespace AIS_LO_System.Controllers
                 selectedLOIds = learningOutcomes.Select(lo => lo.Id).ToList();
             }
 
+            // If LOs are locked by course outline, only show allowed LOs
+            bool losLocked = assignment?.LOsLockedByOutline ?? false;
+            if (losLocked && selectedLOIds.Any())
+            {
+                learningOutcomes = learningOutcomes
+                    .Where(lo => selectedLOIds.Contains(lo.Id))
+                    .ToList();
+            }
+
             // Create view model
             var viewModel = new LOMappingViewModel
             {
                 Rubric = rubric,
                 LearningOutcomes = learningOutcomes,
                 AssignmentId = assignmentId,
-                SelectedLOIds = selectedLOIds
+                SelectedLOIds = selectedLOIds,
+                LOsLockedByOutline = losLocked
             };
 
             return View(viewModel);
@@ -131,14 +141,17 @@ namespace AIS_LO_System.Controllers
 
                 if (assignment != null)
                 {
-                    // Save selected LO IDs
-                    if (selectedLOIds != null && selectedLOIds.Any())
+                    // Only update selected LOs if not locked by course outline
+                    if (!assignment.LOsLockedByOutline)
                     {
-                        assignment.SelectedLearningOutcomeIds = string.Join(",", selectedLOIds);
-                    }
-                    else
-                    {
-                        assignment.SelectedLearningOutcomeIds = null;
+                        if (selectedLOIds != null && selectedLOIds.Any())
+                        {
+                            assignment.SelectedLearningOutcomeIds = string.Join(",", selectedLOIds);
+                        }
+                        else
+                        {
+                            assignment.SelectedLearningOutcomeIds = null;
+                        }
                     }
                 }
 
@@ -226,6 +239,7 @@ namespace AIS_LO_System.Controllers
         public List<LearningOutcome> LearningOutcomes { get; set; }
         public int AssignmentId { get; set; }
         public List<int> SelectedLOIds { get; set; } = new();
+        public bool LOsLockedByOutline { get; set; }
     }
 
     public class MappingInput

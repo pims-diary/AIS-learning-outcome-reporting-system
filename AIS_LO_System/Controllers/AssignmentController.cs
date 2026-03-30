@@ -73,6 +73,67 @@ namespace AIS_LO_System.Controllers
             ViewBag.Trimester = assignment.Trimester;
             ViewBag.AssessmentName = assignment.AssessmentName;
 
+            // Cross-check LOs if there's an uploaded file
+            var latest = assignment.Files?
+                .OrderByDescending(f => f.VersionNumber)
+                .FirstOrDefault();
+
+            if (latest != null)
+            {
+                try
+                {
+                    var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", latest.FilePath.TrimStart('/'));
+
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        // Extract LOs from the assignment document
+                        var assignmentLOs = DocumentService.ExtractLOsFromAssignmentDoc(filePath);
+
+                        if (assignmentLOs.Any())
+                        {
+                            // Get course outline LOs
+                            var outlineLOs = _context.LearningOutcomes
+                                .Where(lo => lo.CourseCode == assignment.CourseCode)
+                                .OrderBy(lo => lo.OrderNumber)
+                                .Select(lo => new { lo.OrderNumber, lo.LearningOutcomeText })
+                                .ToList()
+                                .Select(lo => (lo.OrderNumber, lo.LearningOutcomeText))
+                                .ToList();
+
+                            // Get allowed LO numbers for this assessment
+                            var allowedLOIds = new List<int>();
+                            if (!string.IsNullOrEmpty(assignment.SelectedLearningOutcomeIds))
+                            {
+                                allowedLOIds = assignment.SelectedLearningOutcomeIds
+                                    .Split(',')
+                                    .Where(s => int.TryParse(s, out _))
+                                    .Select(int.Parse)
+                                    .ToList();
+                            }
+
+                            // Convert IDs to order numbers
+                            var allowedLONumbers = _context.LearningOutcomes
+                                .Where(lo => allowedLOIds.Contains(lo.Id))
+                                .Select(lo => lo.OrderNumber)
+                                .ToList();
+
+                            // If no specific LOs set, use all
+                            if (!allowedLONumbers.Any())
+                                allowedLONumbers = outlineLOs.Select(lo => lo.OrderNumber).ToList();
+
+                            var crossCheck = DocumentService.CrossCheckLOs(assignmentLOs, outlineLOs, allowedLONumbers);
+                            ViewBag.CrossCheck = crossCheck;
+                            ViewBag.AssignmentLOsFound = true;
+                        }
+                        else
+                        {
+                            ViewBag.AssignmentLOsFound = false;
+                        }
+                    }
+                }
+                catch { }
+            }
+
             return View(assignment);
         }
 
