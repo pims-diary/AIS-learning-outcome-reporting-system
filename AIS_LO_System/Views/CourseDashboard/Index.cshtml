@@ -49,14 +49,16 @@
             <a asp-controller="CourseInformation" asp-action="Outline"
                asp-route-courseCode="@ViewBag.CourseCode"
                asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">Course Outline
-           </a>
+               asp-route-trimester="@ViewBag.Trimester">
+                Course Outline
+            </a>
 
             <a asp-controller="CourseInformation" asp-action="LearningOutcomes"
                asp-route-courseCode="@ViewBag.CourseCode"
                asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">Learning Outcomes
-           </a>
+               asp-route-trimester="@ViewBag.Trimester">
+                Learning Outcomes
+            </a>
 
         </div>
 
@@ -74,35 +76,62 @@
         </div>
 
         <div class="accordion-body">
-            <a asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="Assignment 1"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
-                Assignment 1
-            </a>
+            @{
+                var assessments = ViewBag.Assessments as List<AIS_LO_System.Models.Assignment>
+                ?? new List<AIS_LO_System.Models.Assignment>();
+            }
 
-            <a asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="Assignment 2"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
-                Assignment 2
-            </a>
+            @if (assessments.Any())
+            {
+                @foreach (var assess in assessments)
+                {
+                    <a asp-controller="Assignment"
+                       asp-action="Index"
+                       asp-route-assessmentName="@assess.AssessmentName"
+                       asp-route-courseCode="@ViewBag.CourseCode"
+                       asp-route-courseTitle="@ViewBag.CourseTitle"
+                       asp-route-year="@ViewBag.Year"
+                       asp-route-trimester="@ViewBag.Trimester">
+                        @assess.AssessmentName
+                        @if (assess.MarksPercentage > 0)
+                        {
+                            <span style="color:#888; font-size:0.85em;">(@assess.MarksPercentage%)</span>
+                        }
+                    </a>
+                }
+            }
+            else
+            {
+                <a asp-controller="Assignment"
+                   asp-action="Index"
+                   asp-route-assessmentName="Assignment 1"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-courseTitle="@ViewBag.CourseTitle"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
+                    Assignment 1
+                </a>
 
-            <a asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="Midterm"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
-                Midterm
-            </a>
+                <a asp-controller="Assignment"
+                   asp-action="Index"
+                   asp-route-assessmentName="Assignment 2"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-courseTitle="@ViewBag.CourseTitle"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
+                    Assignment 2
+                </a>
+
+                <a asp-controller="Assignment"
+                   asp-action="Index"
+                   asp-route-assessmentName="Midterm"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-courseTitle="@ViewBag.CourseTitle"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
+                    Midterm
+                </a>
+            }
         </div>
     </div>
 

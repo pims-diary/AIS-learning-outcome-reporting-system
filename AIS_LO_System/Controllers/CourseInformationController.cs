@@ -115,12 +115,25 @@ namespace LOARS.Web.Controllers
                 {
                     SaveLos(courseCode, year, trimester, extractedLOs);
                     SyncLosToDatabase(courseCode, extractedLOs);
-                    TempData["Success"] = $"Course outline uploaded! {extractedLOs.Count} Learning Outcomes auto-extracted.";
                 }
-                else
+
+                // Extract Assessments from the course outline table
+                var extractedAssessments = DocumentService.ExtractAssessments(savedPath);
+                if (extractedAssessments.Any())
                 {
-                    TempData["Success"] = "Course outline uploaded! (No Learning Outcomes found — add them manually)";
+                    SyncAssessmentsToDatabase(courseCode, year, trimester, extractedAssessments);
                 }
+
+                // Build success message
+                var parts = new List<string> { "Course outline uploaded!" };
+                if (extractedLOs.Any())
+                    parts.Add($"{extractedLOs.Count} Learning Outcomes auto-extracted.");
+                if (extractedAssessments.Any())
+                    parts.Add($"{extractedAssessments.Count} Assessment(s) auto-extracted.");
+                if (!extractedLOs.Any() && !extractedAssessments.Any())
+                    parts.Add("(No Learning Outcomes or Assessments found — add them manually)");
+
+                TempData["Success"] = string.Join(" ", parts);
             }
             catch
             {
@@ -365,6 +378,62 @@ namespace LOARS.Web.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"Error syncing LOs to database: {ex.Message}");
+            }
+        }
+
+        // Sync extracted assessments to database
+        private void SyncAssessmentsToDatabase(string courseCode, int year, int trimester,
+            List<AssessmentInfo> assessments)
+        {
+            try
+            {
+                var course = _context.Courses
+                    .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+                var courseTitle = course?.Title ?? "";
+
+                // Remove old assignments for this course (e.g. hardcoded "Assignment 1", "Assignment 2")
+                var oldAssignments = _context.Assignments
+                    .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                    .ToList();
+                _context.Assignments.RemoveRange(oldAssignments);
+                _context.SaveChanges();
+
+                // Get existing LOs to map order numbers to IDs
+                var courseLOs = _context.LearningOutcomes
+                    .Where(lo => lo.CourseCode == courseCode)
+                    .ToList();
+
+                foreach (var assess in assessments)
+                {
+                    // Map LO order numbers to database IDs
+                    var loIds = new List<int>();
+                    foreach (var loNum in assess.LONumbers)
+                    {
+                        var lo = courseLOs.FirstOrDefault(l => l.OrderNumber == loNum);
+                        if (lo != null) loIds.Add(lo.Id);
+                    }
+
+                    var selectedLOIds = loIds.Any() ? string.Join(",", loIds) : null;
+
+                    _context.Assignments.Add(new Assignment
+                    {
+                        AssessmentName = assess.Title,
+                        CourseCode = courseCode,
+                        CourseTitle = courseTitle,
+                        Year = year,
+                        Trimester = trimester,
+                        MarksPercentage = assess.MarksPercentage,
+                        SelectedLearningOutcomeIds = selectedLOIds,
+                        LOsLockedByOutline = true
+                    });
+                }
+
+                _context.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error syncing assessments to database: {ex.Message}");
             }
         }
     }

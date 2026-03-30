@@ -33,6 +33,19 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
 
+    // One-time fix: add columns if migration recorded but columns missing
+    try
+    {
+        db.Database.ExecuteSqlRaw(@"
+            IF COL_LENGTH('Assignments','MarksPercentage') IS NULL
+            BEGIN
+                ALTER TABLE [Assignments] ADD [MarksPercentage] int NOT NULL DEFAULT 0;
+                ALTER TABLE [Assignments] ADD [LOsLockedByOutline] bit NOT NULL DEFAULT 0;
+            END
+        ");
+    }
+    catch { }
+
     var admin = db.AppUsers.FirstOrDefault(u => u.Username == "admin");
     if (admin == null)
     {

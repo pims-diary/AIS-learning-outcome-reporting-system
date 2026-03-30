@@ -1,4 +1,5 @@
 ﻿using AIS_LO_System.Data;
+using AIS_LO_System.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,14 @@ namespace LOARS.Web.Controllers
             ViewBag.Year = year;
             ViewBag.Trimester = trimester;
             ViewBag.DateRange = GetTrimesterDateRange(year, trimester);
+
+            // Load assessments from database (extracted from course outline)
+            var assessments = await _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .OrderBy(a => a.Id)
+                .ToListAsync();
+
+            ViewBag.Assessments = assessments;
 
             return View();
         }

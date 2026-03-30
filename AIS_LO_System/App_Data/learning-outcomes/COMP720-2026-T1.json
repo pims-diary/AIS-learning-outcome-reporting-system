@@ -1,8 +1,8 @@
 [
-  "Perform a proper analysis and design of a given business case study for implementation in Microsoft .NET Technology.",
-  "Design and develop the presentation layer for the web application using: ASP.Net, HTML5, CSS and Java-script.",
-  "Implement JQuery and AJAX in the presentation layer using ASP.Net technology.",
-  "Develop data access layer (DAL) and Business logic layer (BLL) and then construct web applications with web service component to access either business logic layer (BLL) or Data access layer (DAL) of given business case study.",
-  "Configure \u0026 deploy web applications on a web-server. Configure IIS Server.",
-  "Develop workplace soft-skills including working in groups, writing formal reports, carrying out individual research and/or delivering oral presentations."
+  "Analyse client requirements using current analysis techniques.",
+  "Identify and relate whenever required appropriate project control techniques in an industry environment.",
+  "Produce a comprehensive project plan for an industrial IT project; apply the principles of task management, resource management, risk management, project tracking, and project tools in industry environment.",
+  "Implement the industrial IT project following the appropriate project management framework and System Development Life Cycle",
+  "Produce all relevant documentation.",
+  "Develop both IT and workplace soft-skills, including working in groups, writing formal reports, carrying out individual research and/or delivering oral presentations."
 ]
