@@ -102,6 +102,15 @@
                                         onclick="openEditUser(this)">
                                     Edit
                                 </button>
+                                @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
+                                {
+                                    <form asp-action="LoginAs" method="post" style="display:inline"
+                                          onsubmit="return confirm('Log in as @u.FullName? You will be in view-only mode.')">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@u.Id" />
+                                        <button type="submit" class="btn-admin-loginas">View as</button>
+                                    </form>
+                                }
                                 <form asp-action="ToggleUserActive" method="post" style="display:inline">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@u.Id" />

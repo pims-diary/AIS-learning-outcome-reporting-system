@@ -1,5 +1,7 @@
 ﻿using AIS_LO_System.Data;
 using AIS_LO_System.Models;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -82,7 +84,7 @@ namespace AIS_LO_System.Controllers
             if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(title))
             {
                 TempData["Error"] = "Course code and title are required.";
-                return RedirectToAction(nameof(Courses));
+                return RedirectToAction(nameof(Courses), "Admin");
             }
 
             var course = new Course
@@ -101,7 +103,7 @@ namespace AIS_LO_System.Controllers
             _context.Courses.Add(course);
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Course {course.Code} added.";
-            return RedirectToAction(nameof(Courses));
+            return RedirectToAction(nameof(Courses), "Admin");
         }
 
         [HttpPost]
@@ -119,7 +121,7 @@ namespace AIS_LO_System.Controllers
 
             await _context.SaveChangesAsync();
             TempData["Success"] = "Course updated.";
-            return RedirectToAction(nameof(Courses));
+            return RedirectToAction(nameof(Courses), "Admin");
         }
 
         [HttpPost]
@@ -133,7 +135,7 @@ namespace AIS_LO_System.Controllers
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Course removed.";
             }
-            return RedirectToAction(nameof(Courses));
+            return RedirectToAction(nameof(Courses), "Admin");
         }
 
         // =============================================
@@ -178,14 +180,14 @@ namespace AIS_LO_System.Controllers
             if (string.IsNullOrWhiteSpace(studentId) || string.IsNullOrWhiteSpace(fullName))
             {
                 TempData["Error"] = "Student ID and full name are required.";
-                return RedirectToAction(nameof(Students));
+                return RedirectToAction(nameof(Students), "Admin");
             }
 
             var existing = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == studentId.Trim());
             if (existing != null)
             {
                 TempData["Error"] = $"Student ID {studentId} already exists.";
-                return RedirectToAction(nameof(Students));
+                return RedirectToAction(nameof(Students), "Admin");
             }
 
             var student = new Student { StudentId = studentId.Trim(), FullName = fullName.Trim() };
@@ -203,7 +205,7 @@ namespace AIS_LO_System.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = $"Student {fullName} added.";
-            return RedirectToAction(nameof(Students));
+            return RedirectToAction(nameof(Students), "Admin");
         }
 
         [HttpPost]
@@ -217,7 +219,7 @@ namespace AIS_LO_System.Controllers
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Student removed.";
             }
-            return RedirectToAction(nameof(Students));
+            return RedirectToAction(nameof(Students), "Admin");
         }
 
         [HttpPost]
@@ -247,7 +249,7 @@ namespace AIS_LO_System.Controllers
 
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Student {fullName} updated.";
-            return RedirectToAction(nameof(Students));
+            return RedirectToAction(nameof(Students), "Admin");
         }
 
         // =============================================
@@ -284,13 +286,13 @@ namespace AIS_LO_System.Controllers
                 string.IsNullOrWhiteSpace(password))
             {
                 TempData["Error"] = "Full name, username, and password are required.";
-                return RedirectToAction(nameof(Users));
+                return RedirectToAction(nameof(Users), "Admin");
             }
 
             if (await _context.AppUsers.AnyAsync(u => u.Username == username.Trim()))
             {
                 TempData["Error"] = $"Username '{username}' is already taken.";
-                return RedirectToAction(nameof(Users));
+                return RedirectToAction(nameof(Users), "Admin");
             }
 
             var user = new AppUser
@@ -327,7 +329,7 @@ namespace AIS_LO_System.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = $"User {fullName} created.";
-            return RedirectToAction(nameof(Users));
+            return RedirectToAction(nameof(Users), "Admin");
         }
 
         [HttpPost]
@@ -341,7 +343,7 @@ namespace AIS_LO_System.Controllers
                     await _context.AppUsers.CountAsync(u => u.Role == UserRole.Admin) <= 1)
                 {
                     TempData["Error"] = "Cannot remove the last admin account.";
-                    return RedirectToAction(nameof(Users));
+                    return RedirectToAction(nameof(Users), "Admin");
                 }
 
                 // Clear FK references on Courses before deleting (NoAction constraint)
@@ -361,7 +363,7 @@ namespace AIS_LO_System.Controllers
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "User removed.";
             }
-            return RedirectToAction(nameof(Users));
+            return RedirectToAction(nameof(Users), "Admin");
         }
 
         [HttpPost]
@@ -376,13 +378,13 @@ namespace AIS_LO_System.Controllers
                 await _context.AppUsers.CountAsync(u => u.Role == UserRole.Admin && u.IsActive) <= 1)
             {
                 TempData["Error"] = "Cannot deactivate the last active admin account.";
-                return RedirectToAction(nameof(Users));
+                return RedirectToAction(nameof(Users), "Admin");
             }
 
             user.IsActive = !user.IsActive;
             await _context.SaveChangesAsync();
             TempData["Success"] = $"{user.FullName} has been marked as {(user.IsActive ? "Active" : "Inactive")}.";
-            return RedirectToAction(nameof(Users));
+            return RedirectToAction(nameof(Users), "Admin");
         }
 
         [HttpPost]
@@ -398,7 +400,7 @@ namespace AIS_LO_System.Controllers
                 await _context.AppUsers.CountAsync(u => u.Role == UserRole.Admin) <= 1)
             {
                 TempData["Error"] = "Cannot change the role of the last admin account.";
-                return RedirectToAction(nameof(Users));
+                return RedirectToAction(nameof(Users), "Admin");
             }
 
             user.FullName = fullName.Trim();
@@ -441,12 +443,77 @@ namespace AIS_LO_System.Controllers
 
             await _context.SaveChangesAsync();
             TempData["Success"] = $"User {fullName} updated.";
-            return RedirectToAction(nameof(Users));
+            return RedirectToAction(nameof(Users), "Admin");
         }
 
-        // =============================================
-        // PERMISSIONS
-        // =============================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> LoginAs(int id)
+        {
+            var target = await _context.AppUsers.FindAsync(id);
+            if (target == null || target.Role == UserRole.Admin)
+            {
+                TempData["Error"] = "Cannot impersonate this account.";
+                return RedirectToAction(nameof(Users), "Admin");
+            }
+
+            // Store the admin's username so we can restore the session later
+            var adminUsername = User.Identity!.Name!;
+
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new(System.Security.Claims.ClaimTypes.Name,      target.Username),
+                new(System.Security.Claims.ClaimTypes.GivenName, target.FullName),
+                new(System.Security.Claims.ClaimTypes.Role,      target.Role.ToString()),
+                new("UserId",          target.Id.ToString()),
+                new("ImpersonatedBy",  adminUsername)   // sentinel claim
+            };
+
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            TempData["Info"] = $"You are now viewing as {target.FullName}. This session is read-only.";
+
+            // Moderator dashboard not yet built — use lecturer dashboard for now
+            return RedirectToAction("Index", "LecturerDashboard");
+        }
+
+        // Callable from any layout — no [Authorize(Roles="Admin")] because the impersonated session isn't Admin
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> StopImpersonating()
+        {
+            var adminUsername = User.FindFirst("ImpersonatedBy")?.Value;
+            if (string.IsNullOrEmpty(adminUsername))
+                return RedirectToAction("Dashboard");
+
+            var admin = await _context.AppUsers.FirstOrDefaultAsync(u => u.Username == adminUsername);
+            if (admin == null)
+            {
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return RedirectToAction("Login", "Account");
+            }
+
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new(System.Security.Claims.ClaimTypes.Name,      admin.Username),
+                new(System.Security.Claims.ClaimTypes.GivenName, admin.FullName),
+                new(System.Security.Claims.ClaimTypes.Role,      admin.Role.ToString()),
+                new("UserId", admin.Id.ToString())
+                // No ImpersonatedBy — clean admin session
+            };
+
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            TempData["Success"] = $"Returned to admin session.";
+            return RedirectToAction("Users", "Admin");
+        }
         public async Task<IActionResult> Permissions()
         {
             var courses = await _context.Courses
@@ -481,7 +548,7 @@ namespace AIS_LO_System.Controllers
             if (file == null || file.Length == 0 || !file.FileName.EndsWith(".csv"))
             {
                 TempData["Error"] = "Please upload a valid .csv file.";
-                return RedirectToAction(nameof(Courses));
+                return RedirectToAction(nameof(Courses), "Admin");
             }
 
             var lecturers = await _context.AppUsers.Where(u => u.Role == UserRole.Lecturer).ToDictionaryAsync(u => u.Username, u => u.Id);
@@ -504,7 +571,7 @@ namespace AIS_LO_System.Controllers
             if (iCode < 0 || iTitle < 0 || iYear < 0 || iTri < 0)
             {
                 TempData["Error"] = "CSV missing required columns: CourseCode, CourseTitle, Year, Trimester.";
-                return RedirectToAction(nameof(Courses));
+                return RedirectToAction(nameof(Courses), "Admin");
             }
 
             while (!reader.EndOfStream)
@@ -560,7 +627,7 @@ namespace AIS_LO_System.Controllers
 
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Import complete: {added} added, {updated} updated, {skipped} skipped.";
-            return RedirectToAction(nameof(Courses));
+            return RedirectToAction(nameof(Courses), "Admin");
         }
 
         // =============================================
@@ -573,7 +640,7 @@ namespace AIS_LO_System.Controllers
             if (file == null || file.Length == 0 || !file.FileName.EndsWith(".csv"))
             {
                 TempData["Error"] = "Please upload a valid .csv file.";
-                return RedirectToAction(nameof(Students));
+                return RedirectToAction(nameof(Students), "Admin");
             }
 
             var courseMap = await _context.Courses.ToDictionaryAsync(c => c.Code, c => c.Id);
@@ -585,7 +652,7 @@ namespace AIS_LO_System.Controllers
                 .Select(e => $"{e.StudentId}|{e.CourseId}")
                 .ToHashSet();
 
-            int newStudents = 0, enrolments = 0, skipped = 0;
+            int newStudents = 0, enrolments = 0, duplicates = 0, invalidRows = 0;
 
             using var reader = new StreamReader(file.OpenReadStream());
             var header = (await reader.ReadLineAsync())!.Split(',').Select(h => h.Trim().ToLower()).ToList();
@@ -597,7 +664,7 @@ namespace AIS_LO_System.Controllers
             if (iSid < 0 || iName < 0 || iCourse < 0)
             {
                 TempData["Error"] = "CSV missing required columns: StudentID, FullName, CourseCode.";
-                return RedirectToAction(nameof(Students));
+                return RedirectToAction(nameof(Students), "Admin");
             }
 
             while (!reader.EndOfStream)
@@ -612,10 +679,10 @@ namespace AIS_LO_System.Controllers
 
                 if (string.IsNullOrWhiteSpace(sid) || string.IsNullOrWhiteSpace(name) ||
                     string.IsNullOrWhiteSpace(code))
-                { skipped++; continue; }
+                { invalidRows++; continue; }
 
                 if (!courseMap.TryGetValue(code, out int courseDbId))
-                { skipped++; continue; }
+                { invalidRows++; continue; }
 
                 // Upsert student
                 if (!studentMap.TryGetValue(sid, out int studentDbId))
@@ -640,12 +707,25 @@ namespace AIS_LO_System.Controllers
                     enrolSet.Add(key);
                     enrolments++;
                 }
-                else skipped++;
+                else duplicates++;
             }
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = $"Import complete: {newStudents} new students, {enrolments} enrolments, {skipped} skipped.";
-            return RedirectToAction(nameof(Students));
+
+            var msg = $"Import complete: {newStudents} new student(s), {enrolments} enrolment(s) added.";
+            if (duplicates > 0)
+                msg += $" {duplicates} duplicate enrolment(s) were skipped — these students are already enrolled in those courses.";
+            if (invalidRows > 0)
+                msg += $" {invalidRows} row(s) were skipped due to missing data or unrecognised course codes.";
+
+            if (newStudents == 0 && enrolments == 0)
+                TempData["Error"] = $"No new records were imported. " +
+                    (duplicates > 0 ? $"{duplicates} duplicate(s) already exist in the system." : "") +
+                    (invalidRows > 0 ? $" {invalidRows} row(s) had invalid data." : "");
+            else
+                TempData["Success"] = msg;
+
+            return RedirectToAction(nameof(Students), "Admin");
         }
     }
 }

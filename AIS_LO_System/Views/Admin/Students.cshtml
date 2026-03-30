@@ -87,9 +87,11 @@
                             <td>
                                 @foreach (var e in s.CourseEnrolments.OrderByDescending(e => e.Course.Year).ThenBy(e => e.Course.Trimester))
                                 {
-                                    <span class="enrol-tag @(e.Course.Year == ViewBag.CurrentYear ? "enrol-tag-current" : "enrol-tag-past")">
+                                    <a href="@Url.Action("Index", "CourseDashboard", new { courseCode = e.Course.Code, year = e.Course.Year, trimester = e.Course.Trimester })"
+                                       class="enrol-tag @(e.Course.Year == ViewBag.CurrentYear ? "enrol-tag-current" : "enrol-tag-past")"
+                                       title="View @s.FullName's records in @e.Course.Code">
                                         @e.Course.Code <span class="enrol-tag-year">@(e.Course.Year) T@(e.Course.Trimester)</span>
-                                    </span>
+                                    </a>
                                 }
                             </td>
                             <td class="admin-td-actions">
