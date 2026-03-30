@@ -164,6 +164,42 @@ namespace AIS_LO_System.Controllers
                 if (rubric == null)
                     return NotFound("Rubric not found.");
 
+                // Server-side validation — every criterion must have LO + weight
+                if (mappings != null)
+                {
+                    var errors = new List<string>();
+
+                    foreach (var input in mappings)
+                    {
+                        var criterion = rubric.Criteria.FirstOrDefault(c => c.Id == input.CriterionId);
+                        var name = criterion?.CriterionName ?? "Unknown";
+
+                        if (input.Weight <= 0)
+                            errors.Add($"\"{name}\" has no weight assigned.");
+
+                        if (input.SelectedLOIds == null || !input.SelectedLOIds.Any())
+                            errors.Add($"\"{name}\" is not mapped to any Learning Outcome.");
+                    }
+
+                    var totalWeight = mappings.Sum(m => m.Weight);
+                    if (Math.Abs(totalWeight - 100) > 0.01m)
+                        errors.Add($"Total weight is {totalWeight:F0}% — it must equal 100%.");
+
+                    if (errors.Any())
+                    {
+                        TempData["Error"] = "Cannot save: " + string.Join(" ", errors);
+                        return RedirectToAction(nameof(Index), new
+                        {
+                            assignmentId,
+                            assessmentName,
+                            courseCode,
+                            courseTitle,
+                            year,
+                            trimester
+                        });
+                    }
+                }
+
                 // Remove all existing mappings for this rubric's criteria
                 var existingMappings = rubric.Criteria
                     .SelectMany(c => c.LOMappings)
