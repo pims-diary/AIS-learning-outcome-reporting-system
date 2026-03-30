@@ -50,11 +50,12 @@
             bool hasFile = latest != null;
             bool isPdf = hasFile && latest.FilePath.EndsWith(".pdf");
             bool isDocx = hasFile && latest.FilePath.EndsWith(".docx");
+            var cacheBust = hasFile ? $"?v={DateTime.Now.Ticks}" : "";
         }
 
         @if (isPdf)
         {
-            <iframe src="@latest.FilePath" width="100%" height="700px"></iframe>
+            <iframe src="@(latest.FilePath)@(cacheBust)" width="100%" height="700px"></iframe>
         }
         else if (isDocx)
         {
@@ -71,7 +72,7 @@
                     <div style="font-weight:600;">@latest.OriginalFileName</div>
                     <div style="font-size:13px; color:#666;">Microsoft Word Document</div>
                 </div>
-                <a href="@latest.FilePath" download style="padding:10px 20px; background:#2B579A; color:#fff; border-radius:8px; text-decoration:none; font-size:14px;">↓ Download</a>
+                <a href="@(latest.FilePath)@(cacheBust)" download style="padding:10px 20px; background:#2B579A; color:#fff; border-radius:8px; text-decoration:none; font-size:14px;">↓ Download</a>
             </div>
 
             <div id="docx-loading" style="display:flex; align-items:center; justify-content:center; gap:12px; padding:40px; color:#888;">
@@ -83,7 +84,7 @@
             <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
             <script>
                 (function () {
-                    fetch("@latest.FilePath")
+                    fetch("@(latest.FilePath)@(cacheBust)")
                         .then(r => r.arrayBuffer())
                         .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
                         .then(result => {
