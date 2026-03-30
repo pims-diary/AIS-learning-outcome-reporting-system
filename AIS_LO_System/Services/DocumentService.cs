@@ -641,7 +641,7 @@ namespace AIS_LO_System.Services
         public string Status { get; set; } = string.Empty;
         public double Similarity { get; set; }
     }
-
+    //
     public class LOCrossCheckResult
     {
         public List<LOCheckItem> Matched { get; set; } = new();
