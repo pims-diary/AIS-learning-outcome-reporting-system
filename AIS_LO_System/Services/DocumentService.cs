@@ -272,29 +272,44 @@ namespace AIS_LO_System.Services
 
                 var lines = afterHeader.Split('\n');
 
-                // Strategy 1: Try lines that have both title and percentage on the same line
+                // ============================================================
+                // APPROACH 1: Find lines with percentage anywhere (iText style)
+                // Handles: "ASSIGNMENT 1 30 % 13/02/2026 ... 1, 2, 3, 5 CLASS 1-10"
+                // ============================================================
                 foreach (var rawLine in lines)
                 {
                     var line = rawLine.Trim();
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
-                    var percentMatch = System.Text.RegularExpressions.Regex.Match(line, @"(\d+)\s*%");
-                    if (!percentMatch.Success) continue;
+                    // Find percentage anywhere in line
+                    var pctMatch = System.Text.RegularExpressions.Regex.Match(line, @"(\d+)\s*%");
+                    if (!pctMatch.Success) continue;
 
-                    int marks = int.Parse(percentMatch.Groups[1].Value);
-                    var titlePart = line.Substring(0, percentMatch.Index).Trim();
+                    int marks = int.Parse(pctMatch.Groups[1].Value);
+                    if (marks >= 100) continue;
 
-                    if (string.IsNullOrWhiteSpace(titlePart)) continue;
-                    if (titlePart.Equals("Total", System.StringComparison.OrdinalIgnoreCase)) continue;
-                    if (titlePart.ToLower().Contains("course") && titlePart.ToLower().Contains("mark")) continue;
+                    // Title = text before the percentage
+                    var title = line.Substring(0, pctMatch.Index).Trim();
+                    title = System.Text.RegularExpressions.Regex.Replace(title, @"\s+", " ").Trim();
 
-                    // Look for LO numbers after the percentage
-                    var afterPercent = line.Substring(percentMatch.Index + percentMatch.Length);
+                    // Skip junk
+                    if (string.IsNullOrWhiteSpace(title)) continue;
+                    if (title.Equals("Total", System.StringComparison.OrdinalIgnoreCase)) continue;
+                    if (title.ToLower().Contains("course") && title.ToLower().Contains("mark")) continue;
+                    if (title.ToLower().Contains("title")) continue;
+
+                    // Get text after percentage, strip dates, weeks, CLASS refs
+                    var afterPct = line.Substring(pctMatch.Index + pctMatch.Length);
+                    afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"\d{2}/\d{2}/\d{2,4}", " ");
+                    afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"[\(\s]*Week\s*\d+[\)\s]*", " ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"CLASS.*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                    afterPct = afterPct.Trim();
+
+                    // Find LO numbers from remaining text
                     var loNumbers = new List<int>();
-                    var loMatch = System.Text.RegularExpressions.Regex.Match(afterPercent, @"([\d][\d,\s]*[\d])");
-                    if (loMatch.Success)
+                    if (!string.IsNullOrWhiteSpace(afterPct))
                     {
-                        var nums = System.Text.RegularExpressions.Regex.Matches(loMatch.Value, @"\d+");
+                        var nums = System.Text.RegularExpressions.Regex.Matches(afterPct, @"\d+");
                         foreach (System.Text.RegularExpressions.Match n in nums)
                         {
                             if (int.TryParse(n.Value, out int num) && num <= 20)
@@ -304,75 +319,125 @@ namespace AIS_LO_System.Services
 
                     results.Add(new AssessmentInfo
                     {
-                        Title = titlePart,
+                        Title = title,
                         MarksPercentage = marks,
                         LONumbers = loNumbers.Distinct().ToList()
                     });
                 }
 
-                // Strategy 2: If strategy 1 found nothing, collect titles, percentages, and LOs separately
-                if (!results.Any())
+                // If Approach 1 found 2+ results, use them
+                if (results.Count >= 2) return results;
+
+                // ============================================================
+                // APPROACH 2: Column-by-column (pdftotext style)
+                // Titles, marks, and LOs are on separate lines
+                // ============================================================
+                results.Clear();
+
+                var skipPatterns = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
+                    { "title", "course", "marks", "marks %", "release", "date", "due", "due date",
+                      "learning", "outcomes", "learning outcomes", "corresponding", "course content",
+                      "total", "the assessments for this course are as follows:", "marks % date",
+                      "release date", "course marks %", "due date*" };
+
+                var titles = new List<string>();
+                var marksList = new List<int>();
+                var loList = new List<List<int>>();
+
+                foreach (var rawLine in lines)
                 {
-                    var titles = new List<string>();
-                    var marksList = new List<int>();
-                    var loList = new List<List<int>>();
+                    var line = rawLine.Trim();
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    if (skipPatterns.Contains(line.ToLower())) continue;
 
-                    // Skip header words
-                    var skipWords = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
-                        { "title", "course", "marks", "marks %", "release", "date", "due", "due date",
-                          "learning", "outcomes", "learning outcomes", "corresponding", "course content",
-                          "total", "the assessments for this course are as follows:" };
+                    if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^[\(\s]*Week\s*\d", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
+                    if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^CLASS", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
+                    if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^\d{2}/\d{2}/\d{2,4}$")) continue;
+                    if (line.StartsWith("*")) continue;
 
-                    foreach (var rawLine in lines)
+                    var lineWithoutDates = System.Text.RegularExpressions.Regex.Replace(line, @"\d{2}/\d{2}/\d{2,4}", " ").Trim();
+
+                    // Title + percentage together
+                    var titlePctMatch = System.Text.RegularExpressions.Regex.Match(line, @"^(.+?)\s+(\d+)\s*%\s*$");
+                    if (titlePctMatch.Success)
                     {
-                        var line = rawLine.Trim();
-                        if (string.IsNullOrWhiteSpace(line)) continue;
-                        if (skipWords.Contains(line.ToLower())) continue;
-
-                        // Is this a percentage line?
-                        var pctMatch = System.Text.RegularExpressions.Regex.Match(line, @"^(\d+)\s*%$");
-                        if (pctMatch.Success)
+                        var t = titlePctMatch.Groups[1].Value.Trim();
+                        int m = int.Parse(titlePctMatch.Groups[2].Value);
+                        if (!t.Equals("Total", System.StringComparison.OrdinalIgnoreCase) &&
+                            !skipPatterns.Contains(t.ToLower()) && m < 100)
                         {
-                            int m = int.Parse(pctMatch.Groups[1].Value);
-                            if (m < 100) marksList.Add(m);
+                            titles.Add(t);
+                            marksList.Add(m);
                             continue;
                         }
+                    }
 
-                        // Is this an LO numbers line? (e.g. "1,2,3,4,5")
-                        var loNumMatch = System.Text.RegularExpressions.Regex.Match(line, @"^[\d,\s]+$");
-                        if (loNumMatch.Success)
+                    // Standalone percentage
+                    var pctOnly = System.Text.RegularExpressions.Regex.Match(line, @"^(\d+)\s*%\s*$");
+                    if (pctOnly.Success)
+                    {
+                        int m = int.Parse(pctOnly.Groups[1].Value);
+                        if (m < 100) marksList.Add(m);
+                        continue;
+                    }
+
+                    // LO numbers after stripping dates
+                    lineWithoutDates = System.Text.RegularExpressions.Regex.Replace(lineWithoutDates, @"\s+", " ").Trim();
+                    if (!string.IsNullOrWhiteSpace(lineWithoutDates) &&
+                        System.Text.RegularExpressions.Regex.IsMatch(lineWithoutDates, @"^[\d,\s]+$"))
+                    {
+                        var nums = System.Text.RegularExpressions.Regex.Matches(lineWithoutDates, @"\d+");
+                        var loNums = new List<int>();
+                        foreach (System.Text.RegularExpressions.Match n in nums)
                         {
-                            var nums = System.Text.RegularExpressions.Regex.Matches(line, @"\d+");
-                            var loNums = new List<int>();
-                            foreach (System.Text.RegularExpressions.Match n in nums)
+                            if (int.TryParse(n.Value, out int num) && num <= 20)
+                                loNums.Add(num);
+                        }
+                        if (loNums.Any()) loList.Add(loNums);
+                        continue;
+                    }
+
+                    // Mixed date + LO line
+                    if (System.Text.RegularExpressions.Regex.IsMatch(line, @"\d{2}/\d{2}/\d{2,4}"))
+                    {
+                        var remaining = lineWithoutDates;
+                        if (!string.IsNullOrWhiteSpace(remaining) &&
+                            System.Text.RegularExpressions.Regex.IsMatch(remaining, @"\d"))
+                        {
+                            var loMatch = System.Text.RegularExpressions.Regex.Match(remaining, @"([\d][\d,\s]*[\d])");
+                            if (loMatch.Success)
                             {
-                                if (int.TryParse(n.Value, out int num) && num <= 20)
-                                    loNums.Add(num);
+                                var nums = System.Text.RegularExpressions.Regex.Matches(loMatch.Value, @"\d+");
+                                var loNums = new List<int>();
+                                foreach (System.Text.RegularExpressions.Match n in nums)
+                                {
+                                    if (int.TryParse(n.Value, out int num) && num <= 20)
+                                        loNums.Add(num);
+                                }
+                                if (loNums.Any()) loList.Add(loNums);
                             }
-                            if (loNums.Any()) loList.Add(loNums);
-                            continue;
                         }
-
-                        // Is this a date or week reference? Skip
-                        if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^\d{2}/\d{2}/\d{2}") ||
-                            System.Text.RegularExpressions.Regex.IsMatch(line, @"^\(Week")) continue;
-
-                        // Otherwise it's probably a title
-                        if (line.Length > 3 && !line.StartsWith("CLASS"))
-                            titles.Add(line);
+                        continue;
                     }
 
-                    // Pair them by order
-                    int count = System.Math.Min(titles.Count, marksList.Count);
-                    for (int i = 0; i < count; i++)
+                    // Title
+                    if (line.Length > 4 &&
+                        !System.Text.RegularExpressions.Regex.IsMatch(line, @"^\d") &&
+                        System.Text.RegularExpressions.Regex.IsMatch(line, @"[a-zA-Z]{3,}"))
                     {
-                        results.Add(new AssessmentInfo
-                        {
-                            Title = titles[i],
-                            MarksPercentage = marksList[i],
-                            LONumbers = i < loList.Count ? loList[i].Distinct().ToList() : new List<int>()
-                        });
+                        titles.Add(line);
                     }
+                }
+
+                int count = System.Math.Min(titles.Count, marksList.Count);
+                for (int i = 0; i < count; i++)
+                {
+                    results.Add(new AssessmentInfo
+                    {
+                        Title = titles[i],
+                        MarksPercentage = marksList[i],
+                        LONumbers = i < loList.Count ? loList[i].Distinct().ToList() : new List<int>()
+                    });
                 }
             }
             catch { }
@@ -382,7 +447,7 @@ namespace AIS_LO_System.Services
 
         // -------------------------------------------------------
         // Extract LOs from an assignment document
-        // Looks for patterns like "Learning Outcome 1: text..."
+        // Handles: "Learning Outcome 1: text" AND numbered lists after LO header
         // -------------------------------------------------------
         public static List<AssignmentLO> ExtractLOsFromAssignmentDoc(string filePath)
         {
@@ -395,7 +460,7 @@ namespace AIS_LO_System.Services
 
             if (string.IsNullOrWhiteSpace(text)) return results;
 
-            // Match patterns like "Learning Outcome 1: text" or "LO 1: text" or "LO1: text"
+            // Strategy 1: Match "Learning Outcome 1: text" or "LO 1: text"
             var matches = System.Text.RegularExpressions.Regex.Matches(
                 text,
                 @"(?:Learning\s+Outcome|LO)\s*(\d+)\s*[:\-–]\s*(.+?)(?=(?:Learning\s+Outcome|LO)\s*\d+\s*[:\-–]|General\s+Instruction|Tasks?\s*\(|Note:|$)",
@@ -414,6 +479,58 @@ namespace AIS_LO_System.Services
                         Number = loNum,
                         Text = loText
                     });
+                }
+            }
+
+            // Strategy 2: If Strategy 1 found nothing, look for numbered list after "learning outcomes" header
+            if (!results.Any())
+            {
+                text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+
+                // Find the LO header line
+                var headerMatch = System.Text.RegularExpressions.Regex.Match(
+                    text,
+                    @"learning\s+outcomes.*?:\s*\n",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                if (headerMatch.Success)
+                {
+                    var afterLOHeader = text.Substring(headerMatch.Index + headerMatch.Length);
+
+                    // Cut off at next section (General Instructions, empty line gap, or any ALL CAPS header)
+                    var sectionEnd = System.Text.RegularExpressions.Regex.Match(
+                        afterLOHeader,
+                        @"\n\s*\n|General\s+Instruction|TASK\s|Task\s+\d|Marking|MARKING|Submission|SUBMISSION",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                    var loSection = sectionEnd.Success
+                        ? afterLOHeader.Substring(0, sectionEnd.Index)
+                        : afterLOHeader;
+
+                    // Extract numbered items from just the LO section
+                    var numberedItems = System.Text.RegularExpressions.Regex.Matches(
+                        loSection,
+                        @"(\d+)\.\s+(.+?)(?=\n\s*\d+\.\s|$)",
+                        System.Text.RegularExpressions.RegexOptions.Singleline);
+
+                    foreach (System.Text.RegularExpressions.Match m in numberedItems)
+                    {
+                        if (int.TryParse(m.Groups[1].Value, out int loNum) && loNum <= 20)
+                        {
+                            var loText = System.Text.RegularExpressions.Regex
+                                .Replace(m.Groups[2].Value.Trim(), @"\s+", " ")
+                                .TrimEnd('.', ' ');
+
+                            if (loText.Length > 15)
+                            {
+                                results.Add(new AssignmentLO
+                                {
+                                    Number = loNum,
+                                    Text = loText
+                                });
+                            }
+                        }
+                    }
                 }
             }
 
