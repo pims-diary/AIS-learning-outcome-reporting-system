@@ -88,7 +88,7 @@
             </label>
         </form>
 
-        @if (Model != null)
+        @if (Model != null && Model.Criteria != null && Model.Criteria.Count > 0)
         {
             <a asp-action="Edit"
                asp-route-id="@Model.Id"
@@ -99,10 +99,10 @@
     </div>
 
     <!-- Preview Section -->
-    <h2 class="preview-title">Rubric Preview</h2>
-
     @if (Model != null && Model.Criteria != null && Model.Criteria.Count > 0)
     {
+        <h2 class="preview-title">Rubric Preview</h2>
+
         <div class="rubric-table">
             <table>
                 <thead>
@@ -143,7 +143,10 @@
     }
     else
     {
-        <p class="no-rubric">No rubric uploaded yet.</p>
+        <div style="text-align:center; padding:40px 20px; color:#888; font-size:15px;">
+            <p style="font-size:40px; margin-bottom:12px;">📄</p>
+            <p>No rubric uploaded yet. Use the <strong>Upload Rubric</strong> button above to get started.</p>
+        </div>
     }
 
 </div>

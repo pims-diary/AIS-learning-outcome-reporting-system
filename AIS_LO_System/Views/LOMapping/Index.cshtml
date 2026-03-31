@@ -183,7 +183,7 @@
                                            name="mappings[@mappingIndex].Weight"
                                            class="weight-input"
                                            data-criterion-id="@criterion.Id"
-                                           value="@weight"
+                                           value="@(weight > 0 ? weight.ToString() : "")"
                                            min="0.01"
                                            step="0.01"
                                            placeholder="0"

@@ -211,6 +211,22 @@ namespace AIS_LO_System.Controllers
 
                 if (courseLOs.Any() && loWeightData.Any())
                 {
+                    // Get allowed LO IDs for this assignment
+                    var assignment = await _context.Assignments
+                        .FirstOrDefaultAsync(a => a.Id == assignmentId);
+
+                    var allowedLOIds = new List<int>();
+                    if (assignment != null && !string.IsNullOrEmpty(assignment.SelectedLearningOutcomeIds))
+                    {
+                        allowedLOIds = assignment.SelectedLearningOutcomeIds
+                            .Split(',')
+                            .Where(s => int.TryParse(s, out _))
+                            .Select(int.Parse)
+                            .ToList();
+                    }
+
+                    var skippedLOs = new List<int>();
+
                     for (int i = 0; i < criteriaList.Count && i < loWeightData.Count; i++)
                     {
                         var (loText, weight) = loWeightData[i];
@@ -226,7 +242,18 @@ namespace AIS_LO_System.Controllers
                         {
                             // Match by OrderNumber
                             var lo = courseLOs.FirstOrDefault(l => l.OrderNumber == loNum);
-                            if (lo == null) continue;
+                            if (lo == null)
+                            {
+                                skippedLOs.Add(loNum);
+                                continue;
+                            }
+
+                            // If assignment has locked LOs, check if this LO is allowed
+                            if (allowedLOIds.Any() && !allowedLOIds.Contains(lo.Id))
+                            {
+                                skippedLOs.Add(loNum);
+                                continue;
+                            }
 
                             var mapping = new CriterionLOMapping
                             {
@@ -242,6 +269,13 @@ namespace AIS_LO_System.Controllers
 
                     if (mappingsCreated > 0)
                         await _context.SaveChangesAsync();
+
+                    // Track skipped LOs for feedback
+                    if (skippedLOs.Any())
+                    {
+                        var skippedList = string.Join(", ", skippedLOs.Distinct().Select(n => $"LO{n}"));
+                        TempData["Error"] = $"Warning: {skippedList} found in the rubric file but not allowed for this assessment per the course outline. These were skipped.";
+                    }
                 }
 
                 var successMsg = $"Rubric uploaded successfully! {rubric.Criteria.Count} criteria imported.";
