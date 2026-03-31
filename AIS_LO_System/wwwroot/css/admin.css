@@ -841,3 +841,128 @@ a.enrol-tag {
     color: #888;
     margin-left: 4px;
 }
+
+/* ---- Course Filtering & Accordion (Modal) ---- */
+.course-filter-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.course-filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.course-search-input {
+    padding: 10px 12px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: #fff;
+    width: 100%;
+}
+
+    .course-search-input:focus {
+        border-color: #b30000;
+        outline: none;
+    }
+
+.course-accordion-wrapper {
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.course-year-group {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .course-year-group:last-child {
+        border-bottom: none;
+    }
+
+.course-year-label {
+    background: #f5f5f5;
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1a1a1a;
+    border-bottom: 1px solid #e0e0e0;
+    user-select: none;
+}
+
+.course-dept-group {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .course-dept-group:last-child {
+        border-bottom: none;
+    }
+
+.course-dept-label {
+    background: #fafafa;
+    padding: 10px 16px;
+    padding-left: 28px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+    .course-dept-label:hover {
+        background: #f0f0f0;
+    }
+
+.dept-toggle {
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+    font-size: 12px;
+    transition: transform 0.15s;
+}
+
+.course-dept-group.collapsed .dept-toggle {
+    transform: rotate(-90deg);
+}
+
+.dept-courses {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 16px;
+    padding-left: 44px;
+    background: #fff;
+}
+
+    .dept-courses.hidden {
+        display: none;
+    }
+
+.course-tri-tag {
+    font-size: 12px;
+    color: #999;
+    margin-left: auto;
+    font-weight: 400;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+    .course-filter-row {
+        grid-template-columns: 1fr;
+    }
+}

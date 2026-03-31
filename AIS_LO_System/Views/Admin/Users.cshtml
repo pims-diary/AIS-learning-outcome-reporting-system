@@ -176,21 +176,52 @@
             </div>
             <div class="admin-form-group" id="courseAssignWrap">
                 <label>Assign to Course/s</label>
-                <div class="admin-checkbox-list">
+                
+                <!-- Filter Controls -->
+                <div class="course-filter-controls">
+                    <div class="course-filter-row">
+                        <select id="addUserYearFilter" class="admin-input" onchange="filterAddUserCourses()">
+                            <option value="">All Years</option>
+                            @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
+                            {
+                                <option value="@year">@year</option>
+                            }
+                        </select>
+                        <select id="addUserDeptFilter" class="admin-input" onchange="filterAddUserCourses()">
+                            <option value="">All Departments</option>
+                            @foreach (var dept in courses.Select(c => c.School).Distinct().OrderBy(s => s))
+                            {
+                                <option value="@dept">@dept</option>
+                            }
+                        </select>
+                    </div>
+                    <input type="text" id="addUserCourseSearch" class="course-search-input" placeholder="Search course code or title..." onkeyup="filterAddUserCourses()" />
+                </div>
+
+                <!-- Accordion Courses -->
+                <div class="course-accordion-wrapper">
                     @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
                     {
-                        <div class="course-group-label">@year</div>
-                        @foreach (var dept in courses.Where(c => c.Year == year).Select(c => c.School).Distinct().OrderBy(s => s))
-                        {
-                            <div class="course-dept-label">@dept</div>
-                            @foreach (var c in courses.Where(c => c.Year == year && c.School == dept).OrderBy(c => c.Trimester).ThenBy(c => c.Code))
+                        <div class="course-year-group">
+                            <div class="course-year-label">@year</div>
+                            @foreach (var dept in courses.Where(c => c.Year == year).Select(c => c.School).Distinct().OrderBy(s => s))
                             {
-                                <label class="admin-checkbox-item">
-                                    <input type="checkbox" name="courseIds" value="@c.Id" />
-                                    @c.Code — @c.Title <span class="course-tri-tag">T@(c.Trimester)</span>
-                                </label>
+                                <div class="course-dept-group" data-year="@year" data-dept="@dept">
+                                    <div class="course-dept-label" onclick="toggleAddUserDept(this)">
+                                        <span class="dept-toggle">▼</span> @dept
+                                    </div>
+                                    <div class="dept-courses">
+                                        @foreach (var c in courses.Where(c => c.Year == year && c.School == dept).OrderBy(c => c.Trimester).ThenBy(c => c.Code))
+                                        {
+                                            <label class="admin-checkbox-item" data-year="@c.Year" data-dept="@c.School" data-code="@c.Code" data-title="@c.Title.ToLower()">
+                                                <input type="checkbox" name="courseIds" value="@c.Id" />
+                                                @c.Code — @c.Title <span class="course-tri-tag">T@(c.Trimester)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
                             }
-                        }
+                        </div>
                     }
                 </div>
             </div>
@@ -237,21 +268,52 @@
             </div>
             <div class="admin-form-group" id="editCourseAssignWrap">
                 <label>Assigned to Course/s</label>
-                <div class="admin-checkbox-list" id="editUserCourses">
+                
+                <!-- Filter Controls -->
+                <div class="course-filter-controls">
+                    <div class="course-filter-row">
+                        <select id="editUserYearFilter" class="admin-input" onchange="filterEditUserCourses()">
+                            <option value="">All Years</option>
+                            @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
+                            {
+                                <option value="@year">@year</option>
+                            }
+                        </select>
+                        <select id="editUserDeptFilter" class="admin-input" onchange="filterEditUserCourses()">
+                            <option value="">All Departments</option>
+                            @foreach (var dept in courses.Select(c => c.School).Distinct().OrderBy(s => s))
+                            {
+                                <option value="@dept">@dept</option>
+                            }
+                        </select>
+                    </div>
+                    <input type="text" id="editUserCourseSearch" class="course-search-input" placeholder="Search course code or title..." onkeyup="filterEditUserCourses()" />
+                </div>
+
+                <!-- Accordion Courses -->
+                <div class="course-accordion-wrapper" id="editUserCourses">
                     @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
                     {
-                        <div class="course-group-label">@year</div>
-                        @foreach (var dept in courses.Where(c => c.Year == year).Select(c => c.School).Distinct().OrderBy(s => s))
-                        {
-                            <div class="course-dept-label">@dept</div>
-                            @foreach (var c in courses.Where(c => c.Year == year && c.School == dept).OrderBy(c => c.Trimester).ThenBy(c => c.Code))
+                        <div class="course-year-group">
+                            <div class="course-year-label">@year</div>
+                            @foreach (var dept in courses.Where(c => c.Year == year).Select(c => c.School).Distinct().OrderBy(s => s))
                             {
-                                <label class="admin-checkbox-item">
-                                    <input type="checkbox" name="courseIds" value="@c.Id" />
-                                    @c.Code — @c.Title <span class="course-tri-tag">T@(c.Trimester)</span>
-                                </label>
+                                <div class="course-dept-group" data-year="@year" data-dept="@dept">
+                                    <div class="course-dept-label" onclick="toggleEditUserDept(this)">
+                                        <span class="dept-toggle">▼</span> @dept
+                                    </div>
+                                    <div class="dept-courses">
+                                        @foreach (var c in courses.Where(c => c.Year == year && c.School == dept).OrderBy(c => c.Trimester).ThenBy(c => c.Code))
+                                        {
+                                            <label class="admin-checkbox-item" data-year="@c.Year" data-dept="@c.School" data-code="@c.Code" data-title="@c.Title.ToLower()">
+                                                <input type="checkbox" name="courseIds" value="@c.Id" />
+                                                @c.Code — @c.Title <span class="course-tri-tag">T@(c.Trimester)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
                             }
-                        }
+                        </div>
                     }
                 </div>
             </div>
@@ -268,7 +330,6 @@
         function openModal(id) { document.getElementById(id).classList.add('open'); }
         function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-        // Auto-generate username (firstname + first letter of last name) and email from Full Name
         function autoGenerateUser() {
             const fullName = document.getElementById('addFullName').value.trim();
             const parts = fullName.split(/\s+/).filter(p => p.length > 0);
@@ -286,29 +347,89 @@
             const role = document.getElementById('roleSelect').value;
             document.getElementById('courseAssignWrap').style.display = role === 'Admin' ? 'none' : '';
         }
+
         function toggleEditCourseList() {
             const role = document.getElementById('editUserRole').value;
             document.getElementById('editCourseAssignWrap').style.display = role === 'Admin' ? 'none' : '';
         }
+
+        function toggleAddUserDept(header) {
+            const group = header.closest('.course-dept-group');
+            const courses = group.querySelector('.dept-courses');
+            group.classList.toggle('collapsed');
+            courses.classList.toggle('hidden');
+        }
+
+        function filterAddUserCourses() {
+            const yearFilter = document.getElementById('addUserYearFilter').value;
+            const deptFilter = document.getElementById('addUserDeptFilter').value;
+            const searchFilter = document.getElementById('addUserCourseSearch').value.toLowerCase();
+
+            document.querySelectorAll('#addUserModal .admin-checkbox-item').forEach(item => {
+                const year = item.dataset.year;
+                const dept = item.dataset.dept;
+                const code = item.dataset.code;
+                const title = item.dataset.title;
+
+                const yearMatch = !yearFilter || year === yearFilter;
+                const deptMatch = !deptFilter || dept === deptFilter;
+                const searchMatch = !searchFilter || code.includes(searchFilter) || title.includes(searchFilter);
+
+                item.classList.toggle('hidden', !(yearMatch && deptMatch && searchMatch));
+            });
+        }
+
+        function toggleEditUserDept(header) {
+            const group = header.closest('.course-dept-group');
+            const courses = group.querySelector('.dept-courses');
+            group.classList.toggle('collapsed');
+            courses.classList.toggle('hidden');
+        }
+
+        function filterEditUserCourses() {
+            const yearFilter = document.getElementById('editUserYearFilter').value;
+            const deptFilter = document.getElementById('editUserDeptFilter').value;
+            const searchFilter = document.getElementById('editUserCourseSearch').value.toLowerCase();
+
+            document.querySelectorAll('#editUserCourses .admin-checkbox-item').forEach(item => {
+                const year = item.dataset.year;
+                const dept = item.dataset.dept;
+                const code = item.dataset.code;
+                const title = item.dataset.title;
+
+                const yearMatch = !yearFilter || year === yearFilter;
+                const deptMatch = !deptFilter || dept === deptFilter;
+                const searchMatch = !searchFilter || code.includes(searchFilter) || title.includes(searchFilter);
+
+                item.classList.toggle('hidden', !(yearMatch && deptMatch && searchMatch));
+            });
+        }
+
         function openEditUser(btn) {
-            const id      = btn.dataset.id;
-            const name    = btn.dataset.name;
-            const role    = btn.dataset.role;
-            const email   = btn.dataset.email || '';
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            const role = btn.dataset.role;
+            const email = btn.dataset.email || '';
             const courses = btn.dataset.courses ? btn.dataset.courses.split(',').map(Number) : [];
 
-            document.getElementById('editUserId').value    = id;
-            document.getElementById('editUserName').value  = name;
-            document.getElementById('editUserRole').value  = role;
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUserName').value = name;
+            document.getElementById('editUserRole').value = role;
             document.getElementById('editUserEmail').value = email;
 
             document.querySelectorAll('#editUserCourses input[type=checkbox]').forEach(cb => {
                 cb.checked = courses.includes(parseInt(cb.value));
             });
 
+            document.getElementById('editUserYearFilter').value = '';
+            document.getElementById('editUserDeptFilter').value = '';
+            document.getElementById('editUserCourseSearch').value = '';
+            filterEditUserCourses();
+
             toggleEditCourseList();
             openModal('editUserModal');
         }
+
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') document.querySelectorAll('.admin-modal-bg.open').forEach(m => m.classList.remove('open'));
         });
