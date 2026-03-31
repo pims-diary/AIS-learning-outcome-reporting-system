@@ -33,7 +33,7 @@ namespace AIS_LO_System.Controllers
         // =============================================
         // COURSES
         // =============================================
-        public async Task<IActionResult> Courses(string? search, string? trimester, string? status)
+        public async Task<IActionResult> Courses(string? search, string? trimester, string? status, string? school)
         {
             var now = DateTime.Now;
             // Determine current trimester from month: T1=Jan-Apr, T2=May-Aug, T3=Sep-Dec
@@ -55,6 +55,9 @@ namespace AIS_LO_System.Controllers
                     query = query.Where(c => c.Year == yr && c.Trimester == tri);
             }
 
+            if (!string.IsNullOrWhiteSpace(school) && school != "all")
+                query = query.Where(c => c.School == school);
+
             // Active = current year AND current trimester
             if (status == "active")
                 query = query.Where(c => c.Year == currentYear && c.Trimester == currentTrimester);
@@ -64,6 +67,7 @@ namespace AIS_LO_System.Controllers
             ViewBag.Status = status ?? "all";
             ViewBag.CurrentYear = currentYear;
             ViewBag.CurrentTrimester = currentTrimester;
+            ViewBag.SelectedSchool = school ?? "all";
 
             ViewBag.Lecturers = await _context.AppUsers.Where(u => u.Role == UserRole.Lecturer).ToListAsync();
             ViewBag.Moderators = await _context.AppUsers.Where(u => u.Role == UserRole.Moderator).ToListAsync();
@@ -85,6 +89,12 @@ namespace AIS_LO_System.Controllers
             if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(title))
             {
                 TempData["Error"] = "Course code and title are required.";
+                return RedirectToAction(nameof(Courses), "Admin");
+            }
+
+            if (lecturerId.HasValue && lecturerId == moderatorId)
+            {
+                TempData["Error"] = "A lecturer cannot moderate their own course. Please assign a different moderator.";
                 return RedirectToAction(nameof(Courses), "Admin");
             }
 
@@ -115,6 +125,12 @@ namespace AIS_LO_System.Controllers
             var course = await _context.Courses.FindAsync(id);
             if (course == null) return NotFound();
 
+            if (lecturerId.HasValue && lecturerId == moderatorId)
+            {
+                TempData["Error"] = "A lecturer cannot moderate their own course. Please assign a different moderator.";
+                return RedirectToAction(nameof(Courses), "Admin");
+            }
+
             course.Title = title.Trim();
             course.School = string.IsNullOrWhiteSpace(school) ? course.School : school.Trim();
             course.LecturerId = lecturerId;
@@ -129,12 +145,23 @@ namespace AIS_LO_System.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RemoveCourse(int id)
         {
-            var course = await _context.Courses.FindAsync(id);
+            var course = await _context.Courses
+                .Include(c => c.StudentEnrolments)
+                .Include(c => c.LecturerEnrolments)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
             if (course != null)
             {
+                // Remove student enrolments for this course
+                _context.StudentCourseEnrolments.RemoveRange(course.StudentEnrolments);
+
+                // Remove lecturer enrolments for this course
+                _context.LecturerCourseEnrolments.RemoveRange(course.LecturerEnrolments);
+
+                // Remove the course itself
                 _context.Courses.Remove(course);
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Course removed.";
+                TempData["Success"] = $"Course {course.Code} and all its enrolments removed.";
             }
             return RedirectToAction(nameof(Courses), "Admin");
         }
@@ -593,7 +620,8 @@ namespace AIS_LO_System.Controllers
 
                 var lecUser = iLec >= 0 && iLec < cols.Length ? cols[iLec] : "";
                 var modUser = iMod >= 0 && iMod < cols.Length ? cols[iMod] : "";
-                var school = iSchool >= 0 && iSchool < cols.Length ? cols[iSchool] : "Information Technology";
+                var school = iSchool >= 0 && iSchool < cols.Length ? cols[iSchool].Trim() : "Information Technology";
+                if (!ValidSchool(school)) school = "Information Technology";
 
                 int? lecId = lecturers.TryGetValue(lecUser, out int lid) ? lid : null;
                 int? modId = moderators.TryGetValue(modUser, out int mid) ? mid : null;
@@ -728,6 +756,13 @@ namespace AIS_LO_System.Controllers
 
             return RedirectToAction(nameof(Students), "Admin");
         }
+
+        private static readonly string[] Schools = {
+            "Information Technology", "Business", "Tourism", "Hospitality"
+        };
+
+        private static bool ValidSchool(string school) =>
+            Schools.Any(s => s.Equals(school, StringComparison.OrdinalIgnoreCase));
     }
 }
 

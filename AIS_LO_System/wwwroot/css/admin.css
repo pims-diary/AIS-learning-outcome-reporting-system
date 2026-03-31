@@ -787,3 +787,57 @@ a.enrol-tag {
         transform: translateY(-1px);
         text-decoration: none;
     }
+
+/* ── Department pills ── */
+.dept-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.dept-pill-it {
+    background: #b3dff5;
+    color: #1a5c7a;
+}
+
+.dept-pill-business {
+    background: #c8f0c0;
+    color: #1a6b0f;
+}
+
+.dept-pill-tourism {
+    background: #fde8b3;
+    color: #7a4a00;
+}
+
+.dept-pill-hospitality {
+    background: #f5c8d8;
+    color: #8c1a3d;
+}
+
+/* ── Course list grouping in modals ── */
+.course-group-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--bs-gray-700, #444);
+    padding: 10px 4px 4px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 4px;
+}
+
+.course-dept-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #b30000;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 6px 4px 2px 8px;
+}
+
+.course-tri-tag {
+    font-size: 11px;
+    color: #888;
+    margin-left: 4px;
+}

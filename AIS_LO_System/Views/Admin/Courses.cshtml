@@ -39,6 +39,13 @@
                         <option value="@val" selected="@(Context.Request.Query["trimester"] == val)">@label</option>
                     }
                 </select>
+                <select name="school" class="admin-filter-select" onchange="this.form.submit()">
+                    <option value="all">All Departments</option>
+                    <option value="Information Technology" selected="@(ViewBag.SelectedSchool == "Information Technology")">Information Technology</option>
+                    <option value="Business" selected="@(ViewBag.SelectedSchool == "Business")">Business</option>
+                    <option value="Tourism" selected="@(ViewBag.SelectedSchool == "Tourism")">Tourism</option>
+                    <option value="Hospitality" selected="@(ViewBag.SelectedSchool == "Hospitality")">Hospitality</option>
+                </select>
             </form>
 
             <div class="admin-status-tabs">
@@ -61,6 +68,7 @@
                 <tr>
                     <th>Course Code</th>
                     <th>Trimester</th>
+                    <th>Department</th>
                     <th>Status</th>
                     <th>Lecturer/s</th>
                     <th>Moderator</th>
@@ -71,7 +79,7 @@
                 @if (!Model.Any())
                 {
                     <tr>
-                        <td colspan="6" class="admin-empty">No Courses Added Yet</td>
+                        <td colspan="7" class="admin-empty">No Courses Added Yet</td>
                     </tr>
                 }
                 else
@@ -79,9 +87,17 @@
                     @foreach (var c in Model)
                     {
                         bool isActive = c.Year == ViewBag.CurrentYear && c.Trimester == ViewBag.CurrentTrimester;
+                        var deptClass = c.School switch
+                        {
+                            "Business" => "dept-pill-business",
+                            "Tourism" => "dept-pill-tourism",
+                            "Hospitality" => "dept-pill-hospitality",
+                            _ => "dept-pill-it"
+                        };
                         <tr class="@(!isActive ? "row-inactive" : "")">
                             <td class="admin-td-code">@c.Code</td>
                             <td>@c.Year T@(c.Trimester)</td>
+                            <td><span class="dept-pill @deptClass">@c.School</span></td>
                             <td>
                                 <span class="status-pill @(isActive ? "status-active" : "status-inactive")">
                                     @(isActive ? "Active" : "Inactive")
@@ -113,7 +129,7 @@
                                     Edit
                                 </button>
                                 <form asp-action="RemoveCourse" method="post" style="display:inline"
-                                      onsubmit="return confirm('Remove @c.Code?')">
+                                      onsubmit="return confirm('Remove @c.Code? This will also remove all student and lecturer enrolments for this course.')">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@c.Id" />
                                     <button type="submit" class="btn-admin-remove">Remove</button>
@@ -158,7 +174,12 @@
                 </div>
                 <div class="admin-form-group">
                     <label>School</label>
-                    <input name="school" class="admin-input" placeholder="Information Technology" />
+                    <select name="school" class="admin-input">
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="Business">Business</option>
+                        <option value="Tourism">Tourism</option>
+                        <option value="Hospitality">Hospitality</option>
+                    </select>
                 </div>
             </div>
             <div class="admin-form-row">
@@ -205,7 +226,12 @@
                 </div>
                 <div class="admin-form-group">
                     <label>School</label>
-                    <input name="school" id="editCourseSchool" class="admin-input" />
+                    <select name="school" id="editCourseSchool" class="admin-input">
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="Business">Business</option>
+                        <option value="Tourism">Tourism</option>
+                        <option value="Hospitality">Hospitality</option>
+                    </select>
                 </div>
             </div>
             <div class="admin-form-row">
@@ -246,6 +272,9 @@
             document.getElementById('editCourseId').value = id;
             document.getElementById('editCourseTitle').value = title;
             document.getElementById('editCourseSchool').value = school;
+            // Fallback if the stored value doesn't match any option
+            var sel = document.getElementById('editCourseSchool');
+            if (sel.value !== school) sel.value = 'Information Technology';
             document.getElementById('editCourseLecturer').value = lecId || '';
             document.getElementById('editCourseModerator').value = modId || '';
             openModal('editCourseModal');

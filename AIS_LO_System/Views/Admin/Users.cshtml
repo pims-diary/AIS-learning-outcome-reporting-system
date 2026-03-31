@@ -177,12 +177,20 @@
             <div class="admin-form-group" id="courseAssignWrap">
                 <label>Assign to Course/s</label>
                 <div class="admin-checkbox-list">
-                    @foreach (var c in courses)
+                    @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
                     {
-                        <label class="admin-checkbox-item">
-                            <input type="checkbox" name="courseIds" value="@c.Id" />
-                            @c.Code — @c.Title (@c.Year T@c.Trimester)
-                        </label>
+                        <div class="course-group-label">@year</div>
+                        @foreach (var dept in courses.Where(c => c.Year == year).Select(c => c.School).Distinct().OrderBy(s => s))
+                        {
+                            <div class="course-dept-label">@dept</div>
+                            @foreach (var c in courses.Where(c => c.Year == year && c.School == dept).OrderBy(c => c.Trimester).ThenBy(c => c.Code))
+                            {
+                                <label class="admin-checkbox-item">
+                                    <input type="checkbox" name="courseIds" value="@c.Id" />
+                                    @c.Code — @c.Title <span class="course-tri-tag">T@(c.Trimester)</span>
+                                </label>
+                            }
+                        }
                     }
                 </div>
             </div>
@@ -230,12 +238,20 @@
             <div class="admin-form-group" id="editCourseAssignWrap">
                 <label>Assigned to Course/s</label>
                 <div class="admin-checkbox-list" id="editUserCourses">
-                    @foreach (var c in courses)
+                    @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
                     {
-                        <label class="admin-checkbox-item">
-                            <input type="checkbox" name="courseIds" value="@c.Id" />
-                            @c.Code — @c.Title (@c.Year T@c.Trimester)
-                        </label>
+                        <div class="course-group-label">@year</div>
+                        @foreach (var dept in courses.Where(c => c.Year == year).Select(c => c.School).Distinct().OrderBy(s => s))
+                        {
+                            <div class="course-dept-label">@dept</div>
+                            @foreach (var c in courses.Where(c => c.Year == year && c.School == dept).OrderBy(c => c.Trimester).ThenBy(c => c.Code))
+                            {
+                                <label class="admin-checkbox-item">
+                                    <input type="checkbox" name="courseIds" value="@c.Id" />
+                                    @c.Code — @c.Title <span class="course-tri-tag">T@(c.Trimester)</span>
+                                </label>
+                            }
+                        }
                     }
                 </div>
             </div>
