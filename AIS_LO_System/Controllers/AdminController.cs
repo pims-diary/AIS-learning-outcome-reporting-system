@@ -1,7 +1,7 @@
 ﻿using AIS_LO_System.Data;
 using AIS_LO_System.Models;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -71,7 +71,8 @@ namespace AIS_LO_System.Controllers
                 .Select(c => new { c.Year, c.Trimester })
                 .Distinct()
                 .OrderByDescending(x => x.Year).ThenBy(x => x.Trimester)
-                .ToListAsync();
+                .ToListAsync()
+                .ContinueWith(t => t.Result.Select(x => new TrimesterOption { Year = x.Year, Trimester = x.Trimester }).ToList());
 
             return View(await query.OrderByDescending(c => c.Year).ThenBy(c => c.Trimester).ThenBy(c => c.Code).ToListAsync());
         }
@@ -728,4 +729,10 @@ namespace AIS_LO_System.Controllers
             return RedirectToAction(nameof(Students), "Admin");
         }
     }
+}
+
+public class TrimesterOption
+{
+    public int Year { get; set; }
+    public int Trimester { get; set; }
 }

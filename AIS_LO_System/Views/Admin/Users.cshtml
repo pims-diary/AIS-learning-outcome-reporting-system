@@ -37,8 +37,8 @@
             </form>
 
             <div class="admin-status-tabs">
-                <a href="?status=all" class="status-tab @(ViewBag.Status == "all"      ? "status-tab-active" : "")">All</a>
-                <a href="?status=active" class="status-tab @(ViewBag.Status == "active"   ? "status-tab-active" : "")">Active</a>
+                <a href="?status=all" class="status-tab @(ViewBag.Status == "all" ? "status-tab-active" : "")">All</a>
+                <a href="?status=active" class="status-tab @(ViewBag.Status == "active" ? "status-tab-active" : "")">Active</a>
                 <a href="?status=inactive" class="status-tab @(ViewBag.Status == "inactive" ? "status-tab-active" : "")">Inactive</a>
             </div>
         </div>
@@ -222,7 +222,9 @@
                 </div>
                 <div class="admin-form-group">
                     <label>New Password <span style="color:var(--color-text-secondary);font-weight:400">(leave blank to keep current)</span></label>
-                    <input name="newPassword" type="password" class="admin-input" placeholder="Leave blank to keep unchanged" />
+                    <input name="newPassword" type="password" class="admin-input"
+                           placeholder="Leave blank to keep unchanged"
+                           autocomplete="new-password" />
                 </div>
             </div>
             <div class="admin-form-group" id="editCourseAssignWrap">
@@ -273,15 +275,15 @@
             document.getElementById('editCourseAssignWrap').style.display = role === 'Admin' ? 'none' : '';
         }
         function openEditUser(btn) {
-            const id = btn.dataset.id;
-            const name = btn.dataset.name;
-            const role = btn.dataset.role;
-            const email = btn.dataset.email || '';
+            const id      = btn.dataset.id;
+            const name    = btn.dataset.name;
+            const role    = btn.dataset.role;
+            const email   = btn.dataset.email || '';
             const courses = btn.dataset.courses ? btn.dataset.courses.split(',').map(Number) : [];
 
-            document.getElementById('editUserId').value = id;
-            document.getElementById('editUserName').value = name;
-            document.getElementById('editUserRole').value = role;
+            document.getElementById('editUserId').value    = id;
+            document.getElementById('editUserName').value  = name;
+            document.getElementById('editUserRole').value  = role;
             document.getElementById('editUserEmail').value = email;
 
             document.querySelectorAll('#editUserCourses input[type=checkbox]').forEach(cb => {

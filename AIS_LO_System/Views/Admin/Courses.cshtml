@@ -1,4 +1,5 @@
 ﻿@model List<AIS_LO_System.Models.Course>
+@using AIS_LO_System.Controllers
 
 @{
     ViewData["Title"] = "Courses";
@@ -31,7 +32,7 @@
                        value="@Context.Request.Query["search"]" />
                 <select name="trimester" class="admin-filter-select" onchange="this.form.submit()">
                     <option value="all">All Trimesters</option>
-                    @foreach (var t in (IEnumerable<dynamic>)ViewBag.Trimesters)
+                    @foreach (var t in (IEnumerable<TrimesterOption>)ViewBag.Trimesters)
                     {
                         var val = $"{t.Year}-{t.Trimester}";
                         var label = $"{t.Year} T{t.Trimester}";
@@ -41,8 +42,8 @@
             </form>
 
             <div class="admin-status-tabs">
-                <a href="?status=all" class="status-tab @(ViewBag.Status == "all"      ? "status-tab-active" : "")">All</a>
-                <a href="?status=active" class="status-tab @(ViewBag.Status == "active"   ? "status-tab-active" : "")">Active</a>
+                <a href="?status=all" class="status-tab @(ViewBag.Status == "all" ? "status-tab-active" : "")">All</a>
+                <a href="?status=active" class="status-tab @(ViewBag.Status == "active" ? "status-tab-active" : "")">Active</a>
                 <a href="?status=inactive" class="status-tab @(ViewBag.Status == "inactive" ? "status-tab-active" : "")">Inactive</a>
             </div>
 

@@ -1,4 +1,7 @@
 ﻿@model LOARS.Web.Models.Dashboard.LecturerDashboardViewModel
+@{
+    Layout = null;
+}
 
 <aside id="sidebar" class="dash-sidebar">
 
@@ -22,10 +25,10 @@
                     Model.SelectedTrimester == tri;
 
                     <a asp-controller="LecturerDashboard"
-                       asp-action="Index"
-                       asp-route-year="@year"
-                       asp-route-trimester="@tri"
-                       class="tri-link @(isActive ? "active" : "")">
+                           asp-action="Index"
+                           asp-route-year="@year"
+                           asp-route-trimester="@tri"
+                           class="tri-link @(isActive ? "active" : "")">
 
                         Trimester @tri
                     </a>
