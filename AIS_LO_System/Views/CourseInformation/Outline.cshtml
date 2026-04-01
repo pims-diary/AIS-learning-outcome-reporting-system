@@ -54,7 +54,9 @@
         }
         @if (TempData["Error"] != null)
         {
-            <div class="alert alert-danger">@TempData["Error"]</div>
+            <div style="background:#fff3cd; border:1px solid #ffc107; color:#856404; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
+                @TempData["Error"]
+            </div>
         }
 
         @if (isPdf)
@@ -125,16 +127,33 @@
                       asp-action="UploadOutline"
                       method="post"
                       enctype="multipart/form-data"
-                      class="upload-form">
+                      class="upload-form"
+                      id="outlineUploadForm">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="courseCode" value="@ViewBag.CourseCode" />
                     <input type="hidden" name="year" value="@ViewBag.Year" />
                     <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
-                    <input type="file" name="file" accept=".pdf,.docx" required />
-                    <button type="submit" class="btn-primary">
+                    <input type="file" name="file" accept=".pdf,.docx" required id="outlineFileInput" />
+                    <button type="submit" class="btn-primary" id="outlineSubmitBtn">
                         @(hasFile ? "Re-upload Course Outline" : "Upload Course Outline")
                     </button>
                 </form>
+
+                @if (hasFile)
+                {
+                    <script>
+                        document.getElementById('outlineUploadForm').addEventListener('submit', function(e) {
+                            var confirmed = confirm(
+                                "⚠️ Re-uploading the course outline will reset all assessments, rubrics, LO mappings, and weights for this course.\n\n" +
+                                "Any marking progress may also be affected.\n\n" +
+                                "Are you sure you want to continue?"
+                            );
+                            if (!confirmed) {
+                                e.preventDefault();
+                            }
+                        });
+                    </script>
+                }
             }
             else
             {
@@ -147,32 +166,72 @@
 
 <style>
     .success-msg {
-        background: #d4edda; border: 1px solid #c3e6cb;
-        color: #155724; padding: 12px 16px;
-        border-radius: 6px; margin-bottom: 16px;
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+        padding: 12px 16px;
+        border-radius: 6px;
+        margin-bottom: 16px;
     }
-    .crumb a { color: #333; text-decoration: none; }
-    .crumb a:hover { color: #0066cc; text-decoration: underline; }
+
+    .crumb a {
+        color: #333;
+        text-decoration: none;
+    }
+
+        .crumb a:hover {
+            color: #0066cc;
+            text-decoration: underline;
+        }
 
     /* Word doc download card */
     .doc-card {
-        display: flex; align-items: center; gap: 16px;
-        background: #f8f9fa; border: 1px solid #e0e0e0;
-        border-radius: 12px; padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: #f8f9fa;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 20px 24px;
         margin-bottom: 8px;
     }
-    .doc-icon { flex-shrink: 0; }
-    .doc-info { flex: 1; }
-    .doc-name { font-size: 15px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
-    .doc-type { font-size: 13px; color: #666; }
+
+    .doc-icon {
+        flex-shrink: 0;
+    }
+
+    .doc-info {
+        flex: 1;
+    }
+
+    .doc-name {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin-bottom: 4px;
+    }
+
+    .doc-type {
+        font-size: 13px;
+        color: #666;
+    }
+
     .btn-download {
-        display: inline-block; padding: 10px 20px;
-        background: #2B579A; color: #fff;
-        border-radius: 8px; text-decoration: none;
-        font-size: 14px; font-weight: 500;
+        display: inline-block;
+        padding: 10px 20px;
+        background: #2B579A;
+        color: #fff;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
         white-space: nowrap;
     }
-    .btn-download:hover { background: #1e3f73; color: #fff; }
+
+        .btn-download:hover {
+            background: #1e3f73;
+            color: #fff;
+        }
 
     /* DOCX inline preview */
     .docx-preview-frame {
@@ -188,24 +247,29 @@
         line-height: 1.7;
         color: #1a1a1a;
     }
-    .docx-preview-frame h1, .docx-preview-frame h2, .docx-preview-frame h3 {
-        color: #2B579A;
-        margin-top: 20px;
-    }
-    .docx-preview-frame table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 12px 0;
-    }
-    .docx-preview-frame td, .docx-preview-frame th {
-        border: 1px solid #d0d0d0;
-        padding: 8px 12px;
-        text-align: left;
-    }
-    .docx-preview-frame img {
-        max-width: 100%;
-        height: auto;
-    }
+
+        .docx-preview-frame h1, .docx-preview-frame h2, .docx-preview-frame h3 {
+            color: #2B579A;
+            margin-top: 20px;
+        }
+
+        .docx-preview-frame table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+
+        .docx-preview-frame td, .docx-preview-frame th {
+            border: 1px solid #d0d0d0;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .docx-preview-frame img {
+            max-width: 100%;
+            height: auto;
+        }
+
     .docx-loading {
         display: flex;
         align-items: center;
@@ -215,12 +279,19 @@
         color: #888;
         font-size: 14px;
     }
+
     .loading-spinner {
-        width: 22px; height: 22px;
+        width: 22px;
+        height: 22px;
         border: 3px solid #e0e0e0;
         border-top-color: #2B579A;
         border-radius: 50%;
         animation: spin 0.8s linear infinite;
     }
-    @@keyframes spin { to { transform: rotate(360deg); } }
+
+    @@keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
 </style>

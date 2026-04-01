@@ -115,6 +115,18 @@ namespace AIS_LO_System.Services
                     line.Any(char.IsLetter))
                     break;
 
+                // Stop at known section headers (mixed case like "Course DURATION")
+                var lineLower = line.ToLower();
+                if (lineLower.StartsWith("course duration") ||
+                    lineLower.StartsWith("course content") ||
+                    lineLower.StartsWith("course expectation") ||
+                    lineLower.StartsWith("course assessment") ||
+                    lineLower.StartsWith("learning hours") ||
+                    lineLower.StartsWith("readings and") ||
+                    lineLower.StartsWith("late submission") ||
+                    lineLower.StartsWith("learning support"))
+                    break;
+
                 loLines.Add(line);
             }
 
