@@ -42,6 +42,19 @@
     <div class="header-row">
         <h1>Rubric Management</h1>
 
+        @if (TempData["Success"] != null)
+        {
+            <div style="background:#d4edda; border:1px solid #c3e6cb; color:#155724; padding:12px 16px; border-radius:8px; margin-bottom:16px; width:100%;">
+                ✅ @TempData["Success"]
+            </div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div style="background:#f8d7da; border:1px solid #f5c6cb; color:#721c24; padding:12px 16px; border-radius:8px; margin-bottom:16px; width:100%;">
+                ❌ @TempData["Error"]
+            </div>
+        }
+
         <a asp-controller="Assignment"
                asp-action="Index"
                asp-route-assessmentName="@ViewBag.AssessmentName"

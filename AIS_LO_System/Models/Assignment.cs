@@ -20,6 +20,12 @@ namespace AIS_LO_System.Models
         // ✅ NEW: Store selected LO IDs as comma-separated string (e.g., "1,2,3,4")
         public string? SelectedLearningOutcomeIds { get; set; }
 
+        // Marks percentage from course outline (e.g. 70)
+        public int MarksPercentage { get; set; }
+
+        // If true, LOs were extracted from course outline and cannot be edited
+        public bool LOsLockedByOutline { get; set; }
+
         public ICollection<AssignmentFile> Files { get; set; }
     }
 }

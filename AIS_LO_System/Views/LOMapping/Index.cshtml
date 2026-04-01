@@ -13,18 +13,18 @@
             <a asp-controller="LecturerDashboard" asp-action="Index">Home</a>
             <span class="sep">/</span>
             <a asp-controller="CourseDashboard"
-                   asp-action="Index"
-                   asp-route-courseCode="@ViewBag.CourseCode"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.CourseCode @ViewBag.Year-T@(ViewBag.Trimester)
             </a>
             <span class="sep">/</span>
             <a asp-controller="Assignment"
-                   asp-action="Index"
-                   asp-route-courseCode="@ViewBag.CourseCode"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
                 Assessments
             </a>
             <span class="sep">/</span>
@@ -34,13 +34,13 @@
         </div>
 
         <a class="backlink"
-               asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="@ViewBag.AssessmentName"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+           asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@ViewBag.AssessmentName"
+           asp-route-courseCode="@ViewBag.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@ViewBag.Year"
+           asp-route-trimester="@ViewBag.Trimester">
             ← Go Back
         </a>
     </div>
@@ -77,18 +77,15 @@
 
             <!-- ACTION BUTTONS AT TOP -->
             <div class="top-actions">
-                <button type="submit" class="btn-save"
-                    @(string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value) ? "" : "disabled")>
-                    Save Mapping
-                </button>
+                <button type="submit" class="btn-save">Save Mapping</button>
                 <a class="btn-cancel"
-                       asp-controller="Assignment"
-                       asp-action="Index"
-                       asp-route-assessmentName="@ViewBag.AssessmentName"
-                       asp-route-courseCode="@ViewBag.CourseCode"
-                       asp-route-courseTitle="@ViewBag.CourseTitle"
-                       asp-route-year="@ViewBag.Year"
-                       asp-route-trimester="@ViewBag.Trimester">
+                   asp-controller="Assignment"
+                   asp-action="Index"
+                   asp-route-assessmentName="@ViewBag.AssessmentName"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-courseTitle="@ViewBag.CourseTitle"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                     Cancel
                 </a>
             </div>
@@ -103,6 +100,14 @@
             <!-- SELECT RELEVANT LOs -->
             <div class="lo-selection-section">
                 <h3>Select Learning Outcomes Relevant to This Assessment</h3>
+
+                @if (Model.LOsLockedByOutline)
+                {
+                    <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px 16px; margin-bottom:12px; color:#856404; font-size:14px;">
+                        🔒 Learning Outcomes are set by the course outline and cannot be changed.
+                    </div>
+                }
+
                 <div class="lo-checkboxes">
                     @foreach (var lo in Model.LearningOutcomes)
                     {
@@ -114,7 +119,8 @@
                                    data-lo-id="@lo.Id"
                                    data-lo-number="@lo.OrderNumber"
                                    onchange="toggleLOColumn(@lo.Id, this.checked)"
-                            @(isSelected ? "checked" : "") />
+                                   @(isSelected ? "checked" : "")
+                                   @(Model.LOsLockedByOutline ? "disabled" : "") />
                             <label for="lo-select-@lo.Id">
                                 <strong>LO@(lo.OrderNumber)</strong> - @lo.LearningOutcomeText
                             </label>
@@ -167,7 +173,7 @@
                                                data-lo-id="@lo.Id"
                                                data-lo-number="@lo.OrderNumber"
                                                onchange="updateTotalWeight()"
-                                        @(isChecked ? "checked" : "") />
+                                               @(isChecked ? "checked" : "") />
                                     </td>
                                 }
 
@@ -387,12 +393,69 @@
         }
     }
 
-    // Before form submit, add selected LO IDs to form
+    // Before form submit, validate and add selected LO IDs to form
     document.getElementById('mappingForm').addEventListener('submit', function(e) {
-        // Clear previous selected LO inputs
+        // ========================================
+        // HARD VALIDATION — block save if incomplete
+        // ========================================
+        const errors = [];
+        const criteria = document.querySelectorAll('tbody tr');
+
+        criteria.forEach(row => {
+            const name = row.querySelector('.criterion-col strong')?.textContent?.trim() || 'Unknown';
+
+            // Check weight
+            const weightInput = row.querySelector('.weight-input');
+            const weight = parseFloat(weightInput?.value) || 0;
+            if (weight <= 0) {
+                errors.push(`"${name}" has no weight assigned.`);
+            }
+
+            // Check at least one LO mapped (only check visible/selected LOs)
+            const mappedLOs = row.querySelectorAll('.lo-mapping-checkbox:checked');
+            if (mappedLOs.length === 0) {
+                errors.push(`"${name}" is not mapped to any Learning Outcome.`);
+            }
+        });
+
+        // Check total weight = 100%
+        const totalWeight = Array.from(document.querySelectorAll('.weight-input'))
+            .reduce((sum, input) => sum + (parseFloat(input.value) || 0), 0);
+        if (Math.abs(totalWeight - 100) > 0.01) {
+            errors.push(`Total weight is ${totalWeight.toFixed(0)}% — it must equal 100%.`);
+        }
+
+        if (errors.length > 0) {
+            e.preventDefault();
+
+            // Show error popup
+            let existingPopup = document.getElementById('validationPopup');
+            if (existingPopup) existingPopup.remove();
+
+            const popup = document.createElement('div');
+            popup.id = 'validationPopup';
+            popup.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
+            popup.innerHTML = `
+                <div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+                    <h3 style="color:#c21c00;margin:0 0 16px;">❌ Cannot Save — Fix These Issues</h3>
+                    <ul style="margin:0;padding:0 0 0 20px;color:#333;font-size:14px;line-height:1.8;">
+                        ${errors.map(err => '<li>' + err + '</li>').join('')}
+                    </ul>
+                    <button onclick="document.getElementById('validationPopup').remove()"
+                            style="margin-top:20px;padding:10px 28px;background:#c21c00;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:15px;display:block;margin-left:auto;">
+                        Got it
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(popup);
+            return;
+        }
+
+        // ========================================
+        // Validation passed — add selected LO IDs
+        // ========================================
         document.getElementById('selectedLOsContainer').innerHTML = '';
 
-        // Add hidden input for each selected LO
         document.querySelectorAll('.lo-select-checkbox:checked').forEach(checkbox => {
             const loId = checkbox.getAttribute('data-lo-id');
             const input = document.createElement('input');

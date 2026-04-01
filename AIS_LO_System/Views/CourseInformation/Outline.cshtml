@@ -8,6 +8,7 @@
     bool isPdf = hasFile && outlineUrl.EndsWith(".pdf");
     bool isDocx = hasFile && outlineUrl.EndsWith(".docx");
     var fileName = hasFile ? System.IO.Path.GetFileName(outlineUrl) : "";
+    var cacheBust = hasFile ? $"?v={DateTime.Now.Ticks}" : "";
 }
 
 <link rel="stylesheet" href="~/css/courseinfo.css" />
@@ -60,7 +61,7 @@
         {
             <!-- PDF — show inline iframe -->
             <div class="pdf-wrap">
-                <iframe class="pdf-frame" src="@outlineUrl" title="Course Outline"></iframe>
+                <iframe class="pdf-frame" src="@(outlineUrl)@(cacheBust)" title="Course Outline"></iframe>
             </div>
         }
         else if (isDocx)
@@ -78,7 +79,7 @@
                     <div class="doc-name">@fileName</div>
                     <div class="doc-type">Microsoft Word Document</div>
                 </div>
-                <a href="@outlineUrl" download class="btn-download">
+                <a href="@(outlineUrl)@(cacheBust)" download class="btn-download">
                     ↓ Download
                 </a>
             </div>
@@ -93,7 +94,7 @@
             <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
             <script>
                 (function () {
-                    const url = "@outlineUrl";
+                    const url = "@(outlineUrl)@(cacheBust)";
                     const loading = document.getElementById("docx-loading");
                     const preview = document.getElementById("docx-preview");
 

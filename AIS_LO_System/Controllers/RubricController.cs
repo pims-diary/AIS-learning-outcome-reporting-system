@@ -134,6 +134,9 @@ namespace AIS_LO_System.Controllers
                     Criteria = new List<RubricCriterion>()
                 };
 
+                // Temp storage for LO/Weight data from columns 7-8
+                var loWeightData = new List<(string? loText, decimal? weight)>();
+
                 // Start reading criteria from row 3 (after both header rows)
                 int row = 3;
 
@@ -168,6 +171,21 @@ namespace AIS_LO_System.Controllers
                         criterion.Levels.Add(level);
                     }
 
+                    // Column 7 = LO (optional, e.g. "1,2,5" or "LO1, LO2, LO5")
+                    var loCell = worksheet.Cells[row, 7].Value?.ToString()?.Trim();
+
+                    // Column 8 = Weight % (optional, e.g. "10" or "10.5")
+                    decimal? weight = null;
+                    var weightCell = worksheet.Cells[row, 8].Value?.ToString()?.Trim();
+                    if (!string.IsNullOrEmpty(weightCell))
+                    {
+                        weightCell = weightCell.Replace("%", "").Trim();
+                        if (decimal.TryParse(weightCell, out var w))
+                            weight = w;
+                    }
+
+                    loWeightData.Add((loCell, weight));
+
                     rubric.Criteria.Add(criterion);
                     row++;
                 }
@@ -181,7 +199,56 @@ namespace AIS_LO_System.Controllers
                 _context.Rubrics.Add(rubric);
                 await _context.SaveChangesAsync();
 
-                TempData["Success"] = $"Rubric uploaded successfully! {rubric.Criteria.Count} criteria imported.";
+                // Auto-create LO mappings if LO/Weight columns were filled in
+                int mappingsCreated = 0;
+                var criteriaList = rubric.Criteria.ToList();
+
+                // Get LOs for this course from database
+                var courseLOs = await _context.LearningOutcomes
+                    .Where(lo => lo.CourseCode == courseCode)
+                    .OrderBy(lo => lo.OrderNumber)
+                    .ToListAsync();
+
+                if (courseLOs.Any() && loWeightData.Any())
+                {
+                    for (int i = 0; i < criteriaList.Count && i < loWeightData.Count; i++)
+                    {
+                        var (loText, weight) = loWeightData[i];
+                        if (string.IsNullOrWhiteSpace(loText)) continue;
+
+                        // Parse LO numbers from text like "1,2,5" or "LO1, LO2, LO5"
+                        var loNumbers = System.Text.RegularExpressions.Regex.Matches(loText, @"\d+")
+                            .Select(m => int.Parse(m.Value))
+                            .Distinct()
+                            .ToList();
+
+                        foreach (var loNum in loNumbers)
+                        {
+                            // Match by OrderNumber
+                            var lo = courseLOs.FirstOrDefault(l => l.OrderNumber == loNum);
+                            if (lo == null) continue;
+
+                            var mapping = new CriterionLOMapping
+                            {
+                                RubricCriterionId = criteriaList[i].Id,
+                                LearningOutcomeId = lo.Id,
+                                Weight = weight ?? 0
+                            };
+
+                            _context.CriterionLOMappings.Add(mapping);
+                            mappingsCreated++;
+                        }
+                    }
+
+                    if (mappingsCreated > 0)
+                        await _context.SaveChangesAsync();
+                }
+
+                var successMsg = $"Rubric uploaded successfully! {rubric.Criteria.Count} criteria imported.";
+                if (mappingsCreated > 0)
+                    successMsg += $" {mappingsCreated} LO mapping(s) auto-applied.";
+
+                TempData["Success"] = successMsg;
                 return RedirectToAction(nameof(Index), new
                 {
                     assignmentId,
