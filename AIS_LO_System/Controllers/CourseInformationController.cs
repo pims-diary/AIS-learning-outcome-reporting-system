@@ -107,6 +107,42 @@ namespace LOARS.Web.Controllers
             using (var stream = System.IO.File.Create(savedPath))
                 await file.CopyToAsync(stream);
 
+            // Check if the uploaded file's course code matches this course
+            string mismatchWarning = null;
+            try
+            {
+                var fileText = ext == ".docx"
+                    ? DocumentService.ExtractTextFromDocx(savedPath)
+                    : "";
+
+                if (ext == ".pdf")
+                {
+                    // Use reflection-free approach — just read first bit of text
+                    using var pdfReader = new iText.Kernel.Pdf.PdfReader(savedPath);
+                    using var pdfDoc = new iText.Kernel.Pdf.PdfDocument(pdfReader);
+                    if (pdfDoc.GetNumberOfPages() > 0)
+                        fileText = iText.Kernel.Pdf.Canvas.Parser.PdfTextExtractor
+                            .GetTextFromPage(pdfDoc.GetPage(1));
+                }
+
+                if (!string.IsNullOrWhiteSpace(fileText))
+                {
+                    // Look for course codes like COMP720, SOFT708, INFO712 in the first chunk of text
+                    var codeMatch = Regex.Match(fileText.Substring(0, Math.Min(fileText.Length, 2000)),
+                        @"\b([A-Z]{3,4}\d{3})\b");
+
+                    if (codeMatch.Success)
+                    {
+                        var detectedCode = codeMatch.Groups[1].Value;
+                        if (!detectedCode.Equals(courseCode, StringComparison.OrdinalIgnoreCase))
+                        {
+                            mismatchWarning = $"⚠️ Warning: This file appears to be for {detectedCode}, but you uploaded it to {courseCode}. Please check you uploaded the correct file.";
+                        }
+                    }
+                }
+            }
+            catch { }
+
             // Extract Learning Outcomes from the uploaded file
             try
             {
@@ -134,6 +170,9 @@ namespace LOARS.Web.Controllers
                     parts.Add("(No Learning Outcomes or Assessments found — add them manually)");
 
                 TempData["Success"] = string.Join(" ", parts);
+
+                if (mismatchWarning != null)
+                    TempData["Error"] = mismatchWarning;
             }
             catch
             {
@@ -392,16 +431,39 @@ namespace LOARS.Web.Controllers
 
                 var courseTitle = course?.Title ?? "";
 
-                // Remove old assignments for this course (e.g. hardcoded "Assignment 1", "Assignment 2")
-                var oldAssignments = _context.Assignments
+                // Get all existing assignments for this course
+                var existingAssignments = _context.Assignments
                     .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
                     .ToList();
-                _context.Assignments.RemoveRange(oldAssignments);
-                _context.SaveChanges();
 
                 // Get existing LOs to map order numbers to IDs
                 var courseLOs = _context.LearningOutcomes
                     .Where(lo => lo.CourseCode == courseCode)
+                    .ToList();
+
+                var extractedNames = assessments.Select(a => a.Title).ToList();
+
+                // Remove old assignments that are NOT in the new outline
+                // BUT only if they have no rubric or marks (safe to delete)
+                foreach (var old in existingAssignments)
+                {
+                    if (!extractedNames.Contains(old.AssessmentName))
+                    {
+                        bool hasRubric = _context.Rubrics.Any(r => r.AssignmentId == old.Id);
+                        bool hasMarks = _context.StudentAssessmentMarks
+                            .Any(m => m.CourseCode == courseCode && m.AssessmentName == old.AssessmentName);
+
+                        if (!hasRubric && !hasMarks)
+                        {
+                            _context.Assignments.Remove(old);
+                        }
+                    }
+                }
+                _context.SaveChanges();
+
+                // Refresh existing list after cleanup
+                existingAssignments = _context.Assignments
+                    .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
                     .ToList();
 
                 foreach (var assess in assessments)
@@ -416,17 +478,31 @@ namespace LOARS.Web.Controllers
 
                     var selectedLOIds = loIds.Any() ? string.Join(",", loIds) : null;
 
-                    _context.Assignments.Add(new Assignment
+                    // Check if this assessment already exists
+                    var existing = existingAssignments.FirstOrDefault(a => a.AssessmentName == assess.Title);
+
+                    if (existing != null)
                     {
-                        AssessmentName = assess.Title,
-                        CourseCode = courseCode,
-                        CourseTitle = courseTitle,
-                        Year = year,
-                        Trimester = trimester,
-                        MarksPercentage = assess.MarksPercentage,
-                        SelectedLearningOutcomeIds = selectedLOIds,
-                        LOsLockedByOutline = true
-                    });
+                        // Update existing — safe, doesn't delete rubric or marks
+                        existing.MarksPercentage = assess.MarksPercentage;
+                        existing.SelectedLearningOutcomeIds = selectedLOIds;
+                        existing.LOsLockedByOutline = true;
+                    }
+                    else
+                    {
+                        // Create new
+                        _context.Assignments.Add(new Assignment
+                        {
+                            AssessmentName = assess.Title,
+                            CourseCode = courseCode,
+                            CourseTitle = courseTitle,
+                            Year = year,
+                            Trimester = trimester,
+                            MarksPercentage = assess.MarksPercentage,
+                            SelectedLearningOutcomeIds = selectedLOIds,
+                            LOsLockedByOutline = true
+                        });
+                    }
                 }
 
                 _context.SaveChanges();
