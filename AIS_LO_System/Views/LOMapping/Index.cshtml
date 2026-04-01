@@ -13,18 +13,18 @@
             <a asp-controller="LecturerDashboard" asp-action="Index">Home</a>
             <span class="sep">/</span>
             <a asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-action="Index"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.CourseCode @ViewBag.Year-T@(ViewBag.Trimester)
             </a>
             <span class="sep">/</span>
             <a asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-action="Index"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 Assessments
             </a>
             <span class="sep">/</span>
@@ -34,13 +34,13 @@
         </div>
 
         <a class="backlink"
-           asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-controller="Assignment"
+               asp-action="Index"
+               asp-route-assessmentName="@ViewBag.AssessmentName"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             ← Go Back
         </a>
     </div>
@@ -77,15 +77,18 @@
 
             <!-- ACTION BUTTONS AT TOP -->
             <div class="top-actions">
-                <button type="submit" class="btn-save">Save Mapping</button>
+                <button type="submit" class="btn-save"
+                    @(string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value) ? "" : "disabled")>
+                    Save Mapping
+                </button>
                 <a class="btn-cancel"
-                   asp-controller="Assignment"
-                   asp-action="Index"
-                   asp-route-assessmentName="@ViewBag.AssessmentName"
-                   asp-route-courseCode="@ViewBag.CourseCode"
-                   asp-route-courseTitle="@ViewBag.CourseTitle"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
+                       asp-controller="Assignment"
+                       asp-action="Index"
+                       asp-route-assessmentName="@ViewBag.AssessmentName"
+                       asp-route-courseCode="@ViewBag.CourseCode"
+                       asp-route-courseTitle="@ViewBag.CourseTitle"
+                       asp-route-year="@ViewBag.Year"
+                       asp-route-trimester="@ViewBag.Trimester">
                     Cancel
                 </a>
             </div>
@@ -111,7 +114,7 @@
                                    data-lo-id="@lo.Id"
                                    data-lo-number="@lo.OrderNumber"
                                    onchange="toggleLOColumn(@lo.Id, this.checked)"
-                                   @(isSelected ? "checked" : "") />
+                            @(isSelected ? "checked" : "") />
                             <label for="lo-select-@lo.Id">
                                 <strong>LO@(lo.OrderNumber)</strong> - @lo.LearningOutcomeText
                             </label>
@@ -164,7 +167,7 @@
                                                data-lo-id="@lo.Id"
                                                data-lo-number="@lo.OrderNumber"
                                                onchange="updateTotalWeight()"
-                                               @(isChecked ? "checked" : "") />
+                                        @(isChecked ? "checked" : "") />
                                     </td>
                                 }
 

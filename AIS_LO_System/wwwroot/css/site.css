@@ -546,9 +546,68 @@ body {
             color: #ffffff !important;
         }
 
-   
+
     .status-marked {
         color: #2e9d49;
         font-weight: 500;
     }
 }
+
+/* =========================
+   Impersonation Banner
+========================= */
+
+.impersonation-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa0 100%);
+    border: 1.5px solid #e6c200;
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 32px;
+    font-size: 13.5px;
+    color: #5a3e00;
+    box-shadow: 0 2px 8px rgba(230, 194, 0, 0.15);
+}
+
+.impersonation-banner__left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    line-height: 1.4;
+}
+
+    .impersonation-banner__left svg {
+        flex-shrink: 0;
+        opacity: 0.75;
+    }
+
+.impersonation-banner form {
+    margin: 0;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.impersonation-banner .impersonation-banner__btn {
+    background: #c21c00;
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 18px;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+    .impersonation-banner .impersonation-banner__btn:hover {
+        background: #a01800;
+        color: #fff;
+    }
+
+    .impersonation-banner .impersonation-banner__btn:active {
+        transform: translateY(0);
+    }

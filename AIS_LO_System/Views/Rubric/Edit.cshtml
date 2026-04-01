@@ -13,20 +13,20 @@
     <!-- Breadcrumb -->
     <div class="edit-breadcrumb">
         <a asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             @ViewBag.CourseCode @ViewBag.Year-S@ViewBag.Trimester
         </a>
         <span>/</span>
         <a asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-action="Index"
+               asp-route-assessmentName="@ViewBag.AssessmentName"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             Assessments
         </a>
         <span>/</span>
@@ -50,7 +50,10 @@
 
     <!-- Save and Cancel Buttons -->
     <div class="edit-actions">
-        <button type="submit" form="rubricForm" class="btn-save">Save Rubric</button>
+        <button type="submit" form="rubricForm" class="btn-save"
+            @(string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value) ? "" : "disabled")>
+            Save Rubric
+        </button>
         <a asp-action="Index"
            asp-route-assignmentId="@ViewBag.AssignmentId"
            asp-route-assessmentName="@ViewBag.AssessmentName"

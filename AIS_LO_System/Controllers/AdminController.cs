@@ -24,9 +24,48 @@ namespace AIS_LO_System.Controllers
         // =============================================
         public async Task<IActionResult> Dashboard()
         {
+            var now = DateTime.Now;
+            int currentYear = now.Year;
+            int currentTrimester = now.Month <= 4 ? 1 : now.Month <= 8 ? 2 : 3;
+
             ViewBag.TotalCourses = await _context.Courses.CountAsync();
             ViewBag.TotalLecturers = await _context.AppUsers.CountAsync(u => u.Role == UserRole.Lecturer);
             ViewBag.TotalModerators = await _context.AppUsers.CountAsync(u => u.Role == UserRole.Moderator);
+            ViewBag.TotalStudents = await _context.Students.CountAsync();
+
+            // Current trimester stats
+            ViewBag.ActiveCourses = await _context.Courses
+                .CountAsync(c => c.Year == currentYear && c.Trimester == currentTrimester);
+            ViewBag.CoursesWithoutLecturer = await _context.Courses
+                .CountAsync(c => c.Year == currentYear && c.Trimester == currentTrimester && c.LecturerId == null);
+            ViewBag.CoursesWithRubric = await _context.Rubrics
+                .Select(r => r.Assignment.CourseCode)
+                .Distinct()
+                .CountAsync();
+            ViewBag.CoursesWithLO = await _context.LearningOutcomes
+                .Select(lo => lo.CourseCode)
+                .Distinct()
+                .CountAsync();
+
+            // Recently added rubrics (real activity) — materialise first, then project to avoid anonymous type in ViewBag
+            var recentRubricData = await _context.Rubrics
+                .Include(r => r.Assignment)
+                .OrderByDescending(r => r.CreatedDate)
+                .Take(5)
+                .ToListAsync();
+
+            ViewBag.RecentRubrics = recentRubricData
+                .Select(r => new RecentRubricItem
+                {
+                    CourseCode = r.Assignment?.CourseCode ?? "—",
+                    AssessmentName = r.Assignment?.AssessmentName ?? "—",
+                    CreatedDate = r.CreatedDate
+                })
+                .ToList();
+
+            ViewBag.CurrentYear = currentYear;
+            ViewBag.CurrentTrimester = currentTrimester;
+
             return View();
         }
 
@@ -508,40 +547,7 @@ namespace AIS_LO_System.Controllers
             return RedirectToAction("Index", "LecturerDashboard");
         }
 
-        // Callable from any layout — no [Authorize(Roles="Admin")] because the impersonated session isn't Admin
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize]
-        public async Task<IActionResult> StopImpersonating()
-        {
-            var adminUsername = User.FindFirst("ImpersonatedBy")?.Value;
-            if (string.IsNullOrEmpty(adminUsername))
-                return RedirectToAction("Dashboard");
 
-            var admin = await _context.AppUsers.FirstOrDefaultAsync(u => u.Username == adminUsername);
-            if (admin == null)
-            {
-                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-                return RedirectToAction("Login", "Account");
-            }
-
-            var claims = new List<System.Security.Claims.Claim>
-            {
-                new(System.Security.Claims.ClaimTypes.Name,      admin.Username),
-                new(System.Security.Claims.ClaimTypes.GivenName, admin.FullName),
-                new(System.Security.Claims.ClaimTypes.Role,      admin.Role.ToString()),
-                new("UserId", admin.Id.ToString())
-                // No ImpersonatedBy — clean admin session
-            };
-
-            var identity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
-
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
-
-            TempData["Success"] = $"Returned to admin session.";
-            return RedirectToAction("Users", "Admin");
-        }
         public async Task<IActionResult> Permissions()
         {
             var courses = await _context.Courses
@@ -770,4 +776,11 @@ public class TrimesterOption
 {
     public int Year { get; set; }
     public int Trimester { get; set; }
+}
+
+public class RecentRubricItem
+{
+    public string CourseCode { get; set; } = "";
+    public string AssessmentName { get; set; } = "";
+    public DateTime CreatedDate { get; set; }
 }

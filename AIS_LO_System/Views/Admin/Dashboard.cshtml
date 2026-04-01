@@ -1,17 +1,35 @@
 ﻿@{
     ViewData["Title"] = "Admin Dashboard";
     Layout = "_AdminLayout";
-}
 
+    var recentRubrics = ViewBag.RecentRubrics as List<RecentRubricItem> ?? new List<RecentRubricItem>();
+
+    string TimeAgo(DateTime dt)
+    {
+        var diff = DateTime.Now - dt;
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return dt.ToString("dd MMM yyyy");
+    }
+}
 
 <div class="admin-content">
 
-    <h1 class="admin-welcome">Welcome Admin!</h1>
+    <h1 class="admin-welcome">Welcome, Admin!</h1>
+    <p style="color:var(--color-text-secondary);margin-top:-12px;margin-bottom:32px;font-size:14px;">
+        @DateTime.Now.ToString("dddd, dd MMMM yyyy") &mdash; Trimester @ViewBag.CurrentTrimester, @ViewBag.CurrentYear
+    </p>
 
+    <!-- Stat cards-->
     <div class="admin-stat-grid">
         <div class="admin-stat-card">
             <div class="stat-label">Total Courses</div>
             <div class="stat-value">@ViewBag.TotalCourses</div>
+        </div>
+        <div class="admin-stat-card">
+            <div class="stat-label">Active This Trimester</div>
+            <div class="stat-value">@ViewBag.ActiveCourses</div>
         </div>
         <div class="admin-stat-card">
             <div class="stat-label">Lecturers</div>
@@ -21,29 +39,75 @@
             <div class="stat-label">Moderators</div>
             <div class="stat-value">@ViewBag.TotalModerators</div>
         </div>
+        <div class="admin-stat-card">
+            <div class="stat-label">Students</div>
+            <div class="stat-value">@ViewBag.TotalStudents</div>
+        </div>
     </div>
 
-    <div class="admin-panel">
-        <div class="admin-panel-title">Recent Activity</div>
-        <table class="admin-activity-table">
-            <tbody>
-                <tr>
-                    <td class="activity-action">Rubric Approved</td>
-                    <td class="activity-detail">SOFT708 - Assignment 1</td>
-                    <td class="activity-time">2h ago</td>
-                </tr>
-                <tr>
-                    <td class="activity-action">LO Mapping flagged</td>
-                    <td class="activity-detail">SOFT606 - Assignment 2</td>
-                    <td class="activity-time">5h ago</td>
-                </tr>
-                <tr>
-                    <td class="activity-action">Lecturer Assigned</td>
-                    <td class="activity-detail">SOFT606 - P. Gunadasa</td>
-                    <td class="activity-time">Yesterday</td>
-                </tr>
-            </tbody>
-        </table>
+    <!-- Attention needed-->
+    @if ((int)ViewBag.CoursesWithoutLecturer > 0)
+    {
+        <div style="display:flex;align-items:center;gap:10px;background:#fff3cd;border:1.5px solid #e6c200;
+            border-radius:10px;padding:12px 18px;margin-bottom:24px;font-size:13.5px;color:#5a3e00;">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size:16px;"></i>
+            <span><strong>@ViewBag.CoursesWithoutLecturer course(s)</strong> in Trimester @ViewBag.CurrentTrimester have no assigned lecturer.</span>
+            <a asp-controller="Admin" asp-action="Courses" asp-route-status="active"
+               style="margin-left:auto;font-weight:600;color:#5a3e00;text-decoration:underline;">View Courses →</a>
+        </div>
+    }
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+        <!-- Coverage panel-->
+        <div class="admin-panel">
+            <div class="admin-panel-title" style="margin-bottom:20px;">Current Trimester Coverage</div>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;">
+                    <span style="color:var(--color-text-secondary);">Courses with Learning Outcomes</span>
+                    <strong>@ViewBag.CoursesWithLO / @ViewBag.TotalCourses</strong>
+                </div>
+                <div style="background:#f0f0f0;border-radius:99px;height:8px;overflow:hidden;">
+                    <div style="background:#2e9d49;height:100%;border-radius:99px;width:@(ViewBag.TotalCourses > 0 ? (int)((double)ViewBag.CoursesWithLO / (double)ViewBag.TotalCourses * 100) : 0)%;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;">
+                    <span style="color:var(--color-text-secondary);">Courses with Rubrics</span>
+                    <strong>@ViewBag.CoursesWithRubric / @ViewBag.TotalCourses</strong>
+                </div>
+                <div style="background:#f0f0f0;border-radius:99px;height:8px;overflow:hidden;">
+                    <div style="background:#b30000;height:100%;border-radius:99px;width:@(ViewBag.TotalCourses > 0 ? (int)((double)ViewBag.CoursesWithRubric / (double)ViewBag.TotalCourses * 100) : 0)%;"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;">
+                    <span style="color:var(--color-text-secondary);">Courses without Lecturer</span>
+                    <strong style="color:@((int)ViewBag.CoursesWithoutLecturer > 0 ? "#b30000" : "inherit")">@ViewBag.CoursesWithoutLecturer</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent rubric uploads-->
+        <div class="admin-panel">
+            <div class="admin-panel-title" style="margin-bottom:20px;">Recent Rubric Uploads</div>
+            @if (!recentRubrics.Any())
+            {
+                <p style="color:var(--color-text-secondary);font-size:14px;">No rubrics uploaded yet.</p>
+            }
+            else
+            {
+                <table class="admin-activity-table">
+                    <tbody>
+                        @foreach (var r in recentRubrics)
+                        {
+                            <tr>
+                                <td class="activity-action">@r.CourseCode</td>
+                                <td class="activity-detail">@r.AssessmentName</td>
+                                <td class="activity-time">@TimeAgo((DateTime)r.CreatedDate)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+
     </div>
 
 </div>

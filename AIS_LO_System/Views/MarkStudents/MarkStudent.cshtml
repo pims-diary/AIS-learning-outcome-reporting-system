@@ -17,38 +17,38 @@
     <!-- Breadcrumb -->
     <div class="breadcrumb mb-3">
         <a class="crumb-link"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
+               asp-controller="CourseDashboard"
+               asp-action="Index"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester">
             @Model.CourseCode @Model.CourseTitle
         </a>
 
         <span>/</span>
 
         <a class="crumb-link"
-           asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
+               asp-controller="Assignment"
+               asp-action="Index"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester">
             Assessments
         </a>
 
         <span>/</span>
 
         <a class="crumb-link"
-           asp-controller="MarkStudents"
-           asp-action="Index"
-           asp-route-assignmentId="@Model.AssignmentId"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
+               asp-controller="MarkStudents"
+               asp-action="Index"
+               asp-route-assignmentId="@Model.AssignmentId"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester">
             Mark Students
         </a>
 
@@ -61,14 +61,14 @@
         <h2 class="fw-bold mb-0">@Model.StudentName</h2>
 
         <a asp-controller="MarkStudents"
-           asp-action="Index"
-           asp-route-assignmentId="@Model.AssignmentId"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="btn btn-outline-secondary">
+               asp-action="Index"
+               asp-route-assignmentId="@Model.AssignmentId"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               class="btn btn-outline-secondary">
             ← Back
         </a>
     </div>
@@ -194,23 +194,26 @@
 
                 <div class="mt-3 d-flex justify-content-end gap-2">
                     <a asp-controller="MarkStudents"
-                       asp-action="LOAchievementReport"
-                       asp-route-studentId="@Model.StudentInternalId"
-                       asp-route-assignmentId="@Model.AssignmentId"
-                       asp-route-courseCode="@Model.CourseCode"
-                       asp-route-courseTitle="@Model.CourseTitle"
-                       asp-route-assessmentName="@Model.AssessmentName"
-                       asp-route-year="@Model.Year"
-                       asp-route-trimester="@Model.Trimester"
-                       class="btn btn-warning">
+                           asp-action="LOAchievementReport"
+                           asp-route-studentId="@Model.StudentInternalId"
+                           asp-route-assignmentId="@Model.AssignmentId"
+                           asp-route-courseCode="@Model.CourseCode"
+                           asp-route-courseTitle="@Model.CourseTitle"
+                           asp-route-assessmentName="@Model.AssessmentName"
+                           asp-route-year="@Model.Year"
+                           asp-route-trimester="@Model.Trimester"
+                           class="btn btn-warning">
                         View LO Achievement Result
                     </a>
 
-                    <button type="submit" class="btn btn-danger">Save Marks</button>
+                    <button type="submit" class="btn btn-danger"
+                        @(string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value) ? "" : "disabled")>
+                        Save Marks
+                    </button>
 
                     <button type="button"
                             class="btn btn-outline-danger"
-                            onclick="document.getElementById('clearMarksForm').submit();">
+                        @(string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value) ? $"onclick=\"document.getElementById('clearMarksForm').submit();\"" : "disabled")>
                         Clear Marks
                     </button>
                 </div>

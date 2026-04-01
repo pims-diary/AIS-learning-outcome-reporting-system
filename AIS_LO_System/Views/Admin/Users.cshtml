@@ -37,9 +37,18 @@
             </form>
 
             <div class="admin-status-tabs">
-                <a href="?status=all" class="status-tab @(ViewBag.Status == "all" ? "status-tab-active" : "")">All</a>
-                <a href="?status=active" class="status-tab @(ViewBag.Status == "active" ? "status-tab-active" : "")">Active</a>
-                <a href="?status=inactive" class="status-tab @(ViewBag.Status == "inactive" ? "status-tab-active" : "")">Inactive</a>
+                @{
+                    var _uSearch = Context.Request.Query["search"].ToString();
+                    var _uRole = Context.Request.Query["role"].ToString();
+                    string UTab(string s) => "?" + string.Join("&", new[] {
+                        string.IsNullOrEmpty(_uSearch) ? null : $"search={Uri.EscapeDataString(_uSearch)}",
+                        string.IsNullOrEmpty(_uRole)   ? null : $"role={Uri.EscapeDataString(_uRole)}",
+                        $"status={s}"
+                    }.Where(x => x != null));
+                }
+                <a href="@UTab("all")" class="status-tab @(ViewBag.Status == "all" ? "status-tab-active" : "")">All</a>
+                <a href="@UTab("active")" class="status-tab @(ViewBag.Status == "active" ? "status-tab-active" : "")">Active</a>
+                <a href="@UTab("inactive")" class="status-tab @(ViewBag.Status == "inactive" ? "status-tab-active" : "")">Inactive</a>
             </div>
         </div>
 

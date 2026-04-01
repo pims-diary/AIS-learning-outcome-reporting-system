@@ -13,20 +13,20 @@
     <!-- Breadcrumb -->
     <div class="breadcrumb">
         <a asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             @ViewBag.CourseCode @ViewBag.Year-S@ViewBag.Trimester
         </a>
         <span>/</span>
         <a asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-action="Index"
+               asp-route-assessmentName="@ViewBag.AssessmentName"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             Assessments
         </a>
         <span>/</span>
@@ -59,34 +59,37 @@
     </div>
 
     <!-- Re-upload Section -->
-    <div class="reupload-section">
-        <form asp-action="UploadAssignment"
-              method="post"
-              enctype="multipart/form-data"
-              id="reuploadForm">
+    @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
+    {
+        <div class="reupload-section">
+            <form asp-action="UploadAssignment"
+                  method="post"
+                  enctype="multipart/form-data"
+                  id="reuploadForm">
 
-            <input type="hidden" name="assignmentId" value="@Model.Id" />
-            <input type="file" name="file" accept=".pdf"
-                   id="fileInput"
-                   style="display:none"
-                   onchange="document.getElementById('reuploadForm').submit()" />
+                <input type="hidden" name="assignmentId" value="@Model.Id" />
+                <input type="file" name="file" accept=".pdf"
+                       id="fileInput"
+                       style="display:none"
+                       onchange="document.getElementById('reuploadForm').submit()" />
 
-            <button type="button"
-                    onclick="document.getElementById('fileInput').click()"
-                    style="background-color: #c21c00;
-               color: white;
-               padding: 15px 50px;
-               border-radius: 12px;
-               font-size: 18px;
-               font-weight: 500;
-               cursor: pointer;
-               border: none;
-               display: block;
-               margin: 0 auto;">
-                Re-upload Assignment
-            </button>
+                <button type="button"
+                        onclick="document.getElementById('fileInput').click()"
+                        style="background-color: #c21c00;
+                    color: white;
+                    padding: 15px 50px;
+                    border-radius: 12px;
+                    font-size: 18px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    border: none;
+                    display: block;
+                    margin: 0 auto;">
+                    Re-upload Assignment
+                </button>
 
-        </form>
-    </div>
+            </form>
+        </div>
+    }
 
 </div>

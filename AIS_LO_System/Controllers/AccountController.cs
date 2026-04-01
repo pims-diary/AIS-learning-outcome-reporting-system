@@ -94,6 +94,41 @@ namespace LOARS.Web.Controllers
             return RedirectToAction("Login");
         }
 
+        // Callable from any layout while impersonating — must live here (no class-level role restriction)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> StopImpersonating()
+        {
+            var adminUsername = User.FindFirst("ImpersonatedBy")?.Value;
+            if (string.IsNullOrEmpty(adminUsername))
+                return RedirectToAction("Dashboard", "Admin");
+
+            var admin = await _context.AppUsers.FirstOrDefaultAsync(u => u.Username == adminUsername);
+            if (admin == null)
+            {
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return RedirectToAction("Login");
+            }
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.Name,      admin.Username),
+                new(ClaimTypes.GivenName, admin.FullName),
+                new(ClaimTypes.Role,      admin.Role.ToString()),
+                new("UserId", admin.Id.ToString())
+                // No ImpersonatedBy — clean admin session
+            };
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            TempData["Success"] = "Returned to admin session.";
+            return RedirectToAction("Users", "Admin");
+        }
+
         [HttpGet]
         public IActionResult AccessDenied()
         {
