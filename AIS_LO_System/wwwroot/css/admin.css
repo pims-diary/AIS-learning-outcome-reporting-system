@@ -754,6 +754,17 @@ tr.row-inactive td {
     opacity: 0.8;
 }
 
+.enrol-tag-mod {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 2px;
+}
+
 /* Table row breathing room */
 .admin-table td {
     padding: 16px 12px;

@@ -2,7 +2,7 @@
 
 namespace AIS_LO_System.Models
 {
-    public enum UserRole { Admin, Lecturer, Moderator }
+    public enum UserRole { Admin, Lecturer }
 
     public class AppUser
     {

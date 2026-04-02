@@ -26,7 +26,6 @@ namespace LOARS.Web.Controllers
             if (User.Identity?.IsAuthenticated == true)
             {
                 if (User.IsInRole("Admin")) return RedirectToAction("Dashboard", "Admin");
-                if (User.IsInRole("Moderator")) return RedirectToAction("Index", "ModeratorDashboard");
                 return RedirectToAction("Index", "LecturerDashboard");
             }
             return View(new LoginViewModel());
@@ -74,8 +73,7 @@ namespace LOARS.Web.Controllers
 
             TempData["Success"] = "Login successful.";
 
-            // Redirect based on the role we just signed in with (not User which hasn't refreshed yet)
-            // Note: Moderator dashboard not yet built — moderators use lecturer dashboard for now
+            // Redirect based on role
             return user.Role switch
             {
                 UserRole.Admin => RedirectToAction("Dashboard", "Admin"),

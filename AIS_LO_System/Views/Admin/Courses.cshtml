@@ -136,7 +136,14 @@
                             </td>
                             <td class="admin-td-actions">
                                 <button class="btn-admin-edit"
-                                        onclick="openEditCourse(@c.Id, '@c.Title', '@c.School', @c.Year, @c.Trimester, @(c.LecturerId?.ToString() ?? "null"), @(c.ModeratorId?.ToString() ?? "null"))">
+                                        data-id="@c.Id"
+                                        data-title="@c.Title"
+                                        data-school="@c.School"
+                                        data-year="@c.Year"
+                                        data-trimester="@c.Trimester"
+                                        data-lecturer="@(c.LecturerId?.ToString() ?? "")"
+                                        data-moderator="@(c.ModeratorId?.ToString() ?? "")"
+                                        onclick="openEditCourse(this)">
                                     Edit
                                 </button>
                                 <form asp-action="RemoveCourse" method="post" style="display:inline"
@@ -205,7 +212,7 @@
                     </select>
                 </div>
                 <div class="admin-form-group">
-                    <label>Assign Moderator</label>
+                    <label>Assign Moderator <span style="font-weight:400;color:var(--color-text-secondary)">(any lecturer, must differ from above)</span></label>
                     <select name="moderatorId" class="admin-input">
                         <option value="">Unassigned</option>
                         @foreach (var m in moderators)
@@ -271,7 +278,7 @@
                     </select>
                 </div>
                 <div class="admin-form-group">
-                    <label>Moderator</label>
+                    <label>Moderator <span style="font-weight:400;color:var(--color-text-secondary)">(any lecturer, must differ from above)</span></label>
                     <select name="moderatorId" id="editCourseModerator" class="admin-input">
                         <option value="">Unassigned</option>
                         @foreach (var m in moderators)
@@ -293,15 +300,22 @@
     <script>
         function openModal(id) { document.getElementById(id).classList.add('open'); }
         function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-        function openEditCourse(id, title, school, year, trimester, lecId, modId) {
+        function openEditCourse(btn) {
+            const id       = btn.dataset.id;
+            const title    = btn.dataset.title;
+            const school   = btn.dataset.school;
+            const year     = btn.dataset.year;
+            const trimester = btn.dataset.trimester;
+            const lecId    = btn.dataset.lecturer;
+            const modId    = btn.dataset.moderator;
+
             document.getElementById('editCourseId').value = id;
             document.getElementById('editCourseTitle').value = title;
-            document.getElementById('editCourseSchool').value = school;
-            // Fallback if the stored value doesn't match any option
-            var sel = document.getElementById('editCourseSchool');
-            if (sel.value !== school) sel.value = 'Information Technology';
             document.getElementById('editCourseYear').value = year;
             document.getElementById('editCourseTrimester').value = trimester;
+            var sel = document.getElementById('editCourseSchool');
+            sel.value = school;
+            if (sel.value !== school) sel.value = 'Information Technology';
             document.getElementById('editCourseLecturer').value = lecId || '';
             document.getElementById('editCourseModerator').value = modId || '';
             openModal('editCourseModal');

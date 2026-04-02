@@ -30,7 +30,7 @@ namespace AIS_LO_System.Controllers
 
             ViewBag.TotalCourses = await _context.Courses.CountAsync();
             ViewBag.TotalLecturers = await _context.AppUsers.CountAsync(u => u.Role == UserRole.Lecturer);
-            ViewBag.TotalModerators = await _context.AppUsers.CountAsync(u => u.Role == UserRole.Moderator);
+            ViewBag.TotalModerators = await _context.Courses.CountAsync(c => c.ModeratorId != null);
             ViewBag.TotalStudents = await _context.Students.CountAsync();
 
             // Current trimester stats
@@ -109,7 +109,8 @@ namespace AIS_LO_System.Controllers
             ViewBag.SelectedSchool = school ?? "all";
 
             ViewBag.Lecturers = await _context.AppUsers.Where(u => u.Role == UserRole.Lecturer).ToListAsync();
-            ViewBag.Moderators = await _context.AppUsers.Where(u => u.Role == UserRole.Moderator).ToListAsync();
+            // Moderators are any Lecturer — moderator is a per-course assignment, not a separate role
+            ViewBag.Moderators = await _context.AppUsers.Where(u => u.Role == UserRole.Lecturer).ToListAsync();
             ViewBag.Trimesters = await _context.Courses
                 .Select(c => new { c.Year, c.Trimester })
                 .Distinct()
@@ -131,11 +132,7 @@ namespace AIS_LO_System.Controllers
                 return RedirectToAction(nameof(Courses), "Admin");
             }
 
-            if (lecturerId.HasValue && lecturerId == moderatorId)
-            {
-                TempData["Error"] = "A lecturer cannot moderate their own course. Please assign a different moderator.";
-                return RedirectToAction(nameof(Courses), "Admin");
-            }
+            // Note: the same lecturer CAN be assigned as moderator of their own course
 
             var course = new Course
             {
@@ -161,7 +158,9 @@ namespace AIS_LO_System.Controllers
         public async Task<IActionResult> EditCourse(int id, string title, int year, int trimester,
     string school, int? lecturerId, int? moderatorId)
         {
-            var course = await _context.Courses.FindAsync(id);
+            var course = await _context.Courses
+                .Include(c => c.LecturerEnrolments)
+                .FirstOrDefaultAsync(c => c.Id == id);
             if (course == null) return NotFound();
 
             course.Title = title.Trim();
@@ -170,6 +169,28 @@ namespace AIS_LO_System.Controllers
             course.School = string.IsNullOrWhiteSpace(school) ? course.School : school.Trim();
             course.LecturerId = lecturerId;
             course.ModeratorId = moderatorId;
+
+            // Sync LecturerCourseEnrolment: ensure primary lecturer has an enrolment row,
+            // and moderator (if a different person) also has one so they appear on their dashboard.
+            var enrolledUserIds = course.LecturerEnrolments.Select(e => e.UserId).ToHashSet();
+
+            if (lecturerId.HasValue && !enrolledUserIds.Contains(lecturerId.Value))
+            {
+                _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
+                {
+                    UserId = lecturerId.Value,
+                    CourseId = id
+                });
+            }
+
+            if (moderatorId.HasValue && !enrolledUserIds.Contains(moderatorId.Value))
+            {
+                _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
+                {
+                    UserId = moderatorId.Value,
+                    CourseId = id
+                });
+            }
 
             await _context.SaveChangesAsync();
             TempData["Success"] = "Course updated.";
@@ -352,6 +373,7 @@ namespace AIS_LO_System.Controllers
             ViewBag.Status = status ?? "all";
 
             ViewBag.Courses = await _context.Courses
+                .Include(c => c.LecturerEnrolments)
                 .OrderByDescending(c => c.Year).ThenBy(c => c.Code).ToListAsync();
 
             return View(await query.OrderBy(u => u.Role).ThenBy(u => u.FullName).ToListAsync());
@@ -387,7 +409,8 @@ namespace AIS_LO_System.Controllers
             _context.AppUsers.Add(user);
             await _context.SaveChangesAsync();
 
-            // Assign to courses via LecturerCourseEnrolment
+            // Assign to courses via LecturerCourseEnrolment only.
+            // Course.LecturerId / ModeratorId are managed via the Courses page.
             foreach (var cid in courseIds.Distinct())
             {
                 _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
@@ -395,16 +418,6 @@ namespace AIS_LO_System.Controllers
                     UserId = user.Id,
                     CourseId = cid
                 });
-
-                // Also set as primary lecturer/moderator on the course if unset
-                var course = await _context.Courses.FindAsync(cid);
-                if (course != null)
-                {
-                    if (role == UserRole.Lecturer && course.LecturerId == null)
-                        course.LecturerId = user.Id;
-                    if (role == UserRole.Moderator && course.ModeratorId == null)
-                        course.ModeratorId = user.Id;
-                }
             }
             await _context.SaveChangesAsync();
 
@@ -490,17 +503,11 @@ namespace AIS_LO_System.Controllers
             if (!string.IsNullOrWhiteSpace(newPassword))
                 user.PasswordHash = BC.HashPassword(newPassword);
 
-            // Replace course enrolments
+            // Replace course enrolments only — do NOT touch Course.LecturerId or Course.ModeratorId.
+            // Those FKs are managed exclusively via the Courses page (AddCourse/EditCourse).
             var existing = await _context.LecturerCourseEnrolments
                 .Where(e => e.UserId == id).ToListAsync();
             _context.LecturerCourseEnrolments.RemoveRange(existing);
-
-            // Clear lecturer/moderator FK on courses that were previously assigned
-            var lecCourses = await _context.Courses.Where(c => c.LecturerId == id).ToListAsync();
-            foreach (var c in lecCourses) c.LecturerId = null;
-            var modCourses = await _context.Courses.Where(c => c.ModeratorId == id).ToListAsync();
-            foreach (var c in modCourses) c.ModeratorId = null;
-
             await _context.SaveChangesAsync();
 
             foreach (var cid in courseIds.Distinct())
@@ -510,15 +517,6 @@ namespace AIS_LO_System.Controllers
                     UserId = id,
                     CourseId = cid
                 });
-
-                var course = await _context.Courses.FindAsync(cid);
-                if (course != null)
-                {
-                    if (role == UserRole.Lecturer && course.LecturerId == null)
-                        course.LecturerId = id;
-                    if (role == UserRole.Moderator && course.ModeratorId == null)
-                        course.ModeratorId = id;
-                }
             }
 
             await _context.SaveChangesAsync();
@@ -556,7 +554,6 @@ namespace AIS_LO_System.Controllers
 
             TempData["Info"] = $"You are now viewing as {target.FullName}. This session is read-only.";
 
-            // Moderator dashboard not yet built — use lecturer dashboard for now
             return RedirectToAction("Index", "LecturerDashboard");
         }
 
@@ -599,7 +596,8 @@ namespace AIS_LO_System.Controllers
             }
 
             var lecturers = await _context.AppUsers.Where(u => u.Role == UserRole.Lecturer).ToDictionaryAsync(u => u.Username, u => u.Id);
-            var moderators = await _context.AppUsers.Where(u => u.Role == UserRole.Moderator).ToDictionaryAsync(u => u.Username, u => u.Id);
+            // Moderator lookup uses the same Lecturer pool — any Lecturer can be assigned as moderator
+            var moderators = lecturers;
             var existing = await _context.Courses.Select(c => new { c.Code, c.Year, c.Trimester }).ToListAsync();
 
             int added = 0, updated = 0, skipped = 0;

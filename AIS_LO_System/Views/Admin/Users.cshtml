@@ -31,7 +31,6 @@
                 <select name="role" class="admin-filter-select" onchange="this.form.submit()">
                     <option value="">All Roles</option>
                     <option value="Lecturer" selected="@(Context.Request.Query["role"] == "Lecturer")">Lecturer</option>
-                    <option value="Moderator" selected="@(Context.Request.Query["role"] == "Moderator")">Moderator</option>
                     <option value="Admin" selected="@(Context.Request.Query["role"] == "Admin")">Admin</option>
                 </select>
             </form>
@@ -78,7 +77,6 @@
                         var roleCss = u.Role switch
                         {
                             AIS_LO_System.Models.UserRole.Lecturer => "role-pill-lecturer",
-                            AIS_LO_System.Models.UserRole.Moderator => "role-pill-moderator",
                             AIS_LO_System.Models.UserRole.Admin => "role-pill-admin",
                             _ => ""
                         };
@@ -94,57 +92,71 @@
                                 </span>
                             </td>
                             <td>
-                                @foreach (var c in courses.Where(c => c.LecturerId == u.Id || c.ModeratorId == u.Id).OrderByDescending(c => c.Year).ThenBy(c => c.Trimester))
+                                @{
+                                    // Courses this user is assigned to via enrolment table OR as primary lecturer/moderator
+                                    var userCourses = courses
+                                        .Where(c => c.LecturerEnrolments.Any(e => e.UserId == u.Id)
+                                                 || c.LecturerId == u.Id
+                                                 || c.ModeratorId == u.Id)
+                                        .Distinct()
+                                        .OrderByDescending(c => c.Year).ThenBy(c => c.Trimester)
+                                        .ToList();
+                                }
+                                @foreach (var c in userCourses)
                                 {
+                                    bool isMod = c.ModeratorId == u.Id;
+                                    bool isLec = c.LecturerId == u.Id || c.LecturerEnrolments.Any(e => e.UserId == u.Id);
                                     <span class="enrol-tag @(c.Year == DateTime.Now.Year ? "enrol-tag-current" : "enrol-tag-past")">
-                                        @c.Code <span class="enrol-tag-year">@(c.Year) T@(c.Trimester)</span>
-                                    </span>
-                                }
-                            </td>
-                            <td class="admin-td-actions">
-                                <button class="btn-admin-edit"
-                                        data-id="@u.Id"
-                                        data-name="@u.FullName"
-                                        data-email="@u.Email"
-                                        data-role="@u.Role"
-                                        data-courses="@string.Join(",", courses.Where(c => c.LecturerId == u.Id || c.ModeratorId == u.Id).Select(c => c.Id))"
-                                        onclick="openEditUser(this)">
-                                    Edit
-                                </button>
-                                @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
-                                {
-                                    <form asp-action="LoginAs" method="post" style="display:inline"
-                                          onsubmit="return confirm('Log in as @u.FullName? You will be in view-only mode.')">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@u.Id" />
-                                        <button type="submit" class="btn-admin-loginas">View as</button>
-                                    </form>
-                                }
-                                <form asp-action="ToggleUserActive" method="post" style="display:inline">
+                                        @c.Code <span class="enrol-tag-year">@(c.Year) T@(c.Trimester)</span>@if (isMod) {
+                                        <span class="enrol-tag-mod" title="Also moderator">MOD</span>
+                                    }
+                                </span>
+                            }
+                        </td>
+                        <td class="admin-td-actions">
+                            <button class="btn-admin-edit"
+                                    data-id="@u.Id"
+                                    data-name="@u.FullName"
+                                    data-email="@u.Email"
+                                    data-role="@u.Role"
+                                    data-courses="@string.Join(",", courses.Where(c => c.LecturerEnrolments.Any(e => e.UserId == u.Id) || c.LecturerId == u.Id || c.ModeratorId == u.Id).Select(c => c.Id).Distinct())"
+                                    onclick="openEditUser(this)">
+                                Edit
+                            </button>
+                            @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
+                            {
+                                <form asp-action="LoginAs" method="post" style="display:inline"
+                                      onsubmit="return confirm('Log in as @u.FullName? You will be in view-only mode.')">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@u.Id" />
-                                    <button type="submit"
-                                            class="btn-admin-toggle @(u.IsActive ? "btn-toggle-deactivate" : "btn-toggle-activate")"
-                                            onclick="return confirm('@(u.IsActive ? $"Deactivate {u.FullName}?" : $"Activate {u.FullName}?")')">
-                                        @(u.IsActive ? "Deactivate" : "Activate")
-                                    </button>
+                                    <button type="submit" class="btn-admin-loginas">View as</button>
                                 </form>
-                                @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
-                                {
-                                    <form asp-action="RemoveUser" method="post" style="display:inline"
-                                          onsubmit="return confirm('Remove @u.FullName?')">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@u.Id" />
-                                        <button type="submit" class="btn-admin-remove">Remove</button>
-                                    </form>
-                                }
-                            </td>
-                        </tr>
-                    }
+                            }
+                            <form asp-action="ToggleUserActive" method="post" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <button type="submit"
+                                        class="btn-admin-toggle @(u.IsActive ? "btn-toggle-deactivate" : "btn-toggle-activate")"
+                                        onclick="return confirm('@(u.IsActive ? $"Deactivate {u.FullName}?" : $"Activate {u.FullName}?")')">
+                                    @(u.IsActive ? "Deactivate" : "Activate")
+                                </button>
+                            </form>
+                            @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
+                            {
+                                <form asp-action="RemoveUser" method="post" style="display:inline"
+                                      onsubmit="return confirm('Remove @u.FullName?')">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <button type="submit" class="btn-admin-remove">Remove</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
                 }
-            </tbody>
-        </table>
-    </div>
+            }
+        </tbody>
+    </table>
+</div>
 </div>
 
 <!-- Add User Modal -->
@@ -162,7 +174,6 @@
                     <label>Role *</label>
                     <select name="role" class="admin-input" id="roleSelect" onchange="toggleCourseList()">
                         <option value="Lecturer">Lecturer</option>
-                        <option value="Moderator">Moderator</option>
                         <option value="Admin">Admin</option>
                     </select>
                 </div>
@@ -258,7 +269,6 @@
                     <label>Role *</label>
                     <select name="role" id="editUserRole" class="admin-input" onchange="toggleEditCourseList()">
                         <option value="Lecturer">Lecturer</option>
-                        <option value="Moderator">Moderator</option>
                         <option value="Admin">Admin</option>
                     </select>
                 </div>
