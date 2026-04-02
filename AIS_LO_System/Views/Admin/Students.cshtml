@@ -68,6 +68,7 @@
                 <tr>
                     <th>Student ID</th>
                     <th>Full Name</th>
+                    <th>Programme</th>
                     <th>Status</th>
                     <th>Enrolled In</th>
                     <th></th>
@@ -77,20 +78,21 @@
                 @if (!Model.Any())
                 {
                     <tr>
-                        <td colspan="5" class="admin-empty">No Student Added Yet</td>
+                        <td colspan="6" class="admin-empty">No Student Added Yet</td>
                     </tr>
                 }
                 else
                 {
                     @foreach (var s in Model)
                     {
-                        bool isActive = s.CourseEnrolments.Any(e => e.Course.Year == ViewBag.CurrentYear);
-                        <tr class="@(!isActive ? "row-inactive" : "")">
+                        <tr class="@(s.Status == AIS_LO_System.Models.StudentStatus.Inactive ? "row-inactive" : "")">
                             <td>@s.StudentId</td>
                             <td>@s.FullName</td>
+                            <td class="text-muted">@(string.IsNullOrEmpty(s.Programme) ? "—" : s.Programme)</td>
                             <td>
-                                <span class="status-pill @(isActive ? "status-active" : "status-inactive")">
-                                    @(isActive ? "Active" : "Inactive")
+                                <span class="status-pill @(s.Status == AIS_LO_System.Models.StudentStatus.Active ? "status-active" : "status-inactive")"
+                                      title="@(s.StatusReason ?? "")">
+                                    @s.Status
                                 </span>
                             </td>
                             <td>
@@ -107,6 +109,9 @@
                                 <button class="btn-admin-edit"
                                         data-id="@s.Id"
                                         data-name="@s.FullName"
+                                        data-programme="@(s.Programme ?? "")"
+                                        data-status="@s.Status"
+                                        data-reason="@(s.StatusReason ?? "")"
                                         data-courses="@string.Join(",", s.CourseEnrolments.Select(e => e.CourseId))"
                                         onclick="openEditStudent(this)">
                                     Edit
@@ -141,6 +146,23 @@
                     <label>Full Name *</label>
                     <input name="fullName" class="admin-input" placeholder="e.g. Maria Santos" required />
                 </div>
+            </div>
+            <div class="admin-form-row">
+                <div class="admin-form-group">
+                    <label>Programme/Degree</label>
+                    <input name="programme" class="admin-input" placeholder="e.g. BIT, GDIT" />
+                </div>
+                <div class="admin-form-group">
+                    <label>Status *</label>
+                    <select name="status" class="admin-input" required>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="admin-form-group">
+                <label>Status Reason (if Inactive)</label>
+                <textarea name="statusReason" class="admin-input" placeholder="e.g. Fees pending, withdrawal, attendance..." style="resize:vertical;min-height:60px;"></textarea>
             </div>
             <div class="admin-form-group">
                 <label>Enrol in Course/s</label>
@@ -213,6 +235,23 @@
                     <label>Full Name *</label>
                     <input name="fullName" id="editStudentName" class="admin-input" required />
                 </div>
+            </div>
+            <div class="admin-form-row">
+                <div class="admin-form-group">
+                    <label>Programme/Degree</label>
+                    <input name="programme" id="editStudentProgramme" class="admin-input" placeholder="e.g. BIT, GDIT" />
+                </div>
+                <div class="admin-form-group">
+                    <label>Status *</label>
+                    <select name="status" id="editStudentStatus" class="admin-input" required>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+            </div>
+            <div class="admin-form-group">
+                <label>Status Reason (if Inactive)</label>
+                <textarea name="statusReason" id="editStudentReason" class="admin-input" placeholder="e.g. Fees pending, withdrawal, attendance..." style="resize:vertical;min-height:60px;"></textarea>
             </div>
             <div class="admin-form-group">
                 <label>Enrolled in Course/s</label>
@@ -333,10 +372,16 @@
         function openEditStudent(btn) {
             const id = btn.dataset.id;
             const fullName = btn.dataset.name;
+            const programme = btn.dataset.programme;
+            const status = btn.dataset.status;
+            const reason = btn.dataset.reason;
             const courses = btn.dataset.courses ? btn.dataset.courses.split(',').map(Number) : [];
 
             document.getElementById('editStudentId').value = id;
             document.getElementById('editStudentName').value = fullName;
+            document.getElementById('editStudentProgramme').value = programme;
+            document.getElementById('editStudentStatus').value = status;
+            document.getElementById('editStudentReason').value = reason;
 
             document.querySelectorAll('#editStudentCourses input[type=checkbox]').forEach(cb => {
                 cb.checked = courses.includes(parseInt(cb.value));

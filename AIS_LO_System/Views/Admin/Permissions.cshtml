@@ -33,7 +33,7 @@
                     <option value="">All Trimesters</option>
                     @foreach (var t in trimesters)
                     {
-                        <option value="@t.Year-@t.Trimester">@t.Year T@t.Trimester</option>
+                        <option value="@t.Year-@t.Trimester">@t.Year T@(t.Trimester)</option>
                     }
                 </select>
             </div>
@@ -55,7 +55,7 @@
 
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                             <div class="perm-card-title" style="margin-bottom:0;">@course.Code — @course.Title</div>
-                            <span style="font-size:12px;color:var(--color-text-secondary);">@course.Year T@course.Trimester</span>
+                            <span style="font-size:12px;color:var(--color-text-secondary);">@course.Year T@(course.Trimester)</span>
                         </div>
 
                         <div class="perm-row">

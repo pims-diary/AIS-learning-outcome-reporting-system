@@ -23,26 +23,26 @@
 
     <!-- Stat cards-->
     <div class="admin-stat-grid">
-        <div class="admin-stat-card">
+        <a href="@Url.Action("Courses", "Admin")" class="admin-stat-card admin-stat-card-courses">
             <div class="stat-label">Total Courses</div>
             <div class="stat-value">@ViewBag.TotalCourses</div>
-        </div>
-        <div class="admin-stat-card">
+        </a>
+        <a href="@Url.Action("Courses", "Admin", new { trimester = ViewBag.CurrentYear + "-" + ViewBag.CurrentTrimester })" class="admin-stat-card admin-stat-card-active">
             <div class="stat-label">Active This Trimester</div>
             <div class="stat-value">@ViewBag.ActiveCourses</div>
-        </div>
-        <div class="admin-stat-card">
+        </a>
+        <a href="@Url.Action("Users", "Admin", new { role = "Lecturer" })" class="admin-stat-card admin-stat-card-lecturers">
             <div class="stat-label">Lecturers</div>
             <div class="stat-value">@ViewBag.TotalLecturers</div>
-        </div>
-        <div class="admin-stat-card">
+        </a>
+        <a href="@Url.Action("Users", "Admin", new { role = "Moderator" })" class="admin-stat-card admin-stat-card-moderators">
             <div class="stat-label">Moderators</div>
             <div class="stat-value">@ViewBag.TotalModerators</div>
-        </div>
-        <div class="admin-stat-card">
+        </a>
+        <a href="@Url.Action("Students", "Admin")" class="admin-stat-card admin-stat-card-students">
             <div class="stat-label">Students</div>
             <div class="stat-value">@ViewBag.TotalStudents</div>
-        </div>
+        </a>
     </div>
 
     <!-- Attention needed-->
@@ -68,14 +68,14 @@
                     <strong>@ViewBag.CoursesWithLO / @ViewBag.TotalCourses</strong>
                 </div>
                 <div style="background:#f0f0f0;border-radius:99px;height:8px;overflow:hidden;">
-                    <div style="background:#2e9d49;height:100%;border-radius:99px;width:@(ViewBag.TotalCourses > 0 ? (int)((double)ViewBag.CoursesWithLO / (double)ViewBag.TotalCourses * 100) : 0)%;"></div>
+                    <div style="background:#2e9d49;height:100%;border-radius:99px;width:@(ViewBag.TotalCourses > 0 ? (int)((double)ViewBag.CoursesWithLO / (double)ViewBag.TotalCourses * 100) : 0)%"></div>
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;">
                     <span style="color:var(--color-text-secondary);">Courses with Rubrics</span>
                     <strong>@ViewBag.CoursesWithRubric / @ViewBag.TotalCourses</strong>
                 </div>
                 <div style="background:#f0f0f0;border-radius:99px;height:8px;overflow:hidden;">
-                    <div style="background:#b30000;height:100%;border-radius:99px;width:@(ViewBag.TotalCourses > 0 ? (int)((double)ViewBag.CoursesWithRubric / (double)ViewBag.TotalCourses * 100) : 0)%;"></div>
+                    <div style="background:#b30000;height:100%;border-radius:99px;width:@(ViewBag.TotalCourses > 0 ? (int)((double)ViewBag.CoursesWithRubric / (double)ViewBag.TotalCourses * 100) : 0)%"></div>
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;">
                     <span style="color:var(--color-text-secondary);">Courses without Lecturer</span>

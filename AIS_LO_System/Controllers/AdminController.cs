@@ -158,26 +158,22 @@ namespace AIS_LO_System.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditCourse(int id, string title, string school,
-            int? lecturerId, int? moderatorId)
+        public async Task<IActionResult> EditCourse(int id, string title, int year, int trimester,
+    string school, int? lecturerId, int? moderatorId)
         {
             var course = await _context.Courses.FindAsync(id);
             if (course == null) return NotFound();
 
-            if (lecturerId.HasValue && lecturerId == moderatorId)
-            {
-                TempData["Error"] = "A lecturer cannot moderate their own course. Please assign a different moderator.";
-                return RedirectToAction(nameof(Courses), "Admin");
-            }
-
             course.Title = title.Trim();
+            course.Year = year;
+            course.Trimester = trimester;
             course.School = string.IsNullOrWhiteSpace(school) ? course.School : school.Trim();
             course.LecturerId = lecturerId;
             course.ModeratorId = moderatorId;
 
             await _context.SaveChangesAsync();
             TempData["Success"] = "Course updated.";
-            return RedirectToAction(nameof(Courses), "Admin");
+            return RedirectToAction(nameof(Courses));
         }
 
         [HttpPost]
@@ -242,22 +238,33 @@ namespace AIS_LO_System.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddStudent(string studentId, string fullName,
-            string? email, List<int> courseIds)
+    string? programme, string status, string? statusReason, List<int> courseIds)
         {
             if (string.IsNullOrWhiteSpace(studentId) || string.IsNullOrWhiteSpace(fullName))
             {
                 TempData["Error"] = "Student ID and full name are required.";
-                return RedirectToAction(nameof(Students), "Admin");
+                return RedirectToAction(nameof(Students));
             }
 
             var existing = await _context.Students.FirstOrDefaultAsync(s => s.StudentId == studentId.Trim());
             if (existing != null)
             {
                 TempData["Error"] = $"Student ID {studentId} already exists.";
-                return RedirectToAction(nameof(Students), "Admin");
+                return RedirectToAction(nameof(Students));
             }
 
-            var student = new Student { StudentId = studentId.Trim(), FullName = fullName.Trim() };
+            var studentStatus = Enum.TryParse<StudentStatus>(status, out var parsedStatus)
+                ? parsedStatus
+                : StudentStatus.Active;
+
+            var student = new Student
+            {
+                StudentId = studentId.Trim(),
+                FullName = fullName.Trim(),
+                Programme = string.IsNullOrWhiteSpace(programme) ? null : programme.Trim(),
+                Status = studentStatus,
+                StatusReason = string.IsNullOrWhiteSpace(statusReason) ? null : statusReason.Trim()
+            };
             _context.Students.Add(student);
             await _context.SaveChangesAsync();
 
@@ -272,7 +279,7 @@ namespace AIS_LO_System.Controllers
             await _context.SaveChangesAsync();
 
             TempData["Success"] = $"Student {fullName} added.";
-            return RedirectToAction(nameof(Students), "Admin");
+            return RedirectToAction(nameof(Students));
         }
 
         [HttpPost]
@@ -286,12 +293,13 @@ namespace AIS_LO_System.Controllers
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Student removed.";
             }
-            return RedirectToAction(nameof(Students), "Admin");
+            return RedirectToAction(nameof(Students));
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditStudent(int id, string fullName, List<int> courseIds)
+        public async Task<IActionResult> EditStudent(int id, string fullName, string? programme,
+            string status, string? statusReason, List<int> courseIds)
         {
             var student = await _context.Students
                 .Include(s => s.CourseEnrolments)
@@ -300,6 +308,11 @@ namespace AIS_LO_System.Controllers
             if (student == null) return NotFound();
 
             student.FullName = fullName.Trim();
+            student.Programme = string.IsNullOrWhiteSpace(programme) ? null : programme.Trim();
+            student.StatusReason = string.IsNullOrWhiteSpace(statusReason) ? null : statusReason.Trim();
+
+            if (Enum.TryParse<StudentStatus>(status, out var parsedStatus))
+                student.Status = parsedStatus;
 
             // Replace enrolments with new selection
             _context.StudentCourseEnrolments.RemoveRange(student.CourseEnrolments);
@@ -316,7 +329,7 @@ namespace AIS_LO_System.Controllers
 
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Student {fullName} updated.";
-            return RedirectToAction(nameof(Students), "Admin");
+            return RedirectToAction(nameof(Students));
         }
 
         // =============================================

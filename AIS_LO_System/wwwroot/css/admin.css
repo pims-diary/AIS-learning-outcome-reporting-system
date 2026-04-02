@@ -88,17 +88,70 @@
 /* ---- Stat cards (Dashboard) ---- */
 .admin-stat-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 24px;
     margin-bottom: 32px;
 }
 
 .admin-stat-card {
     background: #fff;
-    border: 1px solid #e0e0e0;
+    border: 2px solid #e0e0e0;
+    border-left: 5px solid #ccc;
     border-radius: 16px;
     padding: 28px 32px 36px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: block;
+    color: inherit;
 }
+
+    .admin-stat-card:hover {
+        border-color: #999;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+
+/* Color variants per card */
+.admin-stat-card-courses {
+    border-left-color: #3b82f6;
+}
+
+    .admin-stat-card-courses:hover {
+        border-color: #3b82f6;
+    }
+
+.admin-stat-card-active {
+    border-left-color: #06b6d4;
+}
+
+    .admin-stat-card-active:hover {
+        border-color: #06b6d4;
+    }
+
+.admin-stat-card-lecturers {
+    border-left-color: #10b981;
+}
+
+    .admin-stat-card-lecturers:hover {
+        border-color: #10b981;
+    }
+
+.admin-stat-card-moderators {
+    border-left-color: #f59e0b;
+}
+
+    .admin-stat-card-moderators:hover {
+        border-color: #f59e0b;
+    }
+
+.admin-stat-card-students {
+    border-left-color: #8b5cf6;
+}
+
+    .admin-stat-card-students:hover {
+        border-color: #8b5cf6;
+    }
 
 .stat-label {
     font-size: 18px;
@@ -409,7 +462,7 @@
 }
 
 .toggle-off {
-    background: #b30000;
+    background: #9ca3af;
 }
 
 .toggle-thumb {
@@ -450,7 +503,7 @@
     background: #fff;
     border-radius: 16px;
     padding: 32px;
-    width: 560px;
+    width: 700px;
     max-width: 95vw;
     max-height: 90vh;
     overflow-y: auto;

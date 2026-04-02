@@ -136,7 +136,7 @@
                             </td>
                             <td class="admin-td-actions">
                                 <button class="btn-admin-edit"
-                                        onclick="openEditCourse(@c.Id, '@c.Title', '@c.School', @(c.LecturerId?.ToString() ?? "null"), @(c.ModeratorId?.ToString() ?? "null"))">
+                                        onclick="openEditCourse(@c.Id, '@c.Title', '@c.School', @c.Year, @c.Trimester, @(c.LecturerId?.ToString() ?? "null"), @(c.ModeratorId?.ToString() ?? "null"))">
                                     Edit
                                 </button>
                                 <form asp-action="RemoveCourse" method="post" style="display:inline"
@@ -247,6 +247,20 @@
             </div>
             <div class="admin-form-row">
                 <div class="admin-form-group">
+                    <label>Year *</label>
+                    <input name="year" type="number" id="editCourseYear" class="admin-input" required />
+                </div>
+                <div class="admin-form-group">
+                    <label>Trimester *</label>
+                    <select name="trimester" id="editCourseTrimester" class="admin-input" required>
+                        <option value="1">T1</option>
+                        <option value="2">T2</option>
+                        <option value="3">T3</option>
+                    </select>
+                </div>
+            </div>
+            <div class="admin-form-row">
+                <div class="admin-form-group">
                     <label>Lecturer</label>
                     <select name="lecturerId" id="editCourseLecturer" class="admin-input">
                         <option value="">Unassigned</option>
@@ -279,13 +293,15 @@
     <script>
         function openModal(id) { document.getElementById(id).classList.add('open'); }
         function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-        function openEditCourse(id, title, school, lecId, modId) {
+        function openEditCourse(id, title, school, year, trimester, lecId, modId) {
             document.getElementById('editCourseId').value = id;
             document.getElementById('editCourseTitle').value = title;
             document.getElementById('editCourseSchool').value = school;
             // Fallback if the stored value doesn't match any option
             var sel = document.getElementById('editCourseSchool');
             if (sel.value !== school) sel.value = 'Information Technology';
+            document.getElementById('editCourseYear').value = year;
+            document.getElementById('editCourseTrimester').value = trimester;
             document.getElementById('editCourseLecturer').value = lecId || '';
             document.getElementById('editCourseModerator').value = modId || '';
             openModal('editCourseModal');
