@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace LOARS.Web.Controllers
 {
-    [Authorize(Roles = "Lecturer")]
+    [Authorize(Roles = "Lecturer,Admin")]
     public class CourseDashboardController : Controller
     {
         private readonly ApplicationDbContext _context;

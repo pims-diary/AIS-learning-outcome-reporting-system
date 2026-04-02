@@ -3,60 +3,115 @@
 @{
     ViewData["Title"] = "Permissions";
     Layout = "_AdminLayout";
+    var trimesters = Model.Select(c => new { c.Year, c.Trimester })
+                         .Distinct()
+                         .OrderByDescending(t => t.Year).ThenBy(t => t.Trimester)
+                         .ToList();
 }
-
 
 <div class="admin-content">
 
-    @if (TempData["Success"] != null)
-    {
-        <div class="admin-alert admin-alert-success">@TempData["Success"]</div>
-    }
-
-    @foreach (var course in Model)
-    {
-        <div class="perm-card">
-            <div class="perm-card-title">@course.Code - @course.Title</div>
-
-            <div class="perm-row">
-                <span class="perm-label">Lecturer can edit learning outcomes</span>
-                <button class="toggle-switch @(course.CanEditLO ? "toggle-on" : "toggle-off")"
-                        data-course-id="@course.Id"
-                        data-permission="CanEditLO"
-                        onclick="togglePerm(this)">
-                    <span class="toggle-thumb"></span>
-                </button>
-            </div>
-            <hr class="perm-divider" />
-            <div class="perm-row">
-                <span class="perm-label">Lecturer can re-upload course outline</span>
-                <button class="toggle-switch @(course.CanReuploadOutline ? "toggle-on" : "toggle-off")"
-                        data-course-id="@course.Id"
-                        data-permission="CanReuploadOutline"
-                        onclick="togglePerm(this)">
-                    <span class="toggle-thumb"></span>
-                </button>
+    <div class="admin-panel">
+        <div class="admin-panel-header">
+            <div class="admin-panel-title">Permissions</div>
+            <div style="font-size:13px;color:var(--color-text-secondary);">
+                @Model.Count(c => c.CanEditLO) of @Model.Count LO editing enabled &nbsp;·&nbsp;
+                @Model.Count(c => c.CanReuploadOutline) of @Model.Count outline upload enabled
             </div>
         </div>
-    }
 
-    @if (!Model.Any())
-    {
-        <div class="admin-panel">
+        @if (TempData["Success"] != null)
+        {
+            <div class="admin-alert admin-alert-success">@TempData["Success"]</div>
+        }
+
+        <!-- Search & filter toolbar -->
+        <div class="admin-toolbar" style="margin-bottom:24px;">
+            <div class="admin-search-form">
+                <input id="permSearch" class="admin-search-input" placeholder="Search by course code or title…" oninput="filterPerms()" />
+                <select id="permTrimester" class="admin-filter-select" onchange="filterPerms()">
+                    <option value="">All Trimesters</option>
+                    @foreach (var t in trimesters)
+                    {
+                        <option value="@t.Year-@t.Trimester">@t.Year T@(t.Trimester)</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        @if (!Model.Any())
+        {
             <p class="admin-empty">No courses found. Add courses first.</p>
-        </div>
-    }
+        }
+        else
+        {
+            <div id="permList">
+                @foreach (var course in Model)
+                {
+                    <div class="perm-card"
+                         data-code="@course.Code.ToLower()"
+                         data-title="@course.Title.ToLower()"
+                         data-tri="@course.Year-@course.Trimester">
+
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                            <div class="perm-card-title" style="margin-bottom:0;">@course.Code — @course.Title</div>
+                            <span style="font-size:12px;color:var(--color-text-secondary);">@course.Year T@(course.Trimester)</span>
+                        </div>
+
+                        <div class="perm-row">
+                            <span class="perm-label">Lecturer can edit learning outcomes</span>
+                            <button class="toggle-switch @(course.CanEditLO ? "toggle-on" : "toggle-off")"
+                                    data-course-id="@course.Id"
+                                    data-permission="CanEditLO"
+                                    onclick="togglePerm(this)">
+                                <span class="toggle-thumb"></span>
+                            </button>
+                        </div>
+                        <hr class="perm-divider" />
+                        <div class="perm-row">
+                            <span class="perm-label">Lecturer can re-upload course outline</span>
+                            <button class="toggle-switch @(course.CanReuploadOutline ? "toggle-on" : "toggle-off")"
+                                    data-course-id="@course.Id"
+                                    data-permission="CanReuploadOutline"
+                                    onclick="togglePerm(this)">
+                                <span class="toggle-thumb"></span>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+            <p id="permNoResults" style="display:none;color:var(--color-text-secondary);font-size:14px;padding:16px 0;">
+                No courses match your search.
+            </p>
+        }
+    </div>
 
 </div>
 
 @section Scripts {
     <script>
+        function filterPerms() {
+            const search = document.getElementById('permSearch').value.toLowerCase();
+            const tri    = document.getElementById('permTrimester').value;
+            const cards  = document.querySelectorAll('#permList .perm-card');
+            let visible  = 0;
+
+            cards.forEach(card => {
+                const codeMatch  = card.dataset.code.includes(search);
+                const titleMatch = card.dataset.title.includes(search);
+                const triMatch   = !tri || card.dataset.tri === tri;
+                const show = (codeMatch || titleMatch) && triMatch;
+                card.style.display = show ? '' : 'none';
+                if (show) visible++;
+            });
+
+            document.getElementById('permNoResults').style.display = visible === 0 ? '' : 'none';
+        }
+
         async function togglePerm(btn) {
             const courseId   = btn.dataset.courseId;
             const permission = btn.dataset.permission;
-
-            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value
-                        ?? document.cookie.split(';').find(c=>c.includes('CSRF'))?.split('=')[1] ?? '';
+            const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '';
 
             const res = await fetch('/Admin/TogglePermission', {
                 method: 'POST',

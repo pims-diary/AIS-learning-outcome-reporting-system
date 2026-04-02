@@ -1,4 +1,5 @@
 ﻿@model List<AIS_LO_System.Models.Course>
+@using AIS_LO_System.Controllers
 
 @{
     ViewData["Title"] = "Courses";
@@ -31,14 +32,38 @@
                        value="@Context.Request.Query["search"]" />
                 <select name="trimester" class="admin-filter-select" onchange="this.form.submit()">
                     <option value="all">All Trimesters</option>
-                    @foreach (var t in (IEnumerable<dynamic>)ViewBag.Trimesters)
+                    @foreach (var t in (IEnumerable<TrimesterOption>)ViewBag.Trimesters)
                     {
                         var val = $"{t.Year}-{t.Trimester}";
                         var label = $"{t.Year} T{t.Trimester}";
                         <option value="@val" selected="@(Context.Request.Query["trimester"] == val)">@label</option>
                     }
                 </select>
+                <select name="school" class="admin-filter-select" onchange="this.form.submit()">
+                    <option value="all">All Departments</option>
+                    <option value="Information Technology" selected="@(ViewBag.SelectedSchool == "Information Technology")">Information Technology</option>
+                    <option value="Business" selected="@(ViewBag.SelectedSchool == "Business")">Business</option>
+                    <option value="Tourism" selected="@(ViewBag.SelectedSchool == "Tourism")">Tourism</option>
+                    <option value="Hospitality" selected="@(ViewBag.SelectedSchool == "Hospitality")">Hospitality</option>
+                </select>
             </form>
+
+            <div class="admin-status-tabs">
+                @{
+                    var _cSearch = Context.Request.Query["search"].ToString();
+                    var _cTrimester = Context.Request.Query["trimester"].ToString();
+                    var _cSchool = Context.Request.Query["school"].ToString();
+                    string CTab(string s) => "?" + string.Join("&", new[] {
+                        string.IsNullOrEmpty(_cSearch)    ? null : $"search={Uri.EscapeDataString(_cSearch)}",
+                        string.IsNullOrEmpty(_cTrimester) ? null : $"trimester={Uri.EscapeDataString(_cTrimester)}",
+                        string.IsNullOrEmpty(_cSchool)    ? null : $"school={Uri.EscapeDataString(_cSchool)}",
+                        $"status={s}"
+                    }.Where(x => x != null));
+                }
+                <a href="@CTab("all")" class="status-tab @(ViewBag.Status == "all" ? "status-tab-active" : "")">All</a>
+                <a href="@CTab("active")" class="status-tab @(ViewBag.Status == "active" ? "status-tab-active" : "")">Active</a>
+                <a href="@CTab("inactive")" class="status-tab @(ViewBag.Status == "inactive" ? "status-tab-active" : "")">Inactive</a>
+            </div>
 
             <form asp-action="ImportCourses" method="post" enctype="multipart/form-data" style="display:inline">
                 @Html.AntiForgeryToken()
@@ -54,6 +79,8 @@
                 <tr>
                     <th>Course Code</th>
                     <th>Trimester</th>
+                    <th>Department</th>
+                    <th>Status</th>
                     <th>Lecturer/s</th>
                     <th>Moderator</th>
                     <th></th>
@@ -63,16 +90,30 @@
                 @if (!Model.Any())
                 {
                     <tr>
-                        <td colspan="5" class="admin-empty">No Courses Added Yet</td>
+                        <td colspan="7" class="admin-empty">No Courses Added Yet</td>
                     </tr>
                 }
                 else
                 {
                     @foreach (var c in Model)
                     {
-                        <tr>
+                        bool isActive = c.Year == ViewBag.CurrentYear && c.Trimester == ViewBag.CurrentTrimester;
+                        var deptClass = c.School switch
+                        {
+                            "Business" => "dept-pill-business",
+                            "Tourism" => "dept-pill-tourism",
+                            "Hospitality" => "dept-pill-hospitality",
+                            _ => "dept-pill-it"
+                        };
+                        <tr class="@(!isActive ? "row-inactive" : "")">
                             <td class="admin-td-code">@c.Code</td>
                             <td>@c.Year T@(c.Trimester)</td>
+                            <td><span class="dept-pill @deptClass">@c.School</span></td>
+                            <td>
+                                <span class="status-pill @(isActive ? "status-active" : "status-inactive")">
+                                    @(isActive ? "Active" : "Inactive")
+                                </span>
+                            </td>
                             <td>
                                 @if (c.Lecturer != null)
                                 {
@@ -95,11 +136,18 @@
                             </td>
                             <td class="admin-td-actions">
                                 <button class="btn-admin-edit"
-                                        onclick="openEditCourse(@c.Id, '@c.Title', '@c.School', @(c.LecturerId?.ToString() ?? "null"), @(c.ModeratorId?.ToString() ?? "null"))">
+                                        data-id="@c.Id"
+                                        data-title="@c.Title"
+                                        data-school="@c.School"
+                                        data-year="@c.Year"
+                                        data-trimester="@c.Trimester"
+                                        data-lecturer="@(c.LecturerId?.ToString() ?? "")"
+                                        data-moderator="@(c.ModeratorId?.ToString() ?? "")"
+                                        onclick="openEditCourse(this)">
                                     Edit
                                 </button>
                                 <form asp-action="RemoveCourse" method="post" style="display:inline"
-                                      onsubmit="return confirm('Remove @c.Code?')">
+                                      onsubmit="return confirm('Remove @c.Code? This will also remove all student and lecturer enrolments for this course.')">
                                     @Html.AntiForgeryToken()
                                     <input type="hidden" name="id" value="@c.Id" />
                                     <button type="submit" class="btn-admin-remove">Remove</button>
@@ -144,7 +192,12 @@
                 </div>
                 <div class="admin-form-group">
                     <label>School</label>
-                    <input name="school" class="admin-input" placeholder="Information Technology" />
+                    <select name="school" class="admin-input">
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="Business">Business</option>
+                        <option value="Tourism">Tourism</option>
+                        <option value="Hospitality">Hospitality</option>
+                    </select>
                 </div>
             </div>
             <div class="admin-form-row">
@@ -159,7 +212,7 @@
                     </select>
                 </div>
                 <div class="admin-form-group">
-                    <label>Assign Moderator</label>
+                    <label>Assign Moderator <span style="font-weight:400;color:var(--color-text-secondary)">(any lecturer, must differ from above)</span></label>
                     <select name="moderatorId" class="admin-input">
                         <option value="">Unassigned</option>
                         @foreach (var m in moderators)
@@ -191,7 +244,26 @@
                 </div>
                 <div class="admin-form-group">
                     <label>School</label>
-                    <input name="school" id="editCourseSchool" class="admin-input" />
+                    <select name="school" id="editCourseSchool" class="admin-input">
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="Business">Business</option>
+                        <option value="Tourism">Tourism</option>
+                        <option value="Hospitality">Hospitality</option>
+                    </select>
+                </div>
+            </div>
+            <div class="admin-form-row">
+                <div class="admin-form-group">
+                    <label>Year *</label>
+                    <input name="year" type="number" id="editCourseYear" class="admin-input" required />
+                </div>
+                <div class="admin-form-group">
+                    <label>Trimester *</label>
+                    <select name="trimester" id="editCourseTrimester" class="admin-input" required>
+                        <option value="1">T1</option>
+                        <option value="2">T2</option>
+                        <option value="3">T3</option>
+                    </select>
                 </div>
             </div>
             <div class="admin-form-row">
@@ -206,7 +278,7 @@
                     </select>
                 </div>
                 <div class="admin-form-group">
-                    <label>Moderator</label>
+                    <label>Moderator <span style="font-weight:400;color:var(--color-text-secondary)">(any lecturer, must differ from above)</span></label>
                     <select name="moderatorId" id="editCourseModerator" class="admin-input">
                         <option value="">Unassigned</option>
                         @foreach (var m in moderators)
@@ -228,10 +300,22 @@
     <script>
         function openModal(id) { document.getElementById(id).classList.add('open'); }
         function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-        function openEditCourse(id, title, school, lecId, modId) {
+        function openEditCourse(btn) {
+            const id       = btn.dataset.id;
+            const title    = btn.dataset.title;
+            const school   = btn.dataset.school;
+            const year     = btn.dataset.year;
+            const trimester = btn.dataset.trimester;
+            const lecId    = btn.dataset.lecturer;
+            const modId    = btn.dataset.moderator;
+
             document.getElementById('editCourseId').value = id;
             document.getElementById('editCourseTitle').value = title;
-            document.getElementById('editCourseSchool').value = school;
+            document.getElementById('editCourseYear').value = year;
+            document.getElementById('editCourseTrimester').value = trimester;
+            var sel = document.getElementById('editCourseSchool');
+            sel.value = school;
+            if (sel.value !== school) sel.value = 'Information Technology';
             document.getElementById('editCourseLecturer').value = lecId || '';
             document.getElementById('editCourseModerator').value = modId || '';
             openModal('editCourseModal');

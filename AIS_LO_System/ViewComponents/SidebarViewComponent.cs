@@ -1,27 +1,75 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AIS_LO_System.Data;
+using AIS_LO_System.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using LOARS.Web.Models.Dashboard;
-using LOARS.Web.Services;   // For FakeTeachingData
 
 namespace AIS_LO_System.ViewComponents
 {
     public class SidebarViewComponent : ViewComponent
     {
-        public IViewComponentResult Invoke(int? year, int? trimester)
+        private readonly ApplicationDbContext _context;
+
+        public SidebarViewComponent(ApplicationDbContext context)
         {
-            var defaultYear = DateTime.Now.Year;
-            var defaultTrimester = GetTrimesterFromMonth(DateTime.Now.Month);
+            _context = context;
+        }
 
-            var selectedYear = year ?? defaultYear;
-            var selectedTrimester = trimester ?? defaultTrimester;
+        public async Task<IViewComponentResult> InvokeAsync(int? year, int? trimester)
+        {
+            int defaultYear = DateTime.Now.Year;
+            int defaultTrimester = GetTrimesterFromMonth(DateTime.Now.Month);
 
-            var years = FakeTeachingData.GetYears();
-            var trimestersByYear = FakeTeachingData.GetTrimestersByYear();
+            // Get logged-in user's ID
+            var userIdClaim = HttpContext.User.FindFirst("UserId")?.Value;
+            int.TryParse(userIdClaim, out int userId);
 
-            if (!years.Contains(selectedYear))
-                selectedYear = years.First();
+            List<Course> allCourses = new();
 
-            if (!trimestersByYear[selectedYear].Contains(selectedTrimester))
-                selectedTrimester = trimestersByYear[selectedYear].First();
+            if (userId > 0)
+            {
+                // Courses via enrolment table
+                var enrolCourses = await _context.LecturerCourseEnrolments
+                    .Where(e => e.UserId == userId)
+                    .Include(e => e.Course)
+                    .Select(e => e.Course)
+                    .ToListAsync();
+
+                // Courses via primary lecturer/moderator FK
+                var primaryCourses = await _context.Courses
+                    .Where(c => c.LecturerId == userId || c.ModeratorId == userId)
+                    .ToListAsync();
+
+                allCourses = enrolCourses.Union(primaryCourses)
+                    .OrderByDescending(c => c.Year)
+                    .ThenBy(c => c.Trimester)
+                    .ThenBy(c => c.Code)
+                    .ToList();
+            }
+
+            var years = allCourses.Select(c => c.Year).Distinct().OrderByDescending(y => y).ToList();
+            var trimestersByYear = years.ToDictionary(
+                y => y,
+                y => allCourses.Where(c => c.Year == y).Select(c => c.Trimester).Distinct().OrderBy(t => t).ToList()
+            );
+
+            // Fallback if no courses
+            if (!years.Any())
+            {
+                years.Add(defaultYear);
+                trimestersByYear[defaultYear] = new List<int> { defaultTrimester };
+            }
+
+            var selectedYear = year ?? (years.Contains(defaultYear) ? defaultYear : years.First());
+            if (!years.Contains(selectedYear)) selectedYear = years.First();
+
+            var availableTris = trimestersByYear.ContainsKey(selectedYear)
+                ? trimestersByYear[selectedYear]
+                : new List<int> { 1 };
+
+            var selectedTrimester = trimester
+                ?? (availableTris.Contains(defaultTrimester) ? defaultTrimester : availableTris.First());
+            if (!availableTris.Contains(selectedTrimester)) selectedTrimester = availableTris.First();
 
             var vm = new LecturerDashboardViewModel
             {

@@ -88,17 +88,70 @@
 /* ---- Stat cards (Dashboard) ---- */
 .admin-stat-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 24px;
     margin-bottom: 32px;
 }
 
 .admin-stat-card {
     background: #fff;
-    border: 1px solid #e0e0e0;
+    border: 2px solid #e0e0e0;
+    border-left: 5px solid #ccc;
     border-radius: 16px;
     padding: 28px 32px 36px;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: block;
+    color: inherit;
 }
+
+    .admin-stat-card:hover {
+        border-color: #999;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+
+/* Color variants per card */
+.admin-stat-card-courses {
+    border-left-color: #3b82f6;
+}
+
+    .admin-stat-card-courses:hover {
+        border-color: #3b82f6;
+    }
+
+.admin-stat-card-active {
+    border-left-color: #06b6d4;
+}
+
+    .admin-stat-card-active:hover {
+        border-color: #06b6d4;
+    }
+
+.admin-stat-card-lecturers {
+    border-left-color: #10b981;
+}
+
+    .admin-stat-card-lecturers:hover {
+        border-color: #10b981;
+    }
+
+.admin-stat-card-moderators {
+    border-left-color: #f59e0b;
+}
+
+    .admin-stat-card-moderators:hover {
+        border-color: #f59e0b;
+    }
+
+.admin-stat-card-students {
+    border-left-color: #8b5cf6;
+}
+
+    .admin-stat-card-students:hover {
+        border-color: #8b5cf6;
+    }
 
 .stat-label {
     font-size: 18px;
@@ -322,15 +375,8 @@
     background: #f5f5f5;
 }
 
-.enrol-tag {
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 6px;
-    background: #f0f0f0;
-    font-size: 13px;
-    margin-right: 4px;
-    margin-bottom: 2px;
-}
+
+
 
 /* ---- Activity table (Dashboard) ---- */
 .admin-activity-table {
@@ -416,7 +462,7 @@
 }
 
 .toggle-off {
-    background: #b30000;
+    background: #9ca3af;
 }
 
 .toggle-thumb {
@@ -457,7 +503,7 @@
     background: #fff;
     border-radius: 16px;
     padding: 32px;
-    width: 560px;
+    width: 700px;
     max-width: 95vw;
     max-height: 90vh;
     overflow-y: auto;
@@ -589,5 +635,398 @@
 
     .admin-form-row {
         flex-direction: column;
+    }
+}
+
+/* ==============================================
+   Active / Inactive — Status Tabs & Pills
+   ============================================== */
+
+.admin-status-tabs {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.status-tab {
+    padding: 6px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    text-decoration: none;
+    border: 1px solid #d0d0d0;
+    background: #fff;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+    .status-tab:hover {
+        background: #f0f0f0;
+        color: #1a1a1a;
+        text-decoration: none;
+    }
+
+    .status-tab.status-tab-active {
+        background: #1a1a1a;
+        color: #fff;
+        border-color: #1a1a1a;
+    }
+
+/* Status pills (inline badges in table cells) */
+.status-pill {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.status-active {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* Dim inactive rows subtly */
+tr.row-inactive td {
+    opacity: 0.55;
+}
+
+/* Toggle buttons */
+.btn-admin-toggle {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid #d0d0d0;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.btn-toggle-deactivate:hover {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+.btn-toggle-activate:hover {
+    background: #d1fae5;
+    border-color: #6ee7b7;
+    color: #065f46;
+}
+
+/* ==============================================
+   Enrolment tags — year/trimester variants
+   ============================================== */
+
+.enrol-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    margin: 2px 4px 2px 0;
+    white-space: nowrap;
+}
+
+.enrol-tag-current {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.enrol-tag-past {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.enrol-tag-year {
+    font-weight: 400;
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.enrol-tag-mod {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: #fef3c7;
+    color: #92400e;
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin-left: 2px;
+}
+
+/* Table row breathing room */
+.admin-table td {
+    padding: 16px 12px;
+    vertical-align: middle;
+}
+
+.admin-table th {
+    padding: 12px 12px;
+}
+
+/* Actions cell — keep buttons on one line with a gap */
+.admin-td-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+}
+
+/* ==============================================
+   Impersonation banner
+   ============================================== */
+
+.impersonation-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    background: #7f1d1d;
+    color: #fff;
+    padding: 12px 32px;
+    font-size: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.btn-stop-impersonate {
+    padding: 6px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 2px solid #fff;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+
+    .btn-stop-impersonate:hover {
+        background: #fff;
+        color: #7f1d1d;
+    }
+
+/* Login as button */
+.btn-admin-loginas {
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    border: 1px solid #93c5fd;
+    background: #eff6ff;
+    color: #1d4ed8;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+    .btn-admin-loginas:hover {
+        background: #dbeafe;
+        border-color: #60a5fa;
+    }
+
+/* Clickable enrolment tags */
+a.enrol-tag {
+    text-decoration: none;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+}
+
+    a.enrol-tag:hover {
+        filter: brightness(0.92);
+        transform: translateY(-1px);
+        text-decoration: none;
+    }
+
+/* ── Department pills ── */
+.dept-pill {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.dept-pill-it {
+    background: #b3dff5;
+    color: #1a5c7a;
+}
+
+.dept-pill-business {
+    background: #c8f0c0;
+    color: #1a6b0f;
+}
+
+.dept-pill-tourism {
+    background: #fde8b3;
+    color: #7a4a00;
+}
+
+.dept-pill-hospitality {
+    background: #f5c8d8;
+    color: #8c1a3d;
+}
+
+/* ── Course list grouping in modals ── */
+.course-group-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--bs-gray-700, #444);
+    padding: 10px 4px 4px;
+    border-bottom: 1px solid #eee;
+    margin-bottom: 4px;
+}
+
+.course-dept-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #b30000;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 6px 4px 2px 8px;
+}
+
+.course-tri-tag {
+    font-size: 11px;
+    color: #888;
+    margin-left: 4px;
+}
+
+/* ---- Course Filtering & Accordion (Modal) ---- */
+.course-filter-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.course-filter-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.course-search-input {
+    padding: 10px 12px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1a1a1a;
+    background: #fff;
+    width: 100%;
+}
+
+    .course-search-input:focus {
+        border-color: #b30000;
+        outline: none;
+    }
+
+.course-accordion-wrapper {
+    border: 1.5px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    max-height: 350px;
+    overflow-y: auto;
+}
+
+.course-year-group {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .course-year-group:last-child {
+        border-bottom: none;
+    }
+
+.course-year-label {
+    background: #f5f5f5;
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: 14px;
+    color: #1a1a1a;
+    border-bottom: 1px solid #e0e0e0;
+    user-select: none;
+}
+
+.course-dept-group {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+    .course-dept-group:last-child {
+        border-bottom: none;
+    }
+
+.course-dept-label {
+    background: #fafafa;
+    padding: 10px 16px;
+    padding-left: 28px;
+    font-weight: 600;
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+    transition: background 0.15s;
+}
+
+    .course-dept-label:hover {
+        background: #f0f0f0;
+    }
+
+.dept-toggle {
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+    font-size: 12px;
+    transition: transform 0.15s;
+}
+
+.course-dept-group.collapsed .dept-toggle {
+    transform: rotate(-90deg);
+}
+
+.dept-courses {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 16px;
+    padding-left: 44px;
+    background: #fff;
+}
+
+    .dept-courses.hidden {
+        display: none;
+    }
+
+.course-tri-tag {
+    font-size: 12px;
+    color: #999;
+    margin-left: auto;
+    font-weight: 400;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+    .course-filter-row {
+        grid-template-columns: 1fr;
     }
 }

@@ -1,7 +1,8 @@
 ﻿@{
     ViewData["Title"] = "Course Outline";
     Layout = "_DashboardLayout";
-    bool canReupload = (bool)(ViewBag.CanReupload ?? false);
+    bool canReupload = (bool)(ViewBag.CanReupload ?? false)
+                       && string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value);
     string outlineUrl = ViewBag.OutlineUrl as string;
     bool hasFile = !string.IsNullOrWhiteSpace(outlineUrl);
     bool isPdf = hasFile && outlineUrl.EndsWith(".pdf");

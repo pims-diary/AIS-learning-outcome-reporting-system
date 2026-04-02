@@ -31,10 +31,24 @@
                 <select name="role" class="admin-filter-select" onchange="this.form.submit()">
                     <option value="">All Roles</option>
                     <option value="Lecturer" selected="@(Context.Request.Query["role"] == "Lecturer")">Lecturer</option>
-                    <option value="Moderator" selected="@(Context.Request.Query["role"] == "Moderator")">Moderator</option>
                     <option value="Admin" selected="@(Context.Request.Query["role"] == "Admin")">Admin</option>
                 </select>
             </form>
+
+            <div class="admin-status-tabs">
+                @{
+                    var _uSearch = Context.Request.Query["search"].ToString();
+                    var _uRole = Context.Request.Query["role"].ToString();
+                    string UTab(string s) => "?" + string.Join("&", new[] {
+                        string.IsNullOrEmpty(_uSearch) ? null : $"search={Uri.EscapeDataString(_uSearch)}",
+                        string.IsNullOrEmpty(_uRole)   ? null : $"role={Uri.EscapeDataString(_uRole)}",
+                        $"status={s}"
+                    }.Where(x => x != null));
+                }
+                <a href="@UTab("all")" class="status-tab @(ViewBag.Status == "all" ? "status-tab-active" : "")">All</a>
+                <a href="@UTab("active")" class="status-tab @(ViewBag.Status == "active" ? "status-tab-active" : "")">Active</a>
+                <a href="@UTab("inactive")" class="status-tab @(ViewBag.Status == "inactive" ? "status-tab-active" : "")">Inactive</a>
+            </div>
         </div>
 
         <table class="admin-table">
@@ -42,7 +56,9 @@
                 <tr>
                     <th>Full Name</th>
                     <th>Username</th>
+                    <th>Email</th>
                     <th>Role</th>
+                    <th>Status</th>
                     <th>Assigned to</th>
                     <th></th>
                 </tr>
@@ -51,7 +67,7 @@
                 @if (!Model.Any())
                 {
                     <tr>
-                        <td colspan="5" class="admin-empty">No Users Added Yet</td>
+                        <td colspan="7" class="admin-empty">No Users Added Yet</td>
                     </tr>
                 }
                 else
@@ -61,45 +77,86 @@
                         var roleCss = u.Role switch
                         {
                             AIS_LO_System.Models.UserRole.Lecturer => "role-pill-lecturer",
-                            AIS_LO_System.Models.UserRole.Moderator => "role-pill-moderator",
                             AIS_LO_System.Models.UserRole.Admin => "role-pill-admin",
                             _ => ""
                         };
 
-                        var assigned = courses
-                            .Where(c => c.LecturerId == u.Id || c.ModeratorId == u.Id)
-                            .Select(c => c.Code);
-
-                        <tr>
+                        <tr class="@(!u.IsActive ? "row-inactive" : "")">
                             <td>@u.FullName</td>
                             <td class="text-muted">@u.Username</td>
+                            <td class="text-muted">@(u.Email ?? "—")</td>
                             <td><span class="@roleCss">@u.Role</span></td>
-                            <td>@string.Join(", ", assigned)</td>
-                            <td class="admin-td-actions">
-                                <button class="btn-admin-edit"
-                                        data-id="@u.Id"
-                                        data-name="@u.FullName"
-                                        data-role="@u.Role"
-                                        data-courses="@string.Join(",", courses.Where(c => c.LecturerId == u.Id || c.ModeratorId == u.Id).Select(c => c.Id))"
-                                        onclick="openEditUser(this)">
-                                    Edit
-                                </button>
-                                @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
-                                {
-                                    <form asp-action="RemoveUser" method="post" style="display:inline"
-                                          onsubmit="return confirm('Remove @u.FullName?')">
-                                        @Html.AntiForgeryToken()
-                                        <input type="hidden" name="id" value="@u.Id" />
-                                        <button type="submit" class="btn-admin-remove">Remove</button>
-                                    </form>
-                                }
+                            <td>
+                                <span class="status-pill @(u.IsActive ? "status-active" : "status-inactive")">
+                                    @(u.IsActive ? "Active" : "Inactive")
+                                </span>
                             </td>
-                        </tr>
-                    }
+                            <td>
+                                @{
+                                    // Courses this user is assigned to via enrolment table OR as primary lecturer/moderator
+                                    var userCourses = courses
+                                        .Where(c => c.LecturerEnrolments.Any(e => e.UserId == u.Id)
+                                                 || c.LecturerId == u.Id
+                                                 || c.ModeratorId == u.Id)
+                                        .Distinct()
+                                        .OrderByDescending(c => c.Year).ThenBy(c => c.Trimester)
+                                        .ToList();
+                                }
+                                @foreach (var c in userCourses)
+                                {
+                                    bool isMod = c.ModeratorId == u.Id;
+                                    bool isLec = c.LecturerId == u.Id || c.LecturerEnrolments.Any(e => e.UserId == u.Id);
+                                    <span class="enrol-tag @(c.Year == DateTime.Now.Year ? "enrol-tag-current" : "enrol-tag-past")">
+                                        @c.Code <span class="enrol-tag-year">@(c.Year) T@(c.Trimester)</span>@if (isMod) {
+                                        <span class="enrol-tag-mod" title="Also moderator">MOD</span>
+                                    }
+                                </span>
+                            }
+                        </td>
+                        <td class="admin-td-actions">
+                            <button class="btn-admin-edit"
+                                    data-id="@u.Id"
+                                    data-name="@u.FullName"
+                                    data-email="@u.Email"
+                                    data-role="@u.Role"
+                                    data-courses="@string.Join(",", courses.Where(c => c.LecturerEnrolments.Any(e => e.UserId == u.Id) || c.LecturerId == u.Id || c.ModeratorId == u.Id).Select(c => c.Id).Distinct())"
+                                    onclick="openEditUser(this)">
+                                Edit
+                            </button>
+                            @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
+                            {
+                                <form asp-action="LoginAs" method="post" style="display:inline"
+                                      onsubmit="return confirm('Log in as @u.FullName? You will be in view-only mode.')">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <button type="submit" class="btn-admin-loginas">View as</button>
+                                </form>
+                            }
+                            <form asp-action="ToggleUserActive" method="post" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@u.Id" />
+                                <button type="submit"
+                                        class="btn-admin-toggle @(u.IsActive ? "btn-toggle-deactivate" : "btn-toggle-activate")"
+                                        onclick="return confirm('@(u.IsActive ? $"Deactivate {u.FullName}?" : $"Activate {u.FullName}?")')">
+                                    @(u.IsActive ? "Deactivate" : "Activate")
+                                </button>
+                            </form>
+                            @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
+                            {
+                                <form asp-action="RemoveUser" method="post" style="display:inline"
+                                      onsubmit="return confirm('Remove @u.FullName?')">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <button type="submit" class="btn-admin-remove">Remove</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
                 }
-            </tbody>
-        </table>
-    </div>
+            }
+        </tbody>
+    </table>
+</div>
 </div>
 
 <!-- Add User Modal -->
@@ -111,11 +168,24 @@
             <div class="admin-form-row">
                 <div class="admin-form-group">
                     <label>Full Name *</label>
-                    <input name="fullName" class="admin-input" placeholder="e.g. Raj Kumar" required />
+                    <input name="fullName" id="addFullName" class="admin-input" placeholder="e.g. Rakesh Kumar" required oninput="autoGenerateUser()" />
                 </div>
                 <div class="admin-form-group">
+                    <label>Role *</label>
+                    <select name="role" class="admin-input" id="roleSelect" onchange="toggleCourseList()">
+                        <option value="Lecturer">Lecturer</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+            </div>
+            <div class="admin-form-row">
+                <div class="admin-form-group">
                     <label>Username *</label>
-                    <input name="username" class="admin-input" placeholder="e.g. rkumar" required />
+                    <input name="username" id="addUsername" class="admin-input" placeholder="Auto-generated" required />
+                </div>
+                <div class="admin-form-group">
+                    <label>Email</label>
+                    <input name="email" id="addEmail" class="admin-input" placeholder="Auto-generated" />
                 </div>
             </div>
             <div class="admin-form-row">
@@ -123,24 +193,55 @@
                     <label>Password *</label>
                     <input name="password" type="password" class="admin-input" placeholder="Temporary password" required />
                 </div>
-                <div class="admin-form-group">
-                    <label>Role *</label>
-                    <select name="role" class="admin-input" id="roleSelect" onchange="toggleCourseList()">
-                        <option value="Lecturer">Lecturer</option>
-                        <option value="Moderator">Moderator</option>
-                        <option value="Admin">Admin</option>
-                    </select>
-                </div>
             </div>
             <div class="admin-form-group" id="courseAssignWrap">
                 <label>Assign to Course/s</label>
-                <div class="admin-checkbox-list">
-                    @foreach (var c in courses)
+                
+                <!-- Filter Controls -->
+                <div class="course-filter-controls">
+                    <div class="course-filter-row">
+                        <select id="addUserYearFilter" class="admin-input" onchange="filterAddUserCourses()">
+                            <option value="">All Years</option>
+                            @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
+                            {
+                                <option value="@year">@year</option>
+                            }
+                        </select>
+                        <select id="addUserDeptFilter" class="admin-input" onchange="filterAddUserCourses()">
+                            <option value="">All Departments</option>
+                            @foreach (var dept in courses.Select(c => c.School).Distinct().OrderBy(s => s))
+                            {
+                                <option value="@dept">@dept</option>
+                            }
+                        </select>
+                    </div>
+                    <input type="text" id="addUserCourseSearch" class="course-search-input" placeholder="Search course code or title..." onkeyup="filterAddUserCourses()" />
+                </div>
+
+                <!-- Accordion Courses -->
+                <div class="course-accordion-wrapper">
+                    @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
                     {
-                        <label class="admin-checkbox-item">
-                            <input type="checkbox" name="courseIds" value="@c.Id" />
-                            @c.Code — @c.Title (@c.Year T@c.Trimester)
-                        </label>
+                        <div class="course-year-group">
+                            <div class="course-year-label">@year</div>
+                            @foreach (var dept in courses.Where(c => c.Year == year).Select(c => c.School).Distinct().OrderBy(s => s))
+                            {
+                                <div class="course-dept-group" data-year="@year" data-dept="@dept">
+                                    <div class="course-dept-label" onclick="toggleAddUserDept(this)">
+                                        <span class="dept-toggle">▼</span> @dept
+                                    </div>
+                                    <div class="dept-courses">
+                                        @foreach (var c in courses.Where(c => c.Year == year && c.School == dept).OrderBy(c => c.Trimester).ThenBy(c => c.Code))
+                                        {
+                                            <label class="admin-checkbox-item" data-year="@c.Year" data-dept="@c.School" data-code="@c.Code" data-title="@c.Title.ToLower()">
+                                                <input type="checkbox" name="courseIds" value="@c.Id" />
+                                                @c.Code — @c.Title <span class="course-tri-tag">T@(c.Trimester)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
                     }
                 </div>
             </div>
@@ -168,24 +269,70 @@
                     <label>Role *</label>
                     <select name="role" id="editUserRole" class="admin-input" onchange="toggleEditCourseList()">
                         <option value="Lecturer">Lecturer</option>
-                        <option value="Moderator">Moderator</option>
                         <option value="Admin">Admin</option>
                     </select>
                 </div>
             </div>
-            <div class="admin-form-group">
-                <label>New Password <span style="color:var(--color-text-secondary);font-weight:400">(leave blank to keep current)</span></label>
-                <input name="newPassword" type="password" class="admin-input" placeholder="Leave blank to keep unchanged" />
+            <div class="admin-form-row">
+                <div class="admin-form-group">
+                    <label>Email</label>
+                    <input name="email" id="editUserEmail" class="admin-input" placeholder="e.g. rakeshk@ais.ac.nz" />
+                </div>
+                <div class="admin-form-group">
+                    <label>New Password <span style="color:var(--color-text-secondary);font-weight:400">(leave blank to keep current)</span></label>
+                    <input name="newPassword" type="password" class="admin-input"
+                           placeholder="Leave blank to keep unchanged"
+                           autocomplete="new-password" />
+                </div>
             </div>
             <div class="admin-form-group" id="editCourseAssignWrap">
                 <label>Assigned to Course/s</label>
-                <div class="admin-checkbox-list" id="editUserCourses">
-                    @foreach (var c in courses)
+                
+                <!-- Filter Controls -->
+                <div class="course-filter-controls">
+                    <div class="course-filter-row">
+                        <select id="editUserYearFilter" class="admin-input" onchange="filterEditUserCourses()">
+                            <option value="">All Years</option>
+                            @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
+                            {
+                                <option value="@year">@year</option>
+                            }
+                        </select>
+                        <select id="editUserDeptFilter" class="admin-input" onchange="filterEditUserCourses()">
+                            <option value="">All Departments</option>
+                            @foreach (var dept in courses.Select(c => c.School).Distinct().OrderBy(s => s))
+                            {
+                                <option value="@dept">@dept</option>
+                            }
+                        </select>
+                    </div>
+                    <input type="text" id="editUserCourseSearch" class="course-search-input" placeholder="Search course code or title..." onkeyup="filterEditUserCourses()" />
+                </div>
+
+                <!-- Accordion Courses -->
+                <div class="course-accordion-wrapper" id="editUserCourses">
+                    @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
                     {
-                        <label class="admin-checkbox-item">
-                            <input type="checkbox" name="courseIds" value="@c.Id" />
-                            @c.Code — @c.Title (@c.Year T@c.Trimester)
-                        </label>
+                        <div class="course-year-group">
+                            <div class="course-year-label">@year</div>
+                            @foreach (var dept in courses.Where(c => c.Year == year).Select(c => c.School).Distinct().OrderBy(s => s))
+                            {
+                                <div class="course-dept-group" data-year="@year" data-dept="@dept">
+                                    <div class="course-dept-label" onclick="toggleEditUserDept(this)">
+                                        <span class="dept-toggle">▼</span> @dept
+                                    </div>
+                                    <div class="dept-courses">
+                                        @foreach (var c in courses.Where(c => c.Year == year && c.School == dept).OrderBy(c => c.Trimester).ThenBy(c => c.Code))
+                                        {
+                                            <label class="admin-checkbox-item" data-year="@c.Year" data-dept="@c.School" data-code="@c.Code" data-title="@c.Title.ToLower()">
+                                                <input type="checkbox" name="courseIds" value="@c.Id" />
+                                                @c.Code — @c.Title <span class="course-tri-tag">T@(c.Trimester)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
                     }
                 </div>
             </div>
@@ -201,31 +348,107 @@
     <script>
         function openModal(id) { document.getElementById(id).classList.add('open'); }
         function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+        function autoGenerateUser() {
+            const fullName = document.getElementById('addFullName').value.trim();
+            const parts = fullName.split(/\s+/).filter(p => p.length > 0);
+            if (parts.length === 0) return;
+
+            const firstName = parts[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+            const lastInitial = parts.length > 1 ? parts[parts.length - 1][0].toLowerCase().replace(/[^a-z]/g, '') : '';
+            const generated = firstName + lastInitial;
+
+            document.getElementById('addUsername').value = generated;
+            document.getElementById('addEmail').value = generated ? generated + '@@ais.ac.nz' : '';
+        }
+
         function toggleCourseList() {
             const role = document.getElementById('roleSelect').value;
             document.getElementById('courseAssignWrap').style.display = role === 'Admin' ? 'none' : '';
         }
+
         function toggleEditCourseList() {
             const role = document.getElementById('editUserRole').value;
             document.getElementById('editCourseAssignWrap').style.display = role === 'Admin' ? 'none' : '';
         }
+
+        function toggleAddUserDept(header) {
+            const group = header.closest('.course-dept-group');
+            const courses = group.querySelector('.dept-courses');
+            group.classList.toggle('collapsed');
+            courses.classList.toggle('hidden');
+        }
+
+        function filterAddUserCourses() {
+            const yearFilter = document.getElementById('addUserYearFilter').value;
+            const deptFilter = document.getElementById('addUserDeptFilter').value;
+            const searchFilter = document.getElementById('addUserCourseSearch').value.toLowerCase();
+
+            document.querySelectorAll('#addUserModal .admin-checkbox-item').forEach(item => {
+                const year = item.dataset.year;
+                const dept = item.dataset.dept;
+                const code = item.dataset.code;
+                const title = item.dataset.title;
+
+                const yearMatch = !yearFilter || year === yearFilter;
+                const deptMatch = !deptFilter || dept === deptFilter;
+                const searchMatch = !searchFilter || code.includes(searchFilter) || title.includes(searchFilter);
+
+                item.classList.toggle('hidden', !(yearMatch && deptMatch && searchMatch));
+            });
+        }
+
+        function toggleEditUserDept(header) {
+            const group = header.closest('.course-dept-group');
+            const courses = group.querySelector('.dept-courses');
+            group.classList.toggle('collapsed');
+            courses.classList.toggle('hidden');
+        }
+
+        function filterEditUserCourses() {
+            const yearFilter = document.getElementById('editUserYearFilter').value;
+            const deptFilter = document.getElementById('editUserDeptFilter').value;
+            const searchFilter = document.getElementById('editUserCourseSearch').value.toLowerCase();
+
+            document.querySelectorAll('#editUserCourses .admin-checkbox-item').forEach(item => {
+                const year = item.dataset.year;
+                const dept = item.dataset.dept;
+                const code = item.dataset.code;
+                const title = item.dataset.title;
+
+                const yearMatch = !yearFilter || year === yearFilter;
+                const deptMatch = !deptFilter || dept === deptFilter;
+                const searchMatch = !searchFilter || code.includes(searchFilter) || title.includes(searchFilter);
+
+                item.classList.toggle('hidden', !(yearMatch && deptMatch && searchMatch));
+            });
+        }
+
         function openEditUser(btn) {
-            const id      = btn.dataset.id;
-            const name    = btn.dataset.name;
-            const role    = btn.dataset.role;
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            const role = btn.dataset.role;
+            const email = btn.dataset.email || '';
             const courses = btn.dataset.courses ? btn.dataset.courses.split(',').map(Number) : [];
 
-            document.getElementById('editUserId').value   = id;
+            document.getElementById('editUserId').value = id;
             document.getElementById('editUserName').value = name;
             document.getElementById('editUserRole').value = role;
+            document.getElementById('editUserEmail').value = email;
 
             document.querySelectorAll('#editUserCourses input[type=checkbox]').forEach(cb => {
                 cb.checked = courses.includes(parseInt(cb.value));
             });
 
+            document.getElementById('editUserYearFilter').value = '';
+            document.getElementById('editUserDeptFilter').value = '';
+            document.getElementById('editUserCourseSearch').value = '';
+            filterEditUserCourses();
+
             toggleEditCourseList();
             openModal('editUserModal');
         }
+
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') document.querySelectorAll('.admin-modal-bg.open').forEach(m => m.classList.remove('open'));
         });

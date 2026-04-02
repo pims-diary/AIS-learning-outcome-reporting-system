@@ -26,7 +26,6 @@ namespace LOARS.Web.Controllers
             if (User.Identity?.IsAuthenticated == true)
             {
                 if (User.IsInRole("Admin")) return RedirectToAction("Dashboard", "Admin");
-                if (User.IsInRole("Moderator")) return RedirectToAction("Index", "ModeratorDashboard");
                 return RedirectToAction("Index", "LecturerDashboard");
             }
             return View(new LoginViewModel());
@@ -53,6 +52,12 @@ namespace LOARS.Web.Controllers
                 return View(model);
             }
 
+            if (!user!.IsActive)
+            {
+                TempData["Error"] = "Your account has been deactivated. Please contact an administrator.";
+                return View(model);
+            }
+
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, user!.Username),
@@ -68,11 +73,10 @@ namespace LOARS.Web.Controllers
 
             TempData["Success"] = "Login successful.";
 
-            // Redirect based on the role we just signed in with (not User which hasn't refreshed yet)
+            // Redirect based on role
             return user.Role switch
             {
                 UserRole.Admin => RedirectToAction("Dashboard", "Admin"),
-                UserRole.Moderator => RedirectToAction("Index", "ModeratorDashboard"),
                 _ => RedirectToAction("Index", "LecturerDashboard")
             };
         }
@@ -86,6 +90,41 @@ namespace LOARS.Web.Controllers
             await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             TempData["Success"] = "You have been logged out.";
             return RedirectToAction("Login");
+        }
+
+        // Callable from any layout while impersonating — must live here (no class-level role restriction)
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize]
+        public async Task<IActionResult> StopImpersonating()
+        {
+            var adminUsername = User.FindFirst("ImpersonatedBy")?.Value;
+            if (string.IsNullOrEmpty(adminUsername))
+                return RedirectToAction("Dashboard", "Admin");
+
+            var admin = await _context.AppUsers.FirstOrDefaultAsync(u => u.Username == adminUsername);
+            if (admin == null)
+            {
+                await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+                return RedirectToAction("Login");
+            }
+
+            var claims = new List<Claim>
+            {
+                new(ClaimTypes.Name,      admin.Username),
+                new(ClaimTypes.GivenName, admin.FullName),
+                new(ClaimTypes.Role,      admin.Role.ToString()),
+                new("UserId", admin.Id.ToString())
+                // No ImpersonatedBy — clean admin session
+            };
+
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            TempData["Success"] = "Returned to admin session.";
+            return RedirectToAction("Users", "Admin");
         }
 
         [HttpGet]

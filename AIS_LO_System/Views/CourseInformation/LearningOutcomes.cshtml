@@ -2,7 +2,8 @@
     ViewData["Title"] = "Learning Outcomes";
     Layout = "_DashboardLayout";
 
-    bool canEdit = (bool)(ViewBag.CanEditLO ?? false);
+    bool canEdit = (bool)(ViewBag.CanEditLO ?? false)
+                   && string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value);
     bool editMode = (bool)(ViewBag.EditMode ?? false);
 
     var los = (ViewBag.LearningOutcomes as List<string>) ??
@@ -20,22 +21,22 @@
         <!-- ✅ FIXED: CLICKABLE BREADCRUMBS -->
         <div class="crumb">
             <a asp-controller="LecturerDashboard"
-               asp-action="Index">
+                   asp-action="Index">
                 Home
             </a>
             <span class="sep">/</span>
             <a asp-controller="LecturerDashboard"
-               asp-action="Index"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-action="Index"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.Year – Tri @ViewBag.Trimester
             </a>
             <span class="sep">/</span>
             <a asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-action="Index"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.CourseCode
             </a>
             <span class="sep">/</span>
@@ -43,11 +44,11 @@
         </div>
 
         <a class="backlink"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-controller="CourseDashboard"
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             ← Go Back
         </a>
     </div>
@@ -87,11 +88,11 @@
                 @if (canEdit)
                 {
                     <a class="btn-primary"
-                       asp-controller="CourseInformation"
-                       asp-action="EditLearningOutcomes"
-                       asp-route-courseCode="@ViewBag.CourseCode"
-                       asp-route-year="@ViewBag.Year"
-                       asp-route-trimester="@ViewBag.Trimester">
+                           asp-controller="CourseInformation"
+                           asp-action="EditLearningOutcomes"
+                           asp-route-courseCode="@ViewBag.CourseCode"
+                           asp-route-year="@ViewBag.Year"
+                           asp-route-trimester="@ViewBag.Trimester">
                         @(los.Count == 0 ? "Add Learning Outcomes" : "Edit Learning Outcomes")
                     </a>
                 }
@@ -112,11 +113,11 @@
                 <div class="denied">Action Denied (permission required).</div>
                 <div class="actions-center" style="margin-top:12px;">
                     <a class="btn-secondary"
-                       asp-controller="CourseInformation"
-                       asp-action="LearningOutcomes"
-                       asp-route-courseCode="@ViewBag.CourseCode"
-                       asp-route-year="@ViewBag.Year"
-                       asp-route-trimester="@ViewBag.Trimester">
+                           asp-controller="CourseInformation"
+                           asp-action="LearningOutcomes"
+                           asp-route-courseCode="@ViewBag.CourseCode"
+                           asp-route-year="@ViewBag.Year"
+                           asp-route-trimester="@ViewBag.Trimester">
                         Back
                     </a>
                 </div>
@@ -158,11 +159,11 @@
 
                         <div class="right">
                             <a class="btn-secondary"
-                               asp-controller="CourseInformation"
-                               asp-action="LearningOutcomes"
-                               asp-route-courseCode="@ViewBag.CourseCode"
-                               asp-route-year="@ViewBag.Year"
-                               asp-route-trimester="@ViewBag.Trimester">
+                                   asp-controller="CourseInformation"
+                                   asp-action="LearningOutcomes"
+                                   asp-route-courseCode="@ViewBag.CourseCode"
+                                   asp-route-year="@ViewBag.Year"
+                                   asp-route-trimester="@ViewBag.Trimester">
                                 Cancel
                             </a>
 
@@ -172,20 +173,20 @@
                 </form>
 
                 <script>
-                    function addRow() {
-                        const editor = document.getElementById("loEditor");
-                        const row = document.createElement("div");
-                        row.className = "lo-edit-row";
-                        row.innerHTML = `
-                            <textarea name="outcomes" class="lo-text" placeholder="Enter learning outcome..."></textarea>
-                            <button type="button" class="btn-remove" onclick="removeRow(this)">✕</button>
-                        `;
-                        editor.appendChild(row);
-                    }
+                            function addRow() {
+                                const editor = document.getElementById("loEditor");
+                                const row = document.createElement("div");
+                                row.className = "lo-edit-row";
+                                row.innerHTML = `
+                                    <textarea name="outcomes" class="lo-text" placeholder="Enter learning outcome..."></textarea>
+                                    <button type="button" class="btn-remove" onclick="removeRow(this)">✕</button>
+                                `;
+                                editor.appendChild(row);
+                            }
 
-                    function removeRow(btn) {
-                        btn.closest(".lo-edit-row").remove();
-                    }
+                            function removeRow(btn) {
+                                btn.closest(".lo-edit-row").remove();
+                            }
                 </script>
             }
         }

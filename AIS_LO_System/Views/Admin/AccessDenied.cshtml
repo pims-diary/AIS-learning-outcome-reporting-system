@@ -1,0 +1,28 @@
+﻿@{
+    ViewData["Title"] = "Access Denied";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 70vh;">
+    <div class="text-center">
+        <div class="mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="none" viewBox="0 0 24 24" stroke="#dc3545" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                      d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+            </svg>
+        </div>
+        <h1 class="display-6 fw-bold text-danger mb-2">Access Denied</h1>
+        <p class="text-muted mb-4">You do not have permission to view this page.</p>
+        <div class="d-flex gap-2 justify-content-center">
+            @if (User.IsInRole("Admin"))
+            {
+                <a href="@Url.Action("Dashboard", "Admin")" class="btn btn-primary">Go to Admin Dashboard</a>
+            }
+            else
+            {
+                <a href="@Url.Action("Index", "LecturerDashboard")" class="btn btn-primary">Go to Dashboard</a>
+            }
+            <a href="javascript:history.back()" class="btn btn-outline-secondary">Go Back</a>
+        </div>
+    </div>
+</div>

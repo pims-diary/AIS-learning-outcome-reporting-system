@@ -4,6 +4,7 @@ using AIS_LO_System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AIS_LO_System.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260329213537_AddIsActiveToUsers")]
+    partial class AddIsActiveToUsers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -29,10 +32,6 @@ namespace AIS_LO_System.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("FullName")
                         .IsRequired()
@@ -92,12 +91,6 @@ namespace AIS_LO_System.Migrations
                     b.Property<string>("CourseTitle")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("LOsLockedByOutline")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("MarksPercentage")
-                        .HasColumnType("int");
 
                     b.Property<string>("SelectedLearningOutcomeIds")
                         .HasColumnType("nvarchar(max)");
@@ -398,17 +391,6 @@ namespace AIS_LO_System.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("Programme")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<string>("StatusReason")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
                     b.Property<string>("StudentId")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -423,35 +405,30 @@ namespace AIS_LO_System.Migrations
                         {
                             Id = 1,
                             FullName = "Aarav Sharma",
-                            Status = 0,
                             StudentId = "2026001"
                         },
                         new
                         {
                             Id = 2,
                             FullName = "Priya Patel",
-                            Status = 0,
                             StudentId = "2026002"
                         },
                         new
                         {
                             Id = 3,
                             FullName = "John Smith",
-                            Status = 0,
                             StudentId = "2026003"
                         },
                         new
                         {
                             Id = 4,
                             FullName = "Meera Nair",
-                            Status = 0,
                             StudentId = "2026004"
                         },
                         new
                         {
                             Id = 5,
                             FullName = "Ali Khan",
-                            Status = 0,
                             StudentId = "2026005"
                         });
                 });

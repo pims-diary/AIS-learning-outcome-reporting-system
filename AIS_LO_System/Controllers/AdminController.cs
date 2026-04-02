@@ -1,5 +1,7 @@
 ﻿using AIS_LO_System.Data;
 using AIS_LO_System.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,17 +24,61 @@ namespace AIS_LO_System.Controllers
         // =============================================
         public async Task<IActionResult> Dashboard()
         {
+            var now = DateTime.Now;
+            int currentYear = now.Year;
+            int currentTrimester = now.Month <= 4 ? 1 : now.Month <= 8 ? 2 : 3;
+
             ViewBag.TotalCourses = await _context.Courses.CountAsync();
             ViewBag.TotalLecturers = await _context.AppUsers.CountAsync(u => u.Role == UserRole.Lecturer);
-            ViewBag.TotalModerators = await _context.AppUsers.CountAsync(u => u.Role == UserRole.Moderator);
+            ViewBag.TotalModerators = await _context.Courses.CountAsync(c => c.ModeratorId != null);
+            ViewBag.TotalStudents = await _context.Students.CountAsync();
+
+            // Current trimester stats
+            ViewBag.ActiveCourses = await _context.Courses
+                .CountAsync(c => c.Year == currentYear && c.Trimester == currentTrimester);
+            ViewBag.CoursesWithoutLecturer = await _context.Courses
+                .CountAsync(c => c.Year == currentYear && c.Trimester == currentTrimester && c.LecturerId == null);
+            ViewBag.CoursesWithRubric = await _context.Rubrics
+                .Select(r => r.Assignment.CourseCode)
+                .Distinct()
+                .CountAsync();
+            ViewBag.CoursesWithLO = await _context.LearningOutcomes
+                .Select(lo => lo.CourseCode)
+                .Distinct()
+                .CountAsync();
+
+            // Recently added rubrics (real activity) — materialise first, then project to avoid anonymous type in ViewBag
+            var recentRubricData = await _context.Rubrics
+                .Include(r => r.Assignment)
+                .OrderByDescending(r => r.CreatedDate)
+                .Take(5)
+                .ToListAsync();
+
+            ViewBag.RecentRubrics = recentRubricData
+                .Select(r => new RecentRubricItem
+                {
+                    CourseCode = r.Assignment?.CourseCode ?? "—",
+                    AssessmentName = r.Assignment?.AssessmentName ?? "—",
+                    CreatedDate = r.CreatedDate
+                })
+                .ToList();
+
+            ViewBag.CurrentYear = currentYear;
+            ViewBag.CurrentTrimester = currentTrimester;
+
             return View();
         }
 
         // =============================================
         // COURSES
         // =============================================
-        public async Task<IActionResult> Courses(string? search, string? trimester)
+        public async Task<IActionResult> Courses(string? search, string? trimester, string? status, string? school)
         {
+            var now = DateTime.Now;
+            // Determine current trimester from month: T1=Jan-Apr, T2=May-Aug, T3=Sep-Dec
+            int currentYear = now.Year;
+            int currentTrimester = now.Month <= 4 ? 1 : now.Month <= 8 ? 2 : 3;
+
             var query = _context.Courses
                 .Include(c => c.Lecturer)
                 .Include(c => c.Moderator)
@@ -48,13 +94,29 @@ namespace AIS_LO_System.Controllers
                     query = query.Where(c => c.Year == yr && c.Trimester == tri);
             }
 
+            if (!string.IsNullOrWhiteSpace(school) && school != "all")
+                query = query.Where(c => c.School == school);
+
+            // Active = current year AND current trimester
+            if (status == "active")
+                query = query.Where(c => c.Year == currentYear && c.Trimester == currentTrimester);
+            else if (status == "inactive")
+                query = query.Where(c => !(c.Year == currentYear && c.Trimester == currentTrimester));
+
+            ViewBag.Status = status ?? "all";
+            ViewBag.CurrentYear = currentYear;
+            ViewBag.CurrentTrimester = currentTrimester;
+            ViewBag.SelectedSchool = school ?? "all";
+
             ViewBag.Lecturers = await _context.AppUsers.Where(u => u.Role == UserRole.Lecturer).ToListAsync();
-            ViewBag.Moderators = await _context.AppUsers.Where(u => u.Role == UserRole.Moderator).ToListAsync();
+            // Moderators are any Lecturer — moderator is a per-course assignment, not a separate role
+            ViewBag.Moderators = await _context.AppUsers.Where(u => u.Role == UserRole.Lecturer).ToListAsync();
             ViewBag.Trimesters = await _context.Courses
                 .Select(c => new { c.Year, c.Trimester })
                 .Distinct()
                 .OrderByDescending(x => x.Year).ThenBy(x => x.Trimester)
-                .ToListAsync();
+                .ToListAsync()
+                .ContinueWith(t => t.Result.Select(x => new TrimesterOption { Year = x.Year, Trimester = x.Trimester }).ToList());
 
             return View(await query.OrderByDescending(c => c.Year).ThenBy(c => c.Trimester).ThenBy(c => c.Code).ToListAsync());
         }
@@ -67,8 +129,10 @@ namespace AIS_LO_System.Controllers
             if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(title))
             {
                 TempData["Error"] = "Course code and title are required.";
-                return RedirectToAction(nameof(Courses));
+                return RedirectToAction(nameof(Courses), "Admin");
             }
+
+            // Note: the same lecturer CAN be assigned as moderator of their own course
 
             var course = new Course
             {
@@ -86,21 +150,47 @@ namespace AIS_LO_System.Controllers
             _context.Courses.Add(course);
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Course {course.Code} added.";
-            return RedirectToAction(nameof(Courses));
+            return RedirectToAction(nameof(Courses), "Admin");
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditCourse(int id, string title, string school,
-            int? lecturerId, int? moderatorId)
+        public async Task<IActionResult> EditCourse(int id, string title, int year, int trimester,
+    string school, int? lecturerId, int? moderatorId)
         {
-            var course = await _context.Courses.FindAsync(id);
+            var course = await _context.Courses
+                .Include(c => c.LecturerEnrolments)
+                .FirstOrDefaultAsync(c => c.Id == id);
             if (course == null) return NotFound();
 
             course.Title = title.Trim();
+            course.Year = year;
+            course.Trimester = trimester;
             course.School = string.IsNullOrWhiteSpace(school) ? course.School : school.Trim();
             course.LecturerId = lecturerId;
             course.ModeratorId = moderatorId;
+
+            // Sync LecturerCourseEnrolment: ensure primary lecturer has an enrolment row,
+            // and moderator (if a different person) also has one so they appear on their dashboard.
+            var enrolledUserIds = course.LecturerEnrolments.Select(e => e.UserId).ToHashSet();
+
+            if (lecturerId.HasValue && !enrolledUserIds.Contains(lecturerId.Value))
+            {
+                _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
+                {
+                    UserId = lecturerId.Value,
+                    CourseId = id
+                });
+            }
+
+            if (moderatorId.HasValue && !enrolledUserIds.Contains(moderatorId.Value))
+            {
+                _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
+                {
+                    UserId = moderatorId.Value,
+                    CourseId = id
+                });
+            }
 
             await _context.SaveChangesAsync();
             TempData["Success"] = "Course updated.";
@@ -111,21 +201,34 @@ namespace AIS_LO_System.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RemoveCourse(int id)
         {
-            var course = await _context.Courses.FindAsync(id);
+            var course = await _context.Courses
+                .Include(c => c.StudentEnrolments)
+                .Include(c => c.LecturerEnrolments)
+                .FirstOrDefaultAsync(c => c.Id == id);
+
             if (course != null)
             {
+                // Remove student enrolments for this course
+                _context.StudentCourseEnrolments.RemoveRange(course.StudentEnrolments);
+
+                // Remove lecturer enrolments for this course
+                _context.LecturerCourseEnrolments.RemoveRange(course.LecturerEnrolments);
+
+                // Remove the course itself
                 _context.Courses.Remove(course);
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Course removed.";
+                TempData["Success"] = $"Course {course.Code} and all its enrolments removed.";
             }
-            return RedirectToAction(nameof(Courses));
+            return RedirectToAction(nameof(Courses), "Admin");
         }
 
         // =============================================
         // STUDENTS
         // =============================================
-        public async Task<IActionResult> Students(string? search, int? courseId)
+        public async Task<IActionResult> Students(string? search, int? courseId, string? status)
         {
+            int currentYear = DateTime.Now.Year;
+
             var query = _context.Students
                 .Include(s => s.CourseEnrolments)
                     .ThenInclude(e => e.Course)
@@ -137,6 +240,15 @@ namespace AIS_LO_System.Controllers
             if (courseId.HasValue)
                 query = query.Where(s => s.CourseEnrolments.Any(e => e.CourseId == courseId));
 
+            // Active = enrolled in at least one course in the current year
+            if (status == "active")
+                query = query.Where(s => s.CourseEnrolments.Any(e => e.Course.Year == currentYear));
+            else if (status == "inactive")
+                query = query.Where(s => !s.CourseEnrolments.Any(e => e.Course.Year == currentYear));
+
+            ViewBag.Status = status ?? "all";
+            ViewBag.CurrentYear = currentYear;
+
             ViewBag.Courses = await _context.Courses
                 .OrderByDescending(c => c.Year).ThenBy(c => c.Trimester).ThenBy(c => c.Code)
                 .ToListAsync();
@@ -147,7 +259,7 @@ namespace AIS_LO_System.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddStudent(string studentId, string fullName,
-            string? email, List<int> courseIds)
+    string? programme, string status, string? statusReason, List<int> courseIds)
         {
             if (string.IsNullOrWhiteSpace(studentId) || string.IsNullOrWhiteSpace(fullName))
             {
@@ -162,7 +274,18 @@ namespace AIS_LO_System.Controllers
                 return RedirectToAction(nameof(Students));
             }
 
-            var student = new Student { StudentId = studentId.Trim(), FullName = fullName.Trim() };
+            var studentStatus = Enum.TryParse<StudentStatus>(status, out var parsedStatus)
+                ? parsedStatus
+                : StudentStatus.Active;
+
+            var student = new Student
+            {
+                StudentId = studentId.Trim(),
+                FullName = fullName.Trim(),
+                Programme = string.IsNullOrWhiteSpace(programme) ? null : programme.Trim(),
+                Status = studentStatus,
+                StatusReason = string.IsNullOrWhiteSpace(statusReason) ? null : statusReason.Trim()
+            };
             _context.Students.Add(student);
             await _context.SaveChangesAsync();
 
@@ -196,7 +319,8 @@ namespace AIS_LO_System.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> EditStudent(int id, string fullName, List<int> courseIds)
+        public async Task<IActionResult> EditStudent(int id, string fullName, string? programme,
+            string status, string? statusReason, List<int> courseIds)
         {
             var student = await _context.Students
                 .Include(s => s.CourseEnrolments)
@@ -205,6 +329,11 @@ namespace AIS_LO_System.Controllers
             if (student == null) return NotFound();
 
             student.FullName = fullName.Trim();
+            student.Programme = string.IsNullOrWhiteSpace(programme) ? null : programme.Trim();
+            student.StatusReason = string.IsNullOrWhiteSpace(statusReason) ? null : statusReason.Trim();
+
+            if (Enum.TryParse<StudentStatus>(status, out var parsedStatus))
+                student.Status = parsedStatus;
 
             // Replace enrolments with new selection
             _context.StudentCourseEnrolments.RemoveRange(student.CourseEnrolments);
@@ -227,7 +356,7 @@ namespace AIS_LO_System.Controllers
         // =============================================
         // USERS
         // =============================================
-        public async Task<IActionResult> Users(string? search, string? role)
+        public async Task<IActionResult> Users(string? search, string? role, string? status)
         {
             var query = _context.AppUsers.AsQueryable();
 
@@ -237,7 +366,14 @@ namespace AIS_LO_System.Controllers
             if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, out var roleEnum))
                 query = query.Where(u => u.Role == roleEnum);
 
+            // Active/Inactive filter (manual IsActive toggle)
+            if (status == "active") query = query.Where(u => u.IsActive);
+            if (status == "inactive") query = query.Where(u => !u.IsActive);
+
+            ViewBag.Status = status ?? "all";
+
             ViewBag.Courses = await _context.Courses
+                .Include(c => c.LecturerEnrolments)
                 .OrderByDescending(c => c.Year).ThenBy(c => c.Code).ToListAsync();
 
             return View(await query.OrderBy(u => u.Role).ThenBy(u => u.FullName).ToListAsync());
@@ -246,25 +382,26 @@ namespace AIS_LO_System.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddUser(string fullName, string username,
-            string password, UserRole role, List<int> courseIds)
+            string? email, string password, UserRole role, List<int> courseIds)
         {
             if (string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(username) ||
                 string.IsNullOrWhiteSpace(password))
             {
                 TempData["Error"] = "Full name, username, and password are required.";
-                return RedirectToAction(nameof(Users));
+                return RedirectToAction(nameof(Users), "Admin");
             }
 
             if (await _context.AppUsers.AnyAsync(u => u.Username == username.Trim()))
             {
                 TempData["Error"] = $"Username '{username}' is already taken.";
-                return RedirectToAction(nameof(Users));
+                return RedirectToAction(nameof(Users), "Admin");
             }
 
             var user = new AppUser
             {
                 FullName = fullName.Trim(),
                 Username = username.Trim().ToLower(),
+                Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLower(),
                 PasswordHash = BC.HashPassword(password),
                 Role = role
             };
@@ -272,7 +409,8 @@ namespace AIS_LO_System.Controllers
             _context.AppUsers.Add(user);
             await _context.SaveChangesAsync();
 
-            // Assign to courses via LecturerCourseEnrolment
+            // Assign to courses via LecturerCourseEnrolment only.
+            // Course.LecturerId / ModeratorId are managed via the Courses page.
             foreach (var cid in courseIds.Distinct())
             {
                 _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
@@ -280,21 +418,11 @@ namespace AIS_LO_System.Controllers
                     UserId = user.Id,
                     CourseId = cid
                 });
-
-                // Also set as primary lecturer/moderator on the course if unset
-                var course = await _context.Courses.FindAsync(cid);
-                if (course != null)
-                {
-                    if (role == UserRole.Lecturer && course.LecturerId == null)
-                        course.LecturerId = user.Id;
-                    if (role == UserRole.Moderator && course.ModeratorId == null)
-                        course.ModeratorId = user.Id;
-                }
             }
             await _context.SaveChangesAsync();
 
             TempData["Success"] = $"User {fullName} created.";
-            return RedirectToAction(nameof(Users));
+            return RedirectToAction(nameof(Users), "Admin");
         }
 
         [HttpPost]
@@ -308,7 +436,7 @@ namespace AIS_LO_System.Controllers
                     await _context.AppUsers.CountAsync(u => u.Role == UserRole.Admin) <= 1)
                 {
                     TempData["Error"] = "Cannot remove the last admin account.";
-                    return RedirectToAction(nameof(Users));
+                    return RedirectToAction(nameof(Users), "Admin");
                 }
 
                 // Clear FK references on Courses before deleting (NoAction constraint)
@@ -328,13 +456,34 @@ namespace AIS_LO_System.Controllers
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "User removed.";
             }
-            return RedirectToAction(nameof(Users));
+            return RedirectToAction(nameof(Users), "Admin");
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ToggleUserActive(int id)
+        {
+            var user = await _context.AppUsers.FindAsync(id);
+            if (user == null) return NotFound();
+
+            // Prevent deactivating the last active admin
+            if (user.Role == UserRole.Admin && user.IsActive &&
+                await _context.AppUsers.CountAsync(u => u.Role == UserRole.Admin && u.IsActive) <= 1)
+            {
+                TempData["Error"] = "Cannot deactivate the last active admin account.";
+                return RedirectToAction(nameof(Users), "Admin");
+            }
+
+            user.IsActive = !user.IsActive;
+            await _context.SaveChangesAsync();
+            TempData["Success"] = $"{user.FullName} has been marked as {(user.IsActive ? "Active" : "Inactive")}.";
+            return RedirectToAction(nameof(Users), "Admin");
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditUser(int id, string fullName, UserRole role,
-            string? newPassword, List<int> courseIds)
+            string? email, string? newPassword, List<int> courseIds)
         {
             var user = await _context.AppUsers.FindAsync(id);
             if (user == null) return NotFound();
@@ -344,26 +493,21 @@ namespace AIS_LO_System.Controllers
                 await _context.AppUsers.CountAsync(u => u.Role == UserRole.Admin) <= 1)
             {
                 TempData["Error"] = "Cannot change the role of the last admin account.";
-                return RedirectToAction(nameof(Users));
+                return RedirectToAction(nameof(Users), "Admin");
             }
 
             user.FullName = fullName.Trim();
             user.Role = role;
+            user.Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim().ToLower();
 
             if (!string.IsNullOrWhiteSpace(newPassword))
                 user.PasswordHash = BC.HashPassword(newPassword);
 
-            // Replace course enrolments
+            // Replace course enrolments only — do NOT touch Course.LecturerId or Course.ModeratorId.
+            // Those FKs are managed exclusively via the Courses page (AddCourse/EditCourse).
             var existing = await _context.LecturerCourseEnrolments
                 .Where(e => e.UserId == id).ToListAsync();
             _context.LecturerCourseEnrolments.RemoveRange(existing);
-
-            // Clear lecturer/moderator FK on courses that were previously assigned
-            var lecCourses = await _context.Courses.Where(c => c.LecturerId == id).ToListAsync();
-            foreach (var c in lecCourses) c.LecturerId = null;
-            var modCourses = await _context.Courses.Where(c => c.ModeratorId == id).ToListAsync();
-            foreach (var c in modCourses) c.ModeratorId = null;
-
             await _context.SaveChangesAsync();
 
             foreach (var cid in courseIds.Distinct())
@@ -373,25 +517,47 @@ namespace AIS_LO_System.Controllers
                     UserId = id,
                     CourseId = cid
                 });
-
-                var course = await _context.Courses.FindAsync(cid);
-                if (course != null)
-                {
-                    if (role == UserRole.Lecturer && course.LecturerId == null)
-                        course.LecturerId = id;
-                    if (role == UserRole.Moderator && course.ModeratorId == null)
-                        course.ModeratorId = id;
-                }
             }
 
             await _context.SaveChangesAsync();
             TempData["Success"] = $"User {fullName} updated.";
-            return RedirectToAction(nameof(Users));
+            return RedirectToAction(nameof(Users), "Admin");
         }
 
-        // =============================================
-        // PERMISSIONS
-        // =============================================
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> LoginAs(int id)
+        {
+            var target = await _context.AppUsers.FindAsync(id);
+            if (target == null || target.Role == UserRole.Admin)
+            {
+                TempData["Error"] = "Cannot impersonate this account.";
+                return RedirectToAction(nameof(Users), "Admin");
+            }
+
+            // Store the admin's username so we can restore the session later
+            var adminUsername = User.Identity!.Name!;
+
+            var claims = new List<System.Security.Claims.Claim>
+            {
+                new(System.Security.Claims.ClaimTypes.Name,      target.Username),
+                new(System.Security.Claims.ClaimTypes.GivenName, target.FullName),
+                new(System.Security.Claims.ClaimTypes.Role,      target.Role.ToString()),
+                new("UserId",          target.Id.ToString()),
+                new("ImpersonatedBy",  adminUsername)   // sentinel claim
+            };
+
+            var identity = new System.Security.Claims.ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var principal = new System.Security.Claims.ClaimsPrincipal(identity);
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+
+            TempData["Info"] = $"You are now viewing as {target.FullName}. This session is read-only.";
+
+            return RedirectToAction("Index", "LecturerDashboard");
+        }
+
+
         public async Task<IActionResult> Permissions()
         {
             var courses = await _context.Courses
@@ -426,11 +592,12 @@ namespace AIS_LO_System.Controllers
             if (file == null || file.Length == 0 || !file.FileName.EndsWith(".csv"))
             {
                 TempData["Error"] = "Please upload a valid .csv file.";
-                return RedirectToAction(nameof(Courses));
+                return RedirectToAction(nameof(Courses), "Admin");
             }
 
             var lecturers = await _context.AppUsers.Where(u => u.Role == UserRole.Lecturer).ToDictionaryAsync(u => u.Username, u => u.Id);
-            var moderators = await _context.AppUsers.Where(u => u.Role == UserRole.Moderator).ToDictionaryAsync(u => u.Username, u => u.Id);
+            // Moderator lookup uses the same Lecturer pool — any Lecturer can be assigned as moderator
+            var moderators = lecturers;
             var existing = await _context.Courses.Select(c => new { c.Code, c.Year, c.Trimester }).ToListAsync();
 
             int added = 0, updated = 0, skipped = 0;
@@ -449,7 +616,7 @@ namespace AIS_LO_System.Controllers
             if (iCode < 0 || iTitle < 0 || iYear < 0 || iTri < 0)
             {
                 TempData["Error"] = "CSV missing required columns: CourseCode, CourseTitle, Year, Trimester.";
-                return RedirectToAction(nameof(Courses));
+                return RedirectToAction(nameof(Courses), "Admin");
             }
 
             while (!reader.EndOfStream)
@@ -470,7 +637,8 @@ namespace AIS_LO_System.Controllers
 
                 var lecUser = iLec >= 0 && iLec < cols.Length ? cols[iLec] : "";
                 var modUser = iMod >= 0 && iMod < cols.Length ? cols[iMod] : "";
-                var school = iSchool >= 0 && iSchool < cols.Length ? cols[iSchool] : "Information Technology";
+                var school = iSchool >= 0 && iSchool < cols.Length ? cols[iSchool].Trim() : "Information Technology";
+                if (!ValidSchool(school)) school = "Information Technology";
 
                 int? lecId = lecturers.TryGetValue(lecUser, out int lid) ? lid : null;
                 int? modId = moderators.TryGetValue(modUser, out int mid) ? mid : null;
@@ -505,7 +673,7 @@ namespace AIS_LO_System.Controllers
 
             await _context.SaveChangesAsync();
             TempData["Success"] = $"Import complete: {added} added, {updated} updated, {skipped} skipped.";
-            return RedirectToAction(nameof(Courses));
+            return RedirectToAction(nameof(Courses), "Admin");
         }
 
         // =============================================
@@ -518,7 +686,7 @@ namespace AIS_LO_System.Controllers
             if (file == null || file.Length == 0 || !file.FileName.EndsWith(".csv"))
             {
                 TempData["Error"] = "Please upload a valid .csv file.";
-                return RedirectToAction(nameof(Students));
+                return RedirectToAction(nameof(Students), "Admin");
             }
 
             var courseMap = await _context.Courses.ToDictionaryAsync(c => c.Code, c => c.Id);
@@ -530,7 +698,7 @@ namespace AIS_LO_System.Controllers
                 .Select(e => $"{e.StudentId}|{e.CourseId}")
                 .ToHashSet();
 
-            int newStudents = 0, enrolments = 0, skipped = 0;
+            int newStudents = 0, enrolments = 0, duplicates = 0, invalidRows = 0;
 
             using var reader = new StreamReader(file.OpenReadStream());
             var header = (await reader.ReadLineAsync())!.Split(',').Select(h => h.Trim().ToLower()).ToList();
@@ -542,7 +710,7 @@ namespace AIS_LO_System.Controllers
             if (iSid < 0 || iName < 0 || iCourse < 0)
             {
                 TempData["Error"] = "CSV missing required columns: StudentID, FullName, CourseCode.";
-                return RedirectToAction(nameof(Students));
+                return RedirectToAction(nameof(Students), "Admin");
             }
 
             while (!reader.EndOfStream)
@@ -557,10 +725,10 @@ namespace AIS_LO_System.Controllers
 
                 if (string.IsNullOrWhiteSpace(sid) || string.IsNullOrWhiteSpace(name) ||
                     string.IsNullOrWhiteSpace(code))
-                { skipped++; continue; }
+                { invalidRows++; continue; }
 
                 if (!courseMap.TryGetValue(code, out int courseDbId))
-                { skipped++; continue; }
+                { invalidRows++; continue; }
 
                 // Upsert student
                 if (!studentMap.TryGetValue(sid, out int studentDbId))
@@ -585,12 +753,45 @@ namespace AIS_LO_System.Controllers
                     enrolSet.Add(key);
                     enrolments++;
                 }
-                else skipped++;
+                else duplicates++;
             }
 
             await _context.SaveChangesAsync();
-            TempData["Success"] = $"Import complete: {newStudents} new students, {enrolments} enrolments, {skipped} skipped.";
-            return RedirectToAction(nameof(Students));
+
+            var msg = $"Import complete: {newStudents} new student(s), {enrolments} enrolment(s) added.";
+            if (duplicates > 0)
+                msg += $" {duplicates} duplicate enrolment(s) were skipped — these students are already enrolled in those courses.";
+            if (invalidRows > 0)
+                msg += $" {invalidRows} row(s) were skipped due to missing data or unrecognised course codes.";
+
+            if (newStudents == 0 && enrolments == 0)
+                TempData["Error"] = $"No new records were imported. " +
+                    (duplicates > 0 ? $"{duplicates} duplicate(s) already exist in the system." : "") +
+                    (invalidRows > 0 ? $" {invalidRows} row(s) had invalid data." : "");
+            else
+                TempData["Success"] = msg;
+
+            return RedirectToAction(nameof(Students), "Admin");
         }
+
+        private static readonly string[] Schools = {
+            "Information Technology", "Business", "Tourism", "Hospitality"
+        };
+
+        private static bool ValidSchool(string school) =>
+            Schools.Any(s => s.Equals(school, StringComparison.OrdinalIgnoreCase));
     }
+}
+
+public class TrimesterOption
+{
+    public int Year { get; set; }
+    public int Trimester { get; set; }
+}
+
+public class RecentRubricItem
+{
+    public string CourseCode { get; set; } = "";
+    public string AssessmentName { get; set; } = "";
+    public DateTime CreatedDate { get; set; }
 }

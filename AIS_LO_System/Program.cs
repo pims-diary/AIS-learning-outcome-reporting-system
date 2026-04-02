@@ -9,7 +9,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -31,51 +31,60 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
-    // One-time fix: add columns if migration recorded but columns missing
     try
     {
-        db.Database.ExecuteSqlRaw(@"
-            IF COL_LENGTH('Assignments','MarksPercentage') IS NULL
-            BEGIN
-                ALTER TABLE [Assignments] ADD [MarksPercentage] int NOT NULL DEFAULT 0;
-                ALTER TABLE [Assignments] ADD [LOsLockedByOutline] bit NOT NULL DEFAULT 0;
-            END
-        ");
-    }
-    catch { }
+        db.Database.Migrate();
 
-    var admin = db.AppUsers.FirstOrDefault(u => u.Username == "admin");
-    if (admin == null)
-    {
-        db.AppUsers.Add(new AppUser
+        // One-time fix: add columns if migration recorded but columns missing
+        try
         {
-            FullName = "Administrator",
-            Username = "admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
-            Role = UserRole.Admin
-        });
-        db.SaveChanges();
-    }
-    else if (!BCrypt.Net.BCrypt.Verify("Admin@123", admin.PasswordHash))
-    {
-        admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123");
-        db.SaveChanges();
-    }
+            db.Database.ExecuteSqlRaw(@"
+                IF COL_LENGTH('Assignments','MarksPercentage') IS NULL
+                BEGIN
+                    ALTER TABLE [Assignments] ADD [MarksPercentage] int NOT NULL DEFAULT 0;
+                    ALTER TABLE [Assignments] ADD [LOsLockedByOutline] bit NOT NULL DEFAULT 0;
+                END
+            ");
+        }
+        catch { }
 
-    // Default lecturer account for development
-    var lecturer = db.AppUsers.FirstOrDefault(u => u.Username == "lecturer");
-    if (lecturer == null)
-    {
-        db.AppUsers.Add(new AppUser
+        var admin = db.AppUsers.FirstOrDefault(u => u.Username == "admin");
+        if (admin == null)
         {
-            FullName = "Default Lecturer",
-            Username = "lecturer",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password@123"),
-            Role = UserRole.Lecturer
-        });
-        db.SaveChanges();
+            db.AppUsers.Add(new AppUser
+            {
+                FullName = "Administrator",
+                Username = "admin",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                Role = UserRole.Admin
+            });
+            db.SaveChanges();
+        }
+        else if (!BCrypt.Net.BCrypt.Verify("Admin@123", admin.PasswordHash))
+        {
+            admin.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123");
+            db.SaveChanges();
+        }
+
+        // Default lecturer account for development
+        var lecturer = db.AppUsers.FirstOrDefault(u => u.Username == "lecturer");
+        if (lecturer == null)
+        {
+            db.AppUsers.Add(new AppUser
+            {
+                FullName = "Default Lecturer",
+                Username = "lecturer",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Password@123"),
+                Role = UserRole.Lecturer
+            });
+            db.SaveChanges();
+        }
+    }
+    catch (Microsoft.Data.SqlClient.SqlException ex)
+    {
+        logger.LogError(ex, "Database migration or seeding failed (LocalDB connection/startup problem). The application will start, but database features may be unavailable.");
     }
 }
 // -------------------------------------------------------
