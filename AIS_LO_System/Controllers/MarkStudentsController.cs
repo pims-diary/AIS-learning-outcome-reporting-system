@@ -173,13 +173,13 @@ namespace AIS_LO_System.Controllers
 
         [HttpGet]
         public async Task<IActionResult> LOAchievementReport(
-    int studentId,
-    int assignmentId,
-    string courseCode,
-    string courseTitle,
-    string assessmentName,
-    int year,
-    int trimester)
+            int studentId,
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester)
         {
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Id == studentId);
@@ -307,8 +307,6 @@ namespace AIS_LO_System.Controllers
 
             return View(vm);
         }
-
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]
