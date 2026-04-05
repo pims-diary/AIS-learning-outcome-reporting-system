@@ -128,15 +128,32 @@ namespace AIS_LO_System.Controllers
                         Weight = c.LOMappings != null && c.LOMappings.Any()
                             ? c.LOMappings.First().Weight
                             : 0,
+
+                        // Show LO numbers only
                         LOs = c.LOMappings != null && c.LOMappings.Any()
                             ? string.Join(", ", c.LOMappings
                                 .Where(m => m.LearningOutcome != null)
-                                .Select(m => m.LearningOutcome.LearningOutcomeText))
-                            : "Not Mapped",
+                                .Select(m => m.LearningOutcome.OrderNumber)
+                                .Distinct()
+                                .OrderBy(x => x))
+                            : "-",
+
                         AvailableLevels = c.Levels
                             .OrderByDescending(l => l.Score)
                             .Select(l => l.Score)
                             .ToList(),
+
+                        // Fetch full descriptions from rubric levels
+                        LevelDescriptions = c.Levels
+                            .OrderByDescending(l => l.Score)
+                            .Select(l => new RubricLevelDisplayViewModel
+                            {
+                                Score = l.Score,
+                                ScaleName = l.ScaleName,
+                                Description = l.Description
+                            })
+                            .ToList(),
+
                         SelectedLevel = saved?.SelectedLevel,
                         CalculatedMarks = saved?.CalculatedScore ?? 0
                     };

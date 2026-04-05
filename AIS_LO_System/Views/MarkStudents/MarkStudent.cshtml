@@ -15,7 +15,6 @@
 
 <div class="container mt-4">
 
-    <!-- Breadcrumb -->
     <div class="breadcrumb mb-3">
         <a class="crumb-link"
            asp-controller="CourseDashboard"
@@ -57,7 +56,6 @@
         <span>@Model.StudentName</span>
     </div>
 
-    <!-- Title + Back -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="fw-bold mb-0">@Model.StudentName</h2>
 
@@ -74,7 +72,6 @@
         </a>
     </div>
 
-    <!-- Summary Card -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
 
@@ -113,46 +110,71 @@
                     </div>
                 </div>
 
-                <!-- Rubric Table -->
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle text-center">
+                <div class="table-responsive" style="overflow-x: visible;">
+                    <table class="table table-bordered rubric-marking-table align-middle text-center">
                         <thead>
                             <tr>
-                                <th class="text-start">Criteria</th>
-                                <th>Weight</th>
-                                <th>LOs</th>
+                                <th class="criteria-col">Criteria</th>
+                                <th class="weight-col">Weight</th>
+                                <th class="lo-col">LOs</th>
                                 @foreach (var level in Model.Levels)
                                 {
-                                    <th>@level</th>
+                                    <th class="level-header-col">@level</th>
                                 }
-                                <th>Calculated Marks</th>
+                                <th class="marks-col">Calculated Marks</th>
+                            </tr>
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                @foreach (var level in Model.Levels)
+                                {
+                                    var levelName = Model.Criteria
+                                    .SelectMany(c => c.LevelDescriptions)
+                                    .FirstOrDefault(l => l.Score == level)?.ScaleName ?? "";
+
+                                    <th class="scale-name-header">@levelName</th>
+                                }
+                                <th></th>
                             </tr>
                         </thead>
 
                         <tbody>
                             @if (Model.Criteria.Any())
                             {
+                                int rowNo = 1;
+
                                 foreach (var criterion in Model.Criteria)
                                 {
                                     <tr>
-                                        <td class="text-start">@criterion.CriterionTitle</td>
+                                        <td class="text-start criterion-text">
+                                            @rowNo. @criterion.CriterionTitle
+                                        </td>
+
                                         <td>@criterion.Weight</td>
                                         <td>@criterion.LOs</td>
 
                                         @foreach (var level in Model.Levels)
                                         {
-                                            <td>
-                                                @if (criterion.AvailableLevels.Contains(level))
+                                            var levelInfo = criterion.LevelDescriptions
+                                            .FirstOrDefault(l => l.Score == level);
+
+                                            <td class="level-desc-cell">
+                                                @if (levelInfo != null)
                                                 {
                                                     var isSelected = criterion.SelectedLevel == level ? "selected" : "";
 
                                                     <button type="button"
-                                                            class="level-btn @isSelected"
+                                                            class="level-btn rubric-cell-btn @isSelected"
                                                             data-criterion-id="@criterion.CriterionId"
                                                             data-level="@level"
                                                             data-weight="@criterion.Weight"
                                                             @(isImpersonated ? "disabled" : "")>
-                                                        @level
+                                                        <div class="cell-score">@level</div>
+                                                        <div class="cell-scale">@levelInfo.ScaleName</div>
+                                                        <div class="cell-description">
+                                                            @levelInfo.Description
+                                                        </div>
                                                     </button>
                                                 }
                                                 else
@@ -162,10 +184,13 @@
                                             </td>
                                         }
 
-                                        <td class="calculated-marks" data-criterion-id="@criterion.CriterionId">
+                                        <td class="calculated-marks fw-semibold"
+                                            data-criterion-id="@criterion.CriterionId">
                                             @criterion.CalculatedMarks.ToString("0.00")
                                         </td>
                                     </tr>
+
+                                    rowNo++;
                                 }
                             }
                             else
@@ -187,7 +212,6 @@
                     </table>
                 </div>
 
-                <!-- Comments -->
                 <div class="mt-3">
                     <label class="form-label fw-semibold">Comments</label>
                     <textarea class="form-control"
@@ -229,7 +253,6 @@
 
 </div>
 
-<!-- Clear Marks Form outside SaveMarks form -->
 <form id="clearMarksForm" asp-controller="MarkStudents" asp-action="ClearMarks" method="post" style="display:none;">
     @Html.AntiForgeryToken()
     <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
@@ -242,25 +265,90 @@
 </form>
 
 <style>
-    .level-btn {
-        min-width: 40px;
-        padding: 4px 10px;
-        border: 1px solid #ccc;
-        background-color: #fff;
-        border-radius: 6px;
-        cursor: pointer;
+    .rubric-marking-table {
+        width: 100%;
+        table-layout: fixed; /* IMPORTANT: forces equal column fit */
+        font-size: 0.85rem; /* reduce overall text */
     }
 
-        .level-btn:hover {
-            background-color: #f5f5f5;
+        .rubric-marking-table th,
+        .rubric-marking-table td {
+            vertical-align: top;
+            padding: 6px;
+            word-wrap: break-word;
         }
 
-        .level-btn.selected {
-            background-color: #b32017 !important;
-            color: #fff !important;
-            border-color: #b32017 !important;
+    .criteria-col {
+        width: 18%;
+    }
+
+    .weight-col,
+    .lo-col,
+    .marks-col {
+        width: 6%;
+    }
+
+    .level-header-col {
+        width: 14%;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .scale-name-header {
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .criterion-text {
+        font-size: 0.85rem;
+        line-height: 1.2;
+    }
+
+    .level-desc-cell {
+        padding: 0 !important;
+    }
+
+    .rubric-cell-btn {
+        width: 100%;
+        min-height: 120px;
+        border: none; /* removes inner box */
+        background: transparent; /* removes inner background */
+        cursor: pointer;
+        padding: 6px;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        font-size: 0.8rem;
+    }
+
+        .rubric-cell-btn:hover {
+            background-color: rgba(0,0,0,0.05);
         }
+
+        .rubric-cell-btn.selected {
+    background-color: #b32017 !important;
+    color: #fff !important;
+}
+
+    .cell-score {
+        font-size: 0.95rem;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .cell-scale {
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .cell-description {
+        font-size: 0.75rem; /* smaller text */
+        line-height: 1.2;
+    }
 </style>
+
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -302,6 +390,7 @@
         });
 
         updateHiddenJson();
+        updateTotalScore();
 
         buttons.forEach(function (button) {
             button.addEventListener("click", function () {
@@ -310,6 +399,7 @@
                 const criterionId = this.getAttribute("data-criterion-id");
                 const selectedLevel = parseFloat(this.getAttribute("data-level"));
                 const weight = parseFloat(this.getAttribute("data-weight"));
+                const calculated = selectedLevel * weight;
 
                 document.querySelectorAll(".level-btn").forEach(function (btn) {
                     if (btn.getAttribute("data-criterion-id") === criterionId) {
@@ -318,8 +408,6 @@
                 });
 
                 this.classList.add("selected");
-
-                const calculated = selectedLevel * weight;
 
                 const marksCell = document.querySelector(".calculated-marks[data-criterion-id='" + criterionId + "']");
                 if (marksCell) {
