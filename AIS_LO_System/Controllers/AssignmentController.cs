@@ -86,49 +86,18 @@ namespace AIS_LO_System.Controllers
 
                     if (System.IO.File.Exists(filePath))
                     {
-                        // Extract LOs from the assignment document
-                        var assignmentLOs = DocumentService.ExtractLOsFromAssignmentDoc(filePath);
-
-                        if (assignmentLOs.Any())
+                        if (TryBuildCrossCheck(
+                            assignment,
+                            filePath,
+                            out var crossCheck,
+                            out var assignmentLOsFound,
+                            out var outlineLOsFound))
                         {
-                            // Get course outline LOs
-                            var outlineLOs = _context.LearningOutcomes
-                                .Where(lo => lo.CourseCode == assignment.CourseCode)
-                                .OrderBy(lo => lo.OrderNumber)
-                                .Select(lo => new { lo.OrderNumber, lo.LearningOutcomeText })
-                                .ToList()
-                                .Select(lo => (lo.OrderNumber, lo.LearningOutcomeText))
-                                .ToList();
-
-                            // Get allowed LO numbers for this assessment
-                            var allowedLOIds = new List<int>();
-                            if (!string.IsNullOrEmpty(assignment.SelectedLearningOutcomeIds))
-                            {
-                                allowedLOIds = assignment.SelectedLearningOutcomeIds
-                                    .Split(',')
-                                    .Where(s => int.TryParse(s, out _))
-                                    .Select(int.Parse)
-                                    .ToList();
-                            }
-
-                            // Convert IDs to order numbers
-                            var allowedLONumbers = _context.LearningOutcomes
-                                .Where(lo => allowedLOIds.Contains(lo.Id))
-                                .Select(lo => lo.OrderNumber)
-                                .ToList();
-
-                            // If no specific LOs set, use all
-                            if (!allowedLONumbers.Any())
-                                allowedLONumbers = outlineLOs.Select(lo => lo.OrderNumber).ToList();
-
-                            var crossCheck = DocumentService.CrossCheckLOs(assignmentLOs, outlineLOs, allowedLONumbers);
                             ViewBag.CrossCheck = crossCheck;
-                            ViewBag.AssignmentLOsFound = true;
                         }
-                        else
-                        {
-                            ViewBag.AssignmentLOsFound = false;
-                        }
+
+                        ViewBag.AssignmentLOsFound = assignmentLOsFound;
+                        ViewBag.OutlineLOsFound = outlineLOsFound;
                     }
                 }
                 catch { }
@@ -179,11 +148,108 @@ namespace AIS_LO_System.Controllers
 
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = DocumentService.IsWordDocument(file.FileName)
-                ? "Word document uploaded and converted to PDF successfully."
-                : "PDF uploaded successfully.";
+            var uploadMessage = "Assignment document uploaded successfully.";
+
+            try
+            {
+                if (TryBuildCrossCheck(
+                    assignment,
+                    savedPath,
+                    out var crossCheck,
+                    out var assignmentLOsFound,
+                    out var outlineLOsFound))
+                {
+                    var wordingDifferences = crossCheck.Matched.Count(m => m.Status == "Wording Differs");
+
+                    if (crossCheck.IsFullyAligned)
+                    {
+                        TempData["Success"] = $"{uploadMessage} LO check: all detected LOs align with the course outline.";
+                    }
+                    else
+                    {
+                        var issues = new List<string>();
+                        if (crossCheck.Missing.Any())
+                            issues.Add($"{crossCheck.Missing.Count} missing");
+                        if (crossCheck.Extra.Any())
+                            issues.Add($"{crossCheck.Extra.Count} extra");
+                        if (wordingDifferences > 0)
+                            issues.Add($"{wordingDifferences} wording difference(s)");
+
+                        TempData["Success"] = uploadMessage;
+                        TempData["Error"] = $"LO check found issues: {string.Join(", ", issues)}. Review the LO Alignment Check below.";
+                    }
+                }
+                else if (!outlineLOsFound)
+                {
+                    TempData["Success"] = uploadMessage;
+                    TempData["Error"] = "Assignment uploaded, but no course outline Learning Outcomes were found for this course yet.";
+                }
+                else if (!assignmentLOsFound)
+                {
+                    TempData["Success"] = uploadMessage;
+                    TempData["Error"] = "Assignment uploaded, but no Learning Outcomes were detected in this document.";
+                }
+                else
+                {
+                    TempData["Success"] = uploadMessage;
+                }
+            }
+            catch
+            {
+                TempData["Success"] = uploadMessage;
+            }
 
             return RedirectToAction("Information", new { id = assignment.Id });
+        }
+
+        private bool TryBuildCrossCheck(
+            Assignment assignment,
+            string filePath,
+            out LOCrossCheckResult? crossCheck,
+            out bool assignmentLOsFound,
+            out bool outlineLOsFound)
+        {
+            crossCheck = null;
+            assignmentLOsFound = false;
+            outlineLOsFound = false;
+
+            var assignmentLOs = DocumentService.ExtractLOsFromAssignmentDoc(filePath);
+            assignmentLOsFound = assignmentLOs.Any();
+            if (!assignmentLOsFound)
+                return false;
+
+            var outlineLOs = _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == assignment.CourseCode)
+                .OrderBy(lo => lo.OrderNumber)
+                .Select(lo => new { lo.OrderNumber, lo.LearningOutcomeText })
+                .ToList()
+                .Select(lo => (lo.OrderNumber, lo.LearningOutcomeText))
+                .ToList();
+
+            outlineLOsFound = outlineLOs.Any();
+            if (!outlineLOsFound)
+                return false;
+
+            var allowedLOIds = new List<int>();
+            if (!string.IsNullOrEmpty(assignment.SelectedLearningOutcomeIds))
+            {
+                allowedLOIds = assignment.SelectedLearningOutcomeIds
+                    .Split(',')
+                    .Where(s => int.TryParse(s, out _))
+                    .Select(int.Parse)
+                    .ToList();
+            }
+
+            var allowedLONumbers = _context.LearningOutcomes
+                .Where(lo => allowedLOIds.Contains(lo.Id))
+                .Select(lo => lo.OrderNumber)
+                .ToList();
+
+            if (!allowedLONumbers.Any())
+                allowedLONumbers = outlineLOs.Select(lo => lo.OrderNumber).ToList();
+
+            crossCheck = DocumentService.CrossCheckLOs(assignmentLOs, outlineLOs, allowedLONumbers);
+            return true;
         }
     }
 }

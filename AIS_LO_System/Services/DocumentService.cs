@@ -559,7 +559,7 @@ namespace AIS_LO_System.Services
 
         // -------------------------------------------------------
         // Extract LOs from an assignment document
-        // Handles: "Learning Outcome 1: text" AND numbered lists after LO header
+        // Handles explicit LO numbers and plain-text LO wording after an LO header.
         // -------------------------------------------------------
         public static List<AssignmentLO> ExtractLOsFromAssignmentDoc(string filePath)
         {
@@ -594,35 +594,34 @@ namespace AIS_LO_System.Services
                 }
             }
 
-            // Strategy 2: If Strategy 1 found nothing, look for numbered list after "learning outcomes" header
+            // Strategy 2: If Strategy 1 found nothing, inspect the text after a
+            // learning outcomes header. This supports numbered items and plain
+            // bullet/paragraph LO wording copied from the outline.
             if (!results.Any())
             {
                 text = text.Replace("\r\n", "\n").Replace("\r", "\n");
 
-                // Find the LO header line
                 var headerMatch = System.Text.RegularExpressions.Regex.Match(
                     text,
-                    @"learning\s+outcomes.*?:\s*\n",
+                    @"(?im)^.*learning\s+outcomes?.*$",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
                 if (headerMatch.Success)
                 {
                     var afterLOHeader = text.Substring(headerMatch.Index + headerMatch.Length);
 
-                    // Cut off at next section (General Instructions, empty line gap, or any ALL CAPS header)
                     var sectionEnd = System.Text.RegularExpressions.Regex.Match(
                         afterLOHeader,
-                        @"\n\s*\n|General\s+Instruction|TASK\s|Task\s+\d|Marking|MARKING|Submission|SUBMISSION",
+                        @"\n\s*\n\s*\n|General\s+Instruction|TASK\s|Task\s+\d|Marking|MARKING|Submission|SUBMISSION|The\s+assessment\s+has|Final\s+Product\s*:|Final\s+Presentation\s*:|Assessment\s+Criteria|Scope\s+of\s+Work",
                         System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
                     var loSection = sectionEnd.Success
                         ? afterLOHeader.Substring(0, sectionEnd.Index)
                         : afterLOHeader;
 
-                    // Extract numbered items from just the LO section
                     var numberedItems = System.Text.RegularExpressions.Regex.Matches(
                         loSection,
-                        @"(\d+)\.\s+(.+?)(?=\n\s*\d+\.\s|$)",
+                        @"(?:^|\n)\s*(\d+)[\.\)]\s+(.+?)(?=\n\s*\d+[\.\)]\s|$)",
                         System.Text.RegularExpressions.RegexOptions.Singleline);
 
                     foreach (System.Text.RegularExpressions.Match m in numberedItems)
@@ -643,6 +642,26 @@ namespace AIS_LO_System.Services
                             }
                         }
                     }
+
+                    // If the document lists LO wording with no explicit numbers,
+                    // keep the text and let CrossCheckLOs infer the matching LO.
+                    if (!results.Any())
+                    {
+                        var plainItems = loSection
+                            .Split('\n')
+                            .Select(line => System.Text.RegularExpressions.Regex.Replace(line.Trim(), @"^\p{P}+", "").Trim())
+                            .Where(IsPlausibleAssignmentLOText)
+                            .Distinct(System.StringComparer.OrdinalIgnoreCase);
+
+                        foreach (var item in plainItems)
+                        {
+                            results.Add(new AssignmentLO
+                            {
+                                Number = 0,
+                                Text = item
+                            });
+                        }
+                    }
                 }
             }
 
@@ -658,17 +677,22 @@ namespace AIS_LO_System.Services
             List<int> allowedLONumbers)
         {
             var result = new LOCrossCheckResult();
+            var usedAssignmentIndexes = new HashSet<int>();
 
-            foreach (var allowed in allowedLONumbers)
+            foreach (var allowed in allowedLONumbers.Distinct())
             {
                 var outlineLO = outlineLOs.FirstOrDefault(o => o.OrderNumber == allowed);
-                var assignmentLO = assignmentLOs.FirstOrDefault(a => a.Number == allowed);
+                if (string.IsNullOrWhiteSpace(outlineLO.Text))
+                    continue;
 
-                if (outlineLO.Text == null) continue;
+                int matchedIndex = FindBestAssignmentMatchIndex(
+                    assignmentLOs,
+                    usedAssignmentIndexes,
+                    allowed,
+                    outlineLO.Text);
 
-                if (assignmentLO == null)
+                if (matchedIndex < 0)
                 {
-                    // LO is in course outline for this assessment but missing from assignment doc
                     result.Missing.Add(new LOCheckItem
                     {
                         LONumber = allowed,
@@ -678,7 +702,9 @@ namespace AIS_LO_System.Services
                 }
                 else
                 {
-                    // Compare wording
+                    usedAssignmentIndexes.Add(matchedIndex);
+                    var assignmentLO = assignmentLOs[matchedIndex];
+
                     var similarity = ComputeSimilarity(
                         NormalizeText(outlineLO.Text),
                         NormalizeText(assignmentLO.Text));
@@ -694,11 +720,17 @@ namespace AIS_LO_System.Services
                 }
             }
 
-            // Check for extra LOs in assignment doc that aren't in the allowed list
-            foreach (var aLO in assignmentLOs)
+            for (int i = 0; i < assignmentLOs.Count; i++)
             {
+                if (usedAssignmentIndexes.Contains(i))
+                    continue;
+
+                var aLO = assignmentLOs[i];
                 if (!allowedLONumbers.Contains(aLO.Number))
                 {
+                    if (aLO.Number <= 0)
+                        continue;
+
                     result.Extra.Add(new LOCheckItem
                     {
                         LONumber = aLO.Number,
@@ -711,11 +743,84 @@ namespace AIS_LO_System.Services
             return result;
         }
 
+        private static bool IsPlausibleAssignmentLOText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            var normalized = System.Text.RegularExpressions.Regex.Replace(text, @"\s+", " ").Trim();
+            if (normalized.Length < 25)
+                return false;
+
+            var lower = normalized.ToLowerInvariant();
+
+            if (lower.StartsWith("due:") ||
+                lower.StartsWith("where:") ||
+                lower.StartsWith("this assessment is worth") ||
+                lower.StartsWith("the assessment has") ||
+                lower.StartsWith("final product") ||
+                lower.StartsWith("final presentation") ||
+                lower.StartsWith("scope of work") ||
+                lower.StartsWith("assessment criteria") ||
+                lower.StartsWith("submission"))
+                return false;
+
+            if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"^\d+\s*%"))
+                return false;
+
+            return lower.Any(char.IsLetter);
+        }
+
+        private static int FindBestAssignmentMatchIndex(
+            List<AssignmentLO> assignmentLOs,
+            HashSet<int> usedAssignmentIndexes,
+            int allowedNumber,
+            string outlineText)
+        {
+            for (int i = 0; i < assignmentLOs.Count; i++)
+            {
+                if (usedAssignmentIndexes.Contains(i))
+                    continue;
+
+                if (assignmentLOs[i].Number == allowedNumber)
+                    return i;
+            }
+
+            var normalizedOutlineText = NormalizeText(outlineText);
+            double bestSimilarity = 0;
+            int bestIndex = -1;
+
+            for (int i = 0; i < assignmentLOs.Count; i++)
+            {
+                if (usedAssignmentIndexes.Contains(i))
+                    continue;
+
+                var candidate = assignmentLOs[i];
+                if (string.IsNullOrWhiteSpace(candidate.Text))
+                    continue;
+
+                var similarity = ComputeSimilarity(
+                    normalizedOutlineText,
+                    NormalizeText(candidate.Text));
+
+                if (similarity > bestSimilarity)
+                {
+                    bestSimilarity = similarity;
+                    bestIndex = i;
+                }
+            }
+
+            return bestSimilarity >= 0.45 ? bestIndex : -1;
+        }
+
         private static string NormalizeText(string text)
         {
+            var normalized = System.Text.RegularExpressions.Regex
+                .Replace(text.ToLower().Trim(), @"[^\w\s]", "");
+
             return System.Text.RegularExpressions.Regex
-                .Replace(text.ToLower().Trim(), @"[^\w\s]", "")
-                .Replace("  ", " ");
+                .Replace(normalized, @"\s+", " ")
+                .Trim();
         }
 
         private static double ComputeSimilarity(string a, string b)

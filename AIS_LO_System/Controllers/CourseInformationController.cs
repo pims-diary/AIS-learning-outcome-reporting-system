@@ -174,9 +174,10 @@ namespace LOARS.Web.Controllers
                 if (mismatchWarning != null)
                     TempData["Error"] = mismatchWarning;
             }
-            catch
+            catch (Exception ex)
             {
-                TempData["Success"] = "Course outline uploaded!";
+                TempData["Success"] = "Course outline uploaded, but some outline data could not be extracted.";
+                TempData["Error"] = $"Upload succeeded, but Learning Outcomes or Assessments could not be synced from this file. {ex.Message}";
             }
 
             return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
@@ -392,16 +393,22 @@ namespace LOARS.Web.Controllers
         // Sync LOs to database for Epic 8
         private void SyncLosToDatabase(string courseCode, List<string> loTexts)
         {
-            try
+            var existingLOs = _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode)
+                .OrderBy(lo => lo.OrderNumber)
+                .ToList();
+
+            var existingByOrder = existingLOs
+                .ToDictionary(lo => lo.OrderNumber);
+
+            int orderNumber = 1;
+            foreach (var loText in loTexts)
             {
-                var existingLOs = _context.LearningOutcomes
-                    .Where(lo => lo.CourseCode == courseCode)
-                    .ToList();
-
-                _context.LearningOutcomes.RemoveRange(existingLOs);
-
-                int orderNumber = 1;
-                foreach (var loText in loTexts)
+                if (existingByOrder.TryGetValue(orderNumber, out var existing))
+                {
+                    existing.LearningOutcomeText = loText;
+                }
+                else
                 {
                     var lo = new LearningOutcome
                     {
@@ -410,120 +417,121 @@ namespace LOARS.Web.Controllers
                         OrderNumber = orderNumber++
                     };
                     _context.LearningOutcomes.Add(lo);
+                    continue;
                 }
 
-                _context.SaveChanges();
+                orderNumber++;
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error syncing LOs to database: {ex.Message}");
-            }
+
+            var extraLOs = existingLOs
+                .Where(lo => lo.OrderNumber > loTexts.Count)
+                .ToList();
+
+            if (extraLOs.Any())
+                _context.LearningOutcomes.RemoveRange(extraLOs);
+
+            _context.SaveChanges();
         }
 
         // Sync extracted assessments to database
         private void SyncAssessmentsToDatabase(string courseCode, int year, int trimester,
             List<AssessmentInfo> assessments)
         {
-            try
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+            var courseTitle = course?.Title ?? "";
+
+            // Get all existing assignments for this course
+            var existingAssignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .ToList();
+
+            RemoveDuplicateAssignments(courseCode, existingAssignments);
+            _context.SaveChanges();
+
+            // Get existing LOs to map order numbers to IDs
+            var courseLOs = _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode)
+                .ToList();
+
+            var extractedNames = assessments
+                .Select(a => NormalizeAssessmentTitle(a.Title))
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToHashSet();
+
+            // Remove old assignments that are NOT in the new outline
+            // BUT only if they have no rubric or marks (safe to delete)
+            foreach (var old in existingAssignments)
             {
-                var course = _context.Courses
-                    .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
-
-                var courseTitle = course?.Title ?? "";
-
-                // Get all existing assignments for this course
-                var existingAssignments = _context.Assignments
-                    .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
-                    .ToList();
-
-                RemoveDuplicateAssignments(courseCode, existingAssignments);
-                _context.SaveChanges();
-
-                // Get existing LOs to map order numbers to IDs
-                var courseLOs = _context.LearningOutcomes
-                    .Where(lo => lo.CourseCode == courseCode)
-                    .ToList();
-
-                var extractedNames = assessments
-                    .Select(a => NormalizeAssessmentTitle(a.Title))
-                    .Where(name => !string.IsNullOrWhiteSpace(name))
-                    .ToHashSet();
-
-                // Remove old assignments that are NOT in the new outline
-                // BUT only if they have no rubric or marks (safe to delete)
-                foreach (var old in existingAssignments)
+                var normalizedOldName = NormalizeAssessmentTitle(old.AssessmentName);
+                if (!extractedNames.Contains(normalizedOldName))
                 {
-                    var normalizedOldName = NormalizeAssessmentTitle(old.AssessmentName);
-                    if (!extractedNames.Contains(normalizedOldName))
-                    {
-                        bool hasRubric = _context.Rubrics.Any(r => r.AssignmentId == old.Id);
-                        bool hasMarks = _context.StudentAssessmentMarks
-                            .Any(m => m.CourseCode == courseCode && m.AssessmentName == old.AssessmentName);
+                    bool hasRubric = _context.Rubrics.Any(r => r.AssignmentId == old.Id);
+                    bool hasMarks = _context.StudentAssessmentMarks
+                        .Any(m => m.CourseCode == courseCode && m.AssessmentName == old.AssessmentName);
 
-                        if (!hasRubric && !hasMarks)
-                        {
-                            _context.Assignments.Remove(old);
-                        }
+                    if (!hasRubric && !hasMarks)
+                    {
+                        _context.Assignments.Remove(old);
                     }
                 }
-                _context.SaveChanges();
+            }
+            _context.SaveChanges();
 
-                // Refresh existing list after cleanup
-                existingAssignments = _context.Assignments
-                    .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
-                    .ToList();
+            // Refresh existing list after cleanup
+            existingAssignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .ToList();
 
-                foreach (var assess in assessments)
+            foreach (var assess in assessments)
+            {
+                var normalizedAssessmentTitle = NormalizeAssessmentTitle(assess.Title);
+                if (string.IsNullOrWhiteSpace(normalizedAssessmentTitle))
+                    continue;
+
+                // Map LO order numbers to database IDs
+                var loIds = new List<int>();
+                foreach (var loNum in assess.LONumbers)
                 {
-                    var normalizedAssessmentTitle = NormalizeAssessmentTitle(assess.Title);
-                    if (string.IsNullOrWhiteSpace(normalizedAssessmentTitle))
-                        continue;
-
-                    // Map LO order numbers to database IDs
-                    var loIds = new List<int>();
-                    foreach (var loNum in assess.LONumbers)
-                    {
-                        var lo = courseLOs.FirstOrDefault(l => l.OrderNumber == loNum);
-                        if (lo != null) loIds.Add(lo.Id);
-                    }
-
-                    var selectedLOIds = loIds.Any() ? string.Join(",", loIds) : null;
-
-                    // Check if this assessment already exists
-                    var existing = existingAssignments.FirstOrDefault(a =>
-                        NormalizeAssessmentTitle(a.AssessmentName) == normalizedAssessmentTitle);
-
-                    if (existing != null)
-                    {
-                        // Update existing — safe, doesn't delete rubric or marks
-                        existing.AssessmentName = assess.Title;
-                        existing.MarksPercentage = assess.MarksPercentage;
-                        existing.SelectedLearningOutcomeIds = selectedLOIds;
-                        existing.LOsLockedByOutline = true;
-                    }
-                    else
-                    {
-                        // Create new
-                        _context.Assignments.Add(new Assignment
-                        {
-                            AssessmentName = assess.Title,
-                            CourseCode = courseCode,
-                            CourseTitle = courseTitle,
-                            Year = year,
-                            Trimester = trimester,
-                            MarksPercentage = assess.MarksPercentage,
-                            SelectedLearningOutcomeIds = selectedLOIds,
-                            LOsLockedByOutline = true
-                        });
-                    }
+                    var lo = courseLOs.FirstOrDefault(l => l.OrderNumber == loNum);
+                    if (lo != null) loIds.Add(lo.Id);
                 }
 
-                _context.SaveChanges();
+                var selectedLOIds = loIds.Any() ? string.Join(",", loIds) : null;
+
+                // Check if this assessment already exists
+                var existing = existingAssignments.FirstOrDefault(a =>
+                    NormalizeAssessmentTitle(a.AssessmentName) == normalizedAssessmentTitle);
+
+                if (existing != null)
+                {
+                    RenameAssessmentMarksIfNeeded(courseCode, existing.AssessmentName, assess.Title);
+
+                    // Update existing — safe, doesn't delete rubric or marks
+                    existing.AssessmentName = assess.Title;
+                    existing.MarksPercentage = assess.MarksPercentage;
+                    existing.SelectedLearningOutcomeIds = selectedLOIds;
+                    existing.LOsLockedByOutline = true;
+                }
+                else
+                {
+                    // Create new
+                    _context.Assignments.Add(new Assignment
+                    {
+                        AssessmentName = assess.Title,
+                        CourseCode = courseCode,
+                        CourseTitle = courseTitle,
+                        Year = year,
+                        Trimester = trimester,
+                        MarksPercentage = assess.MarksPercentage,
+                        SelectedLearningOutcomeIds = selectedLOIds,
+                        LOsLockedByOutline = true
+                    });
+                }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error syncing assessments to database: {ex.Message}");
-            }
+
+            _context.SaveChanges();
         }
 
         private void RemoveDuplicateAssignments(string courseCode, List<Assignment> assignments)
@@ -558,6 +566,25 @@ namespace LOARS.Web.Controllers
         private bool AssignmentHasMarks(string courseCode, string assessmentName)
             => _context.StudentAssessmentMarks.Any(m =>
                 m.CourseCode == courseCode && m.AssessmentName == assessmentName);
+
+        private void RenameAssessmentMarksIfNeeded(string courseCode, string? oldName, string? newName)
+        {
+            if (string.IsNullOrWhiteSpace(oldName) ||
+                string.IsNullOrWhiteSpace(newName) ||
+                oldName.Equals(newName, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            var marksToRename = _context.StudentAssessmentMarks
+                .Where(m => m.CourseCode == courseCode && m.AssessmentName == oldName)
+                .ToList();
+
+            foreach (var mark in marksToRename)
+            {
+                mark.AssessmentName = newName;
+            }
+        }
 
         private static string NormalizeAssessmentTitle(string? title)
         {
