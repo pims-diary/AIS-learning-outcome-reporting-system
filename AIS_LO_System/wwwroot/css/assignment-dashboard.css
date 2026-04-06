@@ -33,6 +33,7 @@
 .card-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
     gap: 40px;
 }
 
@@ -45,6 +46,17 @@
     text-align: center;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
+    height: 360px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-grid > a {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
 }
 
     .assignment-card:hover {
@@ -54,6 +66,8 @@
 
     .assignment-card img {
         max-width: 220px;
+        height: 180px;
+        object-fit: cover;
         margin-bottom: 24px;
     }
 
