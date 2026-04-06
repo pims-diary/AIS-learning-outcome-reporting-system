@@ -33,7 +33,7 @@ namespace AIS_LO_System.Services
                 if (body == null) return string.Empty;
 
                 var sb = new System.Text.StringBuilder();
-                foreach (var para in body.Elements<WParagraph>())
+                foreach (var para in body.Descendants<WParagraph>())
                 {
                     if (ContainsOnlyDrawings(para)) continue;
                     sb.AppendLine(para.InnerText);
@@ -220,39 +220,59 @@ namespace AIS_LO_System.Services
 
                     for (int r = 1; r < rows.Count; r++)
                     {
-                        var cells = rows[r].Elements<WTableCell>().ToList();
-                        if (cells.Count <= titleCol) continue;
+                        var cells = rows[r].Elements<WTableCell>()
+                            .Select(c => (c.InnerText ?? string.Empty).Trim())
+                            .ToList();
 
-                        var title = cells[titleCol].InnerText.Trim();
+                        if (cells.Count < 2) continue;
+
+                        int detectedMarksCol = marksCol >= 0 && marksCol < cells.Count && TryParseMarks(cells[marksCol], out _)
+                            ? marksCol
+                            : cells.FindIndex(c => TryParseMarks(c, out _));
+
+                        if (detectedMarksCol < 0) continue;
+
+                        var title = titleCol >= 0 && titleCol < cells.Count
+                            ? cells[titleCol]
+                            : string.Empty;
+
+                        if (string.IsNullOrWhiteSpace(title))
+                        {
+                            title = cells
+                                .Take(detectedMarksCol)
+                                .FirstOrDefault(c => !string.IsNullOrWhiteSpace(c)) ?? string.Empty;
+                        }
+
+                        title = System.Text.RegularExpressions.Regex.Replace(title, @"\s+", " ").Trim();
 
                         if (string.IsNullOrWhiteSpace(title) ||
-                            title.Equals("Total", System.StringComparison.OrdinalIgnoreCase))
+                            title.Equals("Total", System.StringComparison.OrdinalIgnoreCase) ||
+                            IsSuspiciousAssessmentTitle(title))
                             continue;
 
-                        int marks = 0;
-                        if (marksCol >= 0 && marksCol < cells.Count)
-                        {
-                            var marksText = cells[marksCol].InnerText.Trim().Replace("%", "");
-                            int.TryParse(marksText, out marks);
-                        }
+                        TryParseMarks(cells[detectedMarksCol], out int marks);
 
                         var loNumbers = new List<int>();
-                        if (loCol >= 0 && loCol < cells.Count)
+                        string loText = string.Empty;
+
+                        if (loCol >= 0 && loCol < cells.Count && LooksLikeLearningOutcomeCell(cells[loCol]))
                         {
-                            var loText = cells[loCol].InnerText.Trim();
-                            var matches = System.Text.RegularExpressions.Regex.Matches(loText, @"\d+");
-                            foreach (System.Text.RegularExpressions.Match m in matches)
-                            {
-                                if (int.TryParse(m.Value, out int num))
-                                    loNumbers.Add(num);
-                            }
+                            loText = cells[loCol];
                         }
+                        else
+                        {
+                            loText = cells
+                                .Skip(detectedMarksCol + 1)
+                                .FirstOrDefault(LooksLikeLearningOutcomeCell) ?? string.Empty;
+                        }
+
+                        loNumbers = ExtractLearningOutcomeNumbers(loText);
 
                         results.Add(new AssessmentInfo
                         {
                             Title = title,
                             MarksPercentage = marks,
-                            LONumbers = loNumbers
+                            LONumbers = loNumbers.Distinct().ToList()
                         });
                     }
 
@@ -261,211 +281,280 @@ namespace AIS_LO_System.Services
             }
             catch { }
 
-            return results;
+            if (results.Count >= 2 && results.Count(a => a.LONumbers.Any()) >= 2)
+                return results;
+
+            var fallbackResults = ParseAssessmentsFromText(ExtractTextFromDocx(filePath));
+            return ChooseBetterAssessmentResults(results, fallbackResults);
         }
 
         private static List<AssessmentInfo> ExtractAssessmentsFromPdfText(string filePath)
         {
-            var results = new List<AssessmentInfo>();
-
             try
             {
                 var text = ExtractTextFromPdf(filePath);
-                if (string.IsNullOrWhiteSpace(text)) return results;
-
-                text = text.Replace("\r\n", "\n").Replace("\r", "\n");
-
-                // Find the assessment section
-                var sectionMatch = System.Text.RegularExpressions.Regex.Match(
-                    text,
-                    @"(?:COURSE ASSESSMENTS?|Course Assessments?)\s*\n",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-                if (!sectionMatch.Success) return results;
-
-                var afterHeader = text.Substring(sectionMatch.Index + sectionMatch.Length);
-
-                // Cut off at next major section
-                var stopMatch = System.Text.RegularExpressions.Regex.Match(
-                    afterHeader,
-                    @"\n(?:Submission|LATE|Late|Passing|LEARNING SUPPORT|Learning Support)",
-                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                if (stopMatch.Success)
-                    afterHeader = afterHeader.Substring(0, stopMatch.Index);
-
-                var lines = afterHeader.Split('\n');
-
-                // ============================================================
-                // APPROACH 1: Find lines with percentage anywhere (iText style)
-                // Handles: "ASSIGNMENT 1 30 % 13/02/2026 ... 1, 2, 3, 5 CLASS 1-10"
-                // ============================================================
-                foreach (var rawLine in lines)
-                {
-                    var line = rawLine.Trim();
-                    if (string.IsNullOrWhiteSpace(line)) continue;
-
-                    // Find percentage anywhere in line
-                    var pctMatch = System.Text.RegularExpressions.Regex.Match(line, @"(\d+)\s*%");
-                    if (!pctMatch.Success) continue;
-
-                    int marks = int.Parse(pctMatch.Groups[1].Value);
-                    if (marks >= 100) continue;
-
-                    // Title = text before the percentage
-                    var title = line.Substring(0, pctMatch.Index).Trim();
-                    title = System.Text.RegularExpressions.Regex.Replace(title, @"\s+", " ").Trim();
-
-                    // Skip junk
-                    if (string.IsNullOrWhiteSpace(title)) continue;
-                    if (title.Equals("Total", System.StringComparison.OrdinalIgnoreCase)) continue;
-                    if (title.ToLower().Contains("course") && title.ToLower().Contains("mark")) continue;
-                    if (title.ToLower().Contains("title")) continue;
-
-                    // Get text after percentage, strip dates, weeks, CLASS refs
-                    var afterPct = line.Substring(pctMatch.Index + pctMatch.Length);
-                    afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"\d{2}/\d{2}/\d{2,4}", " ");
-                    afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"[\(\s]*Week\s*\d+[\)\s]*", " ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                    afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"CLASS.*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                    afterPct = afterPct.Trim();
-
-                    // Find LO numbers from remaining text
-                    var loNumbers = new List<int>();
-                    if (!string.IsNullOrWhiteSpace(afterPct))
-                    {
-                        var nums = System.Text.RegularExpressions.Regex.Matches(afterPct, @"\d+");
-                        foreach (System.Text.RegularExpressions.Match n in nums)
-                        {
-                            if (int.TryParse(n.Value, out int num) && num <= 20)
-                                loNumbers.Add(num);
-                        }
-                    }
-
-                    results.Add(new AssessmentInfo
-                    {
-                        Title = title,
-                        MarksPercentage = marks,
-                        LONumbers = loNumbers.Distinct().ToList()
-                    });
-                }
-
-                // If Approach 1 found 2+ results, use them
-                if (results.Count >= 2) return results;
-
-                // ============================================================
-                // APPROACH 2: Column-by-column (pdftotext style)
-                // Titles, marks, and LOs are on separate lines
-                // ============================================================
-                results.Clear();
-
-                var skipPatterns = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
-                    { "title", "course", "marks", "marks %", "release", "date", "due", "due date",
-                      "learning", "outcomes", "learning outcomes", "corresponding", "course content",
-                      "total", "the assessments for this course are as follows:", "marks % date",
-                      "release date", "course marks %", "due date*" };
-
-                var titles = new List<string>();
-                var marksList = new List<int>();
-                var loList = new List<List<int>>();
-
-                foreach (var rawLine in lines)
-                {
-                    var line = rawLine.Trim();
-                    if (string.IsNullOrWhiteSpace(line)) continue;
-                    if (skipPatterns.Contains(line.ToLower())) continue;
-
-                    if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^[\(\s]*Week\s*\d", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
-                    if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^CLASS", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
-                    if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^\d{2}/\d{2}/\d{2,4}$")) continue;
-                    if (line.StartsWith("*")) continue;
-
-                    var lineWithoutDates = System.Text.RegularExpressions.Regex.Replace(line, @"\d{2}/\d{2}/\d{2,4}", " ").Trim();
-
-                    // Title + percentage together
-                    var titlePctMatch = System.Text.RegularExpressions.Regex.Match(line, @"^(.+?)\s+(\d+)\s*%\s*$");
-                    if (titlePctMatch.Success)
-                    {
-                        var t = titlePctMatch.Groups[1].Value.Trim();
-                        int m = int.Parse(titlePctMatch.Groups[2].Value);
-                        if (!t.Equals("Total", System.StringComparison.OrdinalIgnoreCase) &&
-                            !skipPatterns.Contains(t.ToLower()) && m < 100)
-                        {
-                            titles.Add(t);
-                            marksList.Add(m);
-                            continue;
-                        }
-                    }
-
-                    // Standalone percentage
-                    var pctOnly = System.Text.RegularExpressions.Regex.Match(line, @"^(\d+)\s*%\s*$");
-                    if (pctOnly.Success)
-                    {
-                        int m = int.Parse(pctOnly.Groups[1].Value);
-                        if (m < 100) marksList.Add(m);
-                        continue;
-                    }
-
-                    // LO numbers after stripping dates
-                    lineWithoutDates = System.Text.RegularExpressions.Regex.Replace(lineWithoutDates, @"\s+", " ").Trim();
-                    if (!string.IsNullOrWhiteSpace(lineWithoutDates) &&
-                        System.Text.RegularExpressions.Regex.IsMatch(lineWithoutDates, @"^[\d,\s]+$"))
-                    {
-                        var nums = System.Text.RegularExpressions.Regex.Matches(lineWithoutDates, @"\d+");
-                        var loNums = new List<int>();
-                        foreach (System.Text.RegularExpressions.Match n in nums)
-                        {
-                            if (int.TryParse(n.Value, out int num) && num <= 20)
-                                loNums.Add(num);
-                        }
-                        if (loNums.Any()) loList.Add(loNums);
-                        continue;
-                    }
-
-                    // Mixed date + LO line
-                    if (System.Text.RegularExpressions.Regex.IsMatch(line, @"\d{2}/\d{2}/\d{2,4}"))
-                    {
-                        var remaining = lineWithoutDates;
-                        if (!string.IsNullOrWhiteSpace(remaining) &&
-                            System.Text.RegularExpressions.Regex.IsMatch(remaining, @"\d"))
-                        {
-                            var loMatch = System.Text.RegularExpressions.Regex.Match(remaining, @"([\d][\d,\s]*[\d])");
-                            if (loMatch.Success)
-                            {
-                                var nums = System.Text.RegularExpressions.Regex.Matches(loMatch.Value, @"\d+");
-                                var loNums = new List<int>();
-                                foreach (System.Text.RegularExpressions.Match n in nums)
-                                {
-                                    if (int.TryParse(n.Value, out int num) && num <= 20)
-                                        loNums.Add(num);
-                                }
-                                if (loNums.Any()) loList.Add(loNums);
-                            }
-                        }
-                        continue;
-                    }
-
-                    // Title
-                    if (line.Length > 4 &&
-                        !System.Text.RegularExpressions.Regex.IsMatch(line, @"^\d") &&
-                        System.Text.RegularExpressions.Regex.IsMatch(line, @"[a-zA-Z]{3,}"))
-                    {
-                        titles.Add(line);
-                    }
-                }
-
-                int count = System.Math.Min(titles.Count, marksList.Count);
-                for (int i = 0; i < count; i++)
-                {
-                    results.Add(new AssessmentInfo
-                    {
-                        Title = titles[i],
-                        MarksPercentage = marksList[i],
-                        LONumbers = i < loList.Count ? loList[i].Distinct().ToList() : new List<int>()
-                    });
-                }
+                return ParseAssessmentsFromText(text);
             }
             catch { }
 
+            return new List<AssessmentInfo>();
+        }
+
+        private static List<AssessmentInfo> ParseAssessmentsFromText(string text)
+        {
+            var results = new List<AssessmentInfo>();
+            if (string.IsNullOrWhiteSpace(text)) return results;
+
+            text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+            text = System.Text.RegularExpressions.Regex.Replace(text, @"(?<=\b)(\d)\s+(\d)\s*%", "$1$2%");
+
+            var sectionMatch = System.Text.RegularExpressions.Regex.Match(
+                text,
+                @"(?:COURSE ASSESSMENTS?|Course Assessments?)\s*\n",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (!sectionMatch.Success) return results;
+
+            var afterHeader = text.Substring(sectionMatch.Index + sectionMatch.Length);
+
+            var stopMatch = System.Text.RegularExpressions.Regex.Match(
+                afterHeader,
+                @"\n(?:Submission|LATE|Late|Passing|LEARNING SUPPORT|Learning Support)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (stopMatch.Success)
+                afterHeader = afterHeader.Substring(0, stopMatch.Index);
+
+            var lines = afterHeader.Split('\n');
+
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine.Trim();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                var pctMatch = System.Text.RegularExpressions.Regex.Match(line, @"(\d+)\s*%");
+                if (!pctMatch.Success) continue;
+
+                int marks = int.Parse(pctMatch.Groups[1].Value);
+                if (marks >= 100) continue;
+
+                var title = line.Substring(0, pctMatch.Index).Trim();
+                title = System.Text.RegularExpressions.Regex.Replace(title, @"\s+", " ").Trim();
+
+                if (string.IsNullOrWhiteSpace(title)) continue;
+                if (title.Equals("Total", System.StringComparison.OrdinalIgnoreCase)) continue;
+                if (title.ToLower().Contains("course") && title.ToLower().Contains("mark")) continue;
+                if (title.ToLower().Contains("title")) continue;
+                if (IsSuspiciousAssessmentTitle(title)) continue;
+
+                var afterPct = line.Substring(pctMatch.Index + pctMatch.Length);
+                afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"\d{1,2}\s*(?:st|nd|rd|th)?\s+[A-Za-z]+\s+\d{2,4}", " ");
+                afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"\d{2}/\d{2}/\d{2,4}", " ");
+                afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"[\(\s]*Week\s*\d+[\)\s]*", " ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                afterPct = System.Text.RegularExpressions.Regex.Replace(afterPct, @"CLASS.*", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                afterPct = afterPct.Trim();
+
+                var loNumbers = new List<int>();
+                if (!string.IsNullOrWhiteSpace(afterPct))
+                {
+                    var nums = System.Text.RegularExpressions.Regex.Matches(afterPct, @"\d+");
+                    foreach (System.Text.RegularExpressions.Match n in nums)
+                    {
+                        if (int.TryParse(n.Value, out int num) && num <= 20)
+                            loNumbers.Add(num);
+                    }
+                }
+
+                results.Add(new AssessmentInfo
+                {
+                    Title = title,
+                    MarksPercentage = marks,
+                    LONumbers = loNumbers.Distinct().ToList()
+                });
+            }
+
+            if (results.Count >= 2)
+                return results;
+
+            results.Clear();
+
+            var skipPatterns = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase)
+                { "title", "course", "marks", "marks %", "release", "date", "due", "due date",
+                  "learning", "outcomes", "learning outcomes", "corresponding", "course content",
+                  "total", "the assessments for this course are as follows:", "marks % date",
+                  "release date", "course marks %", "due date*" };
+
+            var titles = new List<string>();
+            var marksList = new List<int>();
+            var loList = new List<List<int>>();
+
+            foreach (var rawLine in lines)
+            {
+                var line = rawLine.Trim();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                if (skipPatterns.Contains(line.ToLower())) continue;
+
+                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^[\(\s]*Week\s*\d", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
+                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^CLASS", System.Text.RegularExpressions.RegexOptions.IgnoreCase)) continue;
+                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"^\d{2}/\d{2}/\d{2,4}$")) continue;
+                if (line.StartsWith("*")) continue;
+
+                var lineWithoutDates = System.Text.RegularExpressions.Regex.Replace(line, @"\d{2}/\d{2}/\d{2,4}", " ").Trim();
+                lineWithoutDates = System.Text.RegularExpressions.Regex.Replace(lineWithoutDates, @"\d{1,2}\s*(?:st|nd|rd|th)?\s+[A-Za-z]+\s+\d{2,4}", " ").Trim();
+
+                var titlePctMatch = System.Text.RegularExpressions.Regex.Match(line, @"^(.+?)\s+(\d+)\s*%\s*$");
+                if (titlePctMatch.Success)
+                {
+                    var t = titlePctMatch.Groups[1].Value.Trim();
+                    int m = int.Parse(titlePctMatch.Groups[2].Value);
+                    if (!t.Equals("Total", System.StringComparison.OrdinalIgnoreCase) &&
+                        !skipPatterns.Contains(t.ToLower()) &&
+                        !IsSuspiciousAssessmentTitle(t) &&
+                        m < 100)
+                    {
+                        titles.Add(t);
+                        marksList.Add(m);
+                        continue;
+                    }
+                }
+
+                var pctOnly = System.Text.RegularExpressions.Regex.Match(line, @"^(\d+)\s*%\s*$");
+                if (pctOnly.Success)
+                {
+                    int m = int.Parse(pctOnly.Groups[1].Value);
+                    if (m < 100) marksList.Add(m);
+                    continue;
+                }
+
+                lineWithoutDates = System.Text.RegularExpressions.Regex.Replace(lineWithoutDates, @"\s+", " ").Trim();
+                if (!string.IsNullOrWhiteSpace(lineWithoutDates) &&
+                    System.Text.RegularExpressions.Regex.IsMatch(lineWithoutDates, @"^[\d,\s]+$"))
+                {
+                    var nums = System.Text.RegularExpressions.Regex.Matches(lineWithoutDates, @"\d+");
+                    var loNums = new List<int>();
+                    foreach (System.Text.RegularExpressions.Match n in nums)
+                    {
+                        if (int.TryParse(n.Value, out int num) && num <= 20)
+                            loNums.Add(num);
+                    }
+                    if (loNums.Any()) loList.Add(loNums);
+                    continue;
+                }
+
+                if (System.Text.RegularExpressions.Regex.IsMatch(line, @"\d{2}/\d{2}/\d{2,4}|\d{1,2}\s*(?:st|nd|rd|th)\s+[A-Za-z]+"))
+                {
+                    var remaining = lineWithoutDates;
+                    if (!string.IsNullOrWhiteSpace(remaining) &&
+                        System.Text.RegularExpressions.Regex.IsMatch(remaining, @"\d"))
+                    {
+                        var loMatch = System.Text.RegularExpressions.Regex.Match(remaining, @"([\d][\d,\s]*[\d])");
+                        if (loMatch.Success)
+                        {
+                            var nums = System.Text.RegularExpressions.Regex.Matches(loMatch.Value, @"\d+");
+                            var loNums = new List<int>();
+                            foreach (System.Text.RegularExpressions.Match n in nums)
+                            {
+                                if (int.TryParse(n.Value, out int num) && num <= 20)
+                                    loNums.Add(num);
+                            }
+                            if (loNums.Any()) loList.Add(loNums);
+                        }
+                    }
+                    continue;
+                }
+
+                if (line.Length > 4 &&
+                    !System.Text.RegularExpressions.Regex.IsMatch(line, @"^\d") &&
+                    System.Text.RegularExpressions.Regex.IsMatch(line, @"[a-zA-Z]{3,}") &&
+                    !IsSuspiciousAssessmentTitle(line))
+                {
+                    titles.Add(line);
+                }
+            }
+
+            int count = System.Math.Min(titles.Count, marksList.Count);
+            for (int i = 0; i < count; i++)
+            {
+                results.Add(new AssessmentInfo
+                {
+                    Title = titles[i],
+                    MarksPercentage = marksList[i],
+                    LONumbers = i < loList.Count ? loList[i].Distinct().ToList() : new List<int>()
+                });
+            }
+
             return results;
+        }
+
+        private static bool TryParseMarks(string text, out int marks)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(text ?? string.Empty, @"(\d+)\s*%");
+            if (match.Success && int.TryParse(match.Groups[1].Value, out marks))
+                return true;
+
+            marks = 0;
+            return false;
+        }
+
+        private static bool LooksLikeLearningOutcomeCell(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            var normalized = text.Trim().ToLowerInvariant();
+            if (normalized.Contains("week") || normalized.Contains("release") || normalized.Contains("due"))
+                return false;
+
+            var numbers = ExtractLearningOutcomeNumbers(text);
+            return numbers.Any() &&
+                   numbers.All(n => n <= 20) &&
+                   System.Text.RegularExpressions.Regex.IsMatch(normalized, @"^(?:lo\s*)?\d+(?:\s*,\s*(?:lo\s*)?\d+)*$");
+        }
+
+        private static List<int> ExtractLearningOutcomeNumbers(string text)
+        {
+            var numbers = new List<int>();
+            if (string.IsNullOrWhiteSpace(text))
+                return numbers;
+
+            var matches = System.Text.RegularExpressions.Regex.Matches(text, @"\d+");
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                if (int.TryParse(match.Value, out int num) && num <= 20)
+                    numbers.Add(num);
+            }
+
+            return numbers;
+        }
+
+        private static bool IsSuspiciousAssessmentTitle(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return true;
+
+            var normalized = System.Text.RegularExpressions.Regex.Replace(text.ToLowerInvariant(), @"\s+", " ").Trim();
+
+            return normalized.Contains("corresponding course content") ||
+                   normalized.Contains("learning outcomes") ||
+                   normalized.Contains("release date") ||
+                   normalized.Contains("due date") ||
+                   normalized.Contains("course marks") ||
+                   System.Text.RegularExpressions.Regex.IsMatch(normalized, @"^weeks?\s+\d") ||
+                   System.Text.RegularExpressions.Regex.IsMatch(normalized, @"^week\s+\d");
+        }
+
+        private static List<AssessmentInfo> ChooseBetterAssessmentResults(
+            List<AssessmentInfo> primary,
+            List<AssessmentInfo> fallback)
+        {
+            if (!primary.Any()) return fallback;
+            if (!fallback.Any()) return primary;
+
+            int Score(List<AssessmentInfo> items) =>
+                items.Count +
+                items.Count(i => i.MarksPercentage > 0) +
+                (items.Count(i => i.LONumbers.Any()) * 2);
+
+            return Score(fallback) > Score(primary) ? fallback : primary;
         }
 
         // -------------------------------------------------------

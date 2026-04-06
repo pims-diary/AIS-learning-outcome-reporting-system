@@ -436,18 +436,25 @@ namespace LOARS.Web.Controllers
                     .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
                     .ToList();
 
+                RemoveDuplicateAssignments(courseCode, existingAssignments);
+                _context.SaveChanges();
+
                 // Get existing LOs to map order numbers to IDs
                 var courseLOs = _context.LearningOutcomes
                     .Where(lo => lo.CourseCode == courseCode)
                     .ToList();
 
-                var extractedNames = assessments.Select(a => a.Title).ToList();
+                var extractedNames = assessments
+                    .Select(a => NormalizeAssessmentTitle(a.Title))
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .ToHashSet();
 
                 // Remove old assignments that are NOT in the new outline
                 // BUT only if they have no rubric or marks (safe to delete)
                 foreach (var old in existingAssignments)
                 {
-                    if (!extractedNames.Contains(old.AssessmentName))
+                    var normalizedOldName = NormalizeAssessmentTitle(old.AssessmentName);
+                    if (!extractedNames.Contains(normalizedOldName))
                     {
                         bool hasRubric = _context.Rubrics.Any(r => r.AssignmentId == old.Id);
                         bool hasMarks = _context.StudentAssessmentMarks
@@ -468,6 +475,10 @@ namespace LOARS.Web.Controllers
 
                 foreach (var assess in assessments)
                 {
+                    var normalizedAssessmentTitle = NormalizeAssessmentTitle(assess.Title);
+                    if (string.IsNullOrWhiteSpace(normalizedAssessmentTitle))
+                        continue;
+
                     // Map LO order numbers to database IDs
                     var loIds = new List<int>();
                     foreach (var loNum in assess.LONumbers)
@@ -479,11 +490,13 @@ namespace LOARS.Web.Controllers
                     var selectedLOIds = loIds.Any() ? string.Join(",", loIds) : null;
 
                     // Check if this assessment already exists
-                    var existing = existingAssignments.FirstOrDefault(a => a.AssessmentName == assess.Title);
+                    var existing = existingAssignments.FirstOrDefault(a =>
+                        NormalizeAssessmentTitle(a.AssessmentName) == normalizedAssessmentTitle);
 
                     if (existing != null)
                     {
                         // Update existing — safe, doesn't delete rubric or marks
+                        existing.AssessmentName = assess.Title;
                         existing.MarksPercentage = assess.MarksPercentage;
                         existing.SelectedLearningOutcomeIds = selectedLOIds;
                         existing.LOsLockedByOutline = true;
@@ -511,6 +524,51 @@ namespace LOARS.Web.Controllers
             {
                 Console.WriteLine($"Error syncing assessments to database: {ex.Message}");
             }
+        }
+
+        private void RemoveDuplicateAssignments(string courseCode, List<Assignment> assignments)
+        {
+            var duplicateGroups = assignments
+                .GroupBy(a => NormalizeAssessmentTitle(a.AssessmentName))
+                .Where(g => !string.IsNullOrWhiteSpace(g.Key) && g.Count() > 1);
+
+            foreach (var group in duplicateGroups)
+            {
+                var ordered = group
+                    .OrderByDescending(AssignmentHasRubric)
+                    .ThenByDescending(a => AssignmentHasMarks(courseCode, a.AssessmentName))
+                    .ThenBy(a => a.Id)
+                    .ToList();
+
+                var keeper = ordered.First();
+
+                foreach (var duplicate in ordered.Skip(1))
+                {
+                    if (AssignmentHasRubric(duplicate) || AssignmentHasMarks(courseCode, duplicate.AssessmentName))
+                        continue;
+
+                    _context.Assignments.Remove(duplicate);
+                }
+            }
+        }
+
+        private bool AssignmentHasRubric(Assignment assignment)
+            => _context.Rubrics.Any(r => r.AssignmentId == assignment.Id);
+
+        private bool AssignmentHasMarks(string courseCode, string assessmentName)
+            => _context.StudentAssessmentMarks.Any(m =>
+                m.CourseCode == courseCode && m.AssessmentName == assessmentName);
+
+        private static string NormalizeAssessmentTitle(string? title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+                return string.Empty;
+
+            var normalized = title.ToLowerInvariant();
+            normalized = Regex.Replace(normalized, @"\bassign\b", "assignment");
+            normalized = Regex.Replace(normalized, @"[^a-z0-9]+", " ");
+            normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+            return normalized;
         }
     }
 }
