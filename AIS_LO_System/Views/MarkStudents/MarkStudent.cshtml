@@ -267,41 +267,41 @@
 <style>
     .rubric-marking-table {
         width: 100%;
-        table-layout: fixed; /* IMPORTANT: forces equal column fit */
-        font-size: 0.85rem; /* reduce overall text */
+        table-layout: fixed;
+        font-size: 0.82rem;
     }
 
         .rubric-marking-table th,
         .rubric-marking-table td {
             vertical-align: top;
-            padding: 6px;
+            padding: 8px;
             word-wrap: break-word;
         }
 
     .criteria-col {
-        width: 18%;
+        width: 22%;
     }
 
     .weight-col,
     .lo-col,
     .marks-col {
-        width: 6%;
+        width: 7%;
     }
 
     .level-header-col {
-        width: 14%;
-        font-size: 1.2rem;
+        width: 12.8%;
+        font-size: 1.15rem;
         font-weight: 600;
     }
 
     .scale-name-header {
-        font-size: 0.8rem;
+        font-size: 0.82rem;
         font-weight: 500;
     }
 
     .criterion-text {
-        font-size: 0.85rem;
-        line-height: 1.2;
+        font-size: 0.88rem;
+        line-height: 1.25;
     }
 
     .level-desc-cell {
@@ -310,16 +310,17 @@
 
     .rubric-cell-btn {
         width: 100%;
-        min-height: 120px;
-        border: none; /* removes inner box */
-        background: transparent; /* removes inner background */
+        min-height: 135px;
+        border: none;
+        background: transparent;
         cursor: pointer;
-        padding: 6px;
+        padding: 8px;
         text-align: left;
         display: flex;
         flex-direction: column;
-        gap: 3px;
-        font-size: 0.8rem;
+        gap: 4px;
+        font-size: 0.82rem;
+        transition: background-color 0.15s ease;
     }
 
         .rubric-cell-btn:hover {
@@ -327,25 +328,27 @@
         }
 
         .rubric-cell-btn.selected {
-    background-color: #b32017 !important;
-    color: #fff !important;
-}
+            background-color: #b32017 !important;
+            color: #fff !important;
+        }
 
     .cell-score {
-        font-size: 0.95rem;
+        font-size: 1rem;
         font-weight: 700;
         text-align: center;
     }
 
     .cell-scale {
-        font-size: 0.8rem;
+        font-size: 0.82rem;
         font-weight: 600;
         text-align: center;
     }
 
     .cell-description {
-        font-size: 0.75rem; /* smaller text */
+        font-size: 0.76rem;
         line-height: 1.2;
+        flex: 1;
+    }
     }
 </style>
 
