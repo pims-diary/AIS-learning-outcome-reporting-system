@@ -1,5 +1,6 @@
 ﻿using AIS_LO_System.Data;
 using AIS_LO_System.Models;
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -80,6 +81,13 @@ namespace AIS_LO_System.Controllers
                 });
             }
 
+            if (assignment != null &&
+                assignment.LOsLockedByOutline &&
+                string.IsNullOrWhiteSpace(assignment.SelectedLearningOutcomeIds))
+            {
+                await TryRecoverAssignmentLOsFromOutlineAsync(assignment, learningOutcomes);
+            }
+
             // Get selected LO IDs from assignment
             List<int> selectedLOIds = new List<int>();
             if (!string.IsNullOrEmpty(assignment?.SelectedLearningOutcomeIds))
@@ -116,6 +124,56 @@ namespace AIS_LO_System.Controllers
             };
 
             return View(viewModel);
+        }
+
+        private async Task TryRecoverAssignmentLOsFromOutlineAsync(
+            Assignment assignment,
+            List<LearningOutcome> learningOutcomes)
+        {
+            var outlinesDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "outlines");
+            var baseName = $"{assignment.CourseCode}-{assignment.Year}-T{assignment.Trimester}";
+
+            string? outlinePath = new[] { ".docx", ".pdf" }
+                .Select(ext => Path.Combine(outlinesDir, baseName + ext))
+                .FirstOrDefault(System.IO.File.Exists);
+
+            if (string.IsNullOrWhiteSpace(outlinePath))
+                return;
+
+            var assessments = DocumentService.ExtractAssessments(outlinePath);
+            if (!assessments.Any())
+                return;
+
+            var matched = assessments.FirstOrDefault(a =>
+                NormalizeAssessmentName(a.Title) == NormalizeAssessmentName(assignment.AssessmentName));
+
+            if (matched == null || !matched.LONumbers.Any())
+                return;
+
+            var loIds = learningOutcomes
+                .Where(lo => matched.LONumbers.Contains(lo.OrderNumber))
+                .Select(lo => lo.Id)
+                .ToList();
+
+            if (!loIds.Any())
+                return;
+
+            assignment.SelectedLearningOutcomeIds = string.Join(",", loIds);
+            if (matched.MarksPercentage > 0)
+                assignment.MarksPercentage = matched.MarksPercentage;
+
+            await _context.SaveChangesAsync();
+        }
+
+        private static string NormalizeAssessmentName(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var normalized = value.ToLowerInvariant();
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"[^a-z0-9]+", " ");
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ").Trim();
+            return normalized;
         }
 
         // ======================================================
