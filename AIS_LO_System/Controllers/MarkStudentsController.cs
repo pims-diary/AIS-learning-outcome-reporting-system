@@ -26,7 +26,25 @@ namespace AIS_LO_System.Controllers
             int trimester,
             string? searchTerm)
         {
-            var query = _context.Students.AsQueryable();
+            // Find the selected course first
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c =>
+                    c.Code == courseCode &&
+                    c.Year == year &&
+                    c.Trimester == trimester);
+
+            if (course == null)
+            {
+                TempData["Error"] = "Course not found.";
+                return RedirectToAction("Index", "LecturerDashboard", new { year, trimester });
+            }
+
+            // Fetch only students enrolled in this course
+            var query = _context.StudentCourseEnrolments
+                .Where(e => e.CourseId == course.Id)
+                .Include(e => e.Student)
+                .Select(e => e.Student)
+                .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -38,6 +56,7 @@ namespace AIS_LO_System.Controllers
             }
 
             var students = await query
+                .Distinct()
                 .Select(s => new StudentListItemViewModel
                 {
                     InternalId = s.Id,
@@ -204,10 +223,8 @@ namespace AIS_LO_System.Controllers
             if (student == null)
                 return NotFound();
 
-
-
             var assignment = await _context.Assignments
-    .FirstOrDefaultAsync(a => a.Id == assignmentId);
+                .FirstOrDefaultAsync(a => a.Id == assignmentId);
 
             var selectedLOIds = new List<int>();
 
@@ -224,9 +241,6 @@ namespace AIS_LO_System.Controllers
                 .Where(lo => lo.CourseCode == courseCode && selectedLOIds.Contains(lo.Id))
                 .OrderBy(lo => lo.OrderNumber)
                 .ToListAsync();
-
-
-
 
             var mappings = await _context.CriterionLOMappings
                 .Include(m => m.RubricCriterion)
@@ -293,7 +307,6 @@ namespace AIS_LO_System.Controllers
                     ? Math.Round((achievedScore / maxScore) * 100, 2)
                     : 0;
 
-                //Modified the bar graph to now have only achieved and not achieved marks
                 string status = percentage >= 50 ? "Achieved" : "Not Achieved";
 
                 return new LOAchievementItemViewModel
