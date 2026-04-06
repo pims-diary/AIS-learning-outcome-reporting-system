@@ -26,7 +26,25 @@ namespace AIS_LO_System.Controllers
             int trimester,
             string? searchTerm)
         {
-            var query = _context.Students.AsQueryable();
+            // Find the selected course first
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c =>
+                    c.Code == courseCode &&
+                    c.Year == year &&
+                    c.Trimester == trimester);
+
+            if (course == null)
+            {
+                TempData["Error"] = "Course not found.";
+                return RedirectToAction("Index", "LecturerDashboard", new { year, trimester });
+            }
+
+            // Fetch only students enrolled in this course
+            var query = _context.StudentCourseEnrolments
+                .Where(e => e.CourseId == course.Id)
+                .Include(e => e.Student)
+                .Select(e => e.Student)
+                .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
@@ -38,6 +56,7 @@ namespace AIS_LO_System.Controllers
             }
 
             var students = await query
+                .Distinct()
                 .Select(s => new StudentListItemViewModel
                 {
                     InternalId = s.Id,
@@ -128,15 +147,32 @@ namespace AIS_LO_System.Controllers
                         Weight = c.LOMappings != null && c.LOMappings.Any()
                             ? c.LOMappings.First().Weight
                             : 0,
+
+                        // Show LO numbers only
                         LOs = c.LOMappings != null && c.LOMappings.Any()
                             ? string.Join(", ", c.LOMappings
                                 .Where(m => m.LearningOutcome != null)
-                                .Select(m => m.LearningOutcome.LearningOutcomeText))
-                            : "Not Mapped",
+                                .Select(m => m.LearningOutcome.OrderNumber)
+                                .Distinct()
+                                .OrderBy(x => x))
+                            : "-",
+
                         AvailableLevels = c.Levels
                             .OrderByDescending(l => l.Score)
                             .Select(l => l.Score)
                             .ToList(),
+
+                        // Fetch full descriptions from rubric levels
+                        LevelDescriptions = c.Levels
+                            .OrderByDescending(l => l.Score)
+                            .Select(l => new RubricLevelDisplayViewModel
+                            {
+                                Score = l.Score,
+                                ScaleName = l.ScaleName,
+                                Description = l.Description
+                            })
+                            .ToList(),
+
                         SelectedLevel = saved?.SelectedLevel,
                         CalculatedMarks = saved?.CalculatedScore ?? 0
                     };
@@ -173,13 +209,13 @@ namespace AIS_LO_System.Controllers
 
         [HttpGet]
         public async Task<IActionResult> LOAchievementReport(
-    int studentId,
-    int assignmentId,
-    string courseCode,
-    string courseTitle,
-    string assessmentName,
-    int year,
-    int trimester)
+            int studentId,
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester)
         {
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Id == studentId);
@@ -187,8 +223,22 @@ namespace AIS_LO_System.Controllers
             if (student == null)
                 return NotFound();
 
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == assignmentId);
+
+            var selectedLOIds = new List<int>();
+
+            if (!string.IsNullOrWhiteSpace(assignment?.SelectedLearningOutcomeIds))
+            {
+                selectedLOIds = assignment.SelectedLearningOutcomeIds
+                    .Split(',')
+                    .Where(x => int.TryParse(x, out _))
+                    .Select(int.Parse)
+                    .ToList();
+            }
+
             var learningOutcomes = await _context.LearningOutcomes
-                .Where(lo => lo.CourseCode == courseCode)
+                .Where(lo => lo.CourseCode == courseCode && selectedLOIds.Contains(lo.Id))
                 .OrderBy(lo => lo.OrderNumber)
                 .ToListAsync();
 
@@ -257,13 +307,7 @@ namespace AIS_LO_System.Controllers
                     ? Math.Round((achievedScore / maxScore) * 100, 2)
                     : 0;
 
-                string status;
-                if (percentage >= 70)
-                    status = "Achieved";
-                else if (percentage >= 50)
-                    status = "Partially Achieved";
-                else
-                    status = "Not Achieved";
+                string status = percentage >= 50 ? "Achieved" : "Not Achieved";
 
                 return new LOAchievementItemViewModel
                 {
@@ -279,7 +323,6 @@ namespace AIS_LO_System.Controllers
             }).ToList();
 
             var achievedCount = loItems.Count(x => x.Status == "Achieved");
-            var partialCount = loItems.Count(x => x.Status == "Partially Achieved");
             var notAchievedCount = loItems.Count(x => x.Status == "Not Achieved");
             var totalLOCount = loItems.Count;
 
@@ -298,7 +341,6 @@ namespace AIS_LO_System.Controllers
                 Trimester = trimester,
                 AssessmentWeight = 30,
                 AchievedCount = achievedCount,
-                PartialCount = partialCount,
                 NotAchievedCount = notAchievedCount,
                 TotalLOCount = totalLOCount,
                 OverallStatusText = overallStatusText,
@@ -307,8 +349,6 @@ namespace AIS_LO_System.Controllers
 
             return View(vm);
         }
-
-
 
         [HttpPost]
         [ValidateAntiForgeryToken]

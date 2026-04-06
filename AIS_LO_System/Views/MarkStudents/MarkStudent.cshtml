@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Mark Student";
     Layout = "_DashboardLayout";
+    var isImpersonated = !string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value);
 }
 
 @if (TempData["Error"] != null)
@@ -14,41 +15,40 @@
 
 <div class="container mt-4">
 
-    <!-- Breadcrumb -->
     <div class="breadcrumb mb-3">
         <a class="crumb-link"
-               asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester">
+           asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
             @Model.CourseCode @Model.CourseTitle
         </a>
 
         <span>/</span>
 
         <a class="crumb-link"
-               asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="@Model.AssessmentName"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-courseTitle="@Model.CourseTitle"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester">
+           asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
             Assessments
         </a>
 
         <span>/</span>
 
         <a class="crumb-link"
-               asp-controller="MarkStudents"
-               asp-action="Index"
-               asp-route-assignmentId="@Model.AssignmentId"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-courseTitle="@Model.CourseTitle"
-               asp-route-assessmentName="@Model.AssessmentName"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester">
+           asp-controller="MarkStudents"
+           asp-action="Index"
+           asp-route-assignmentId="@Model.AssignmentId"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
             Mark Students
         </a>
 
@@ -56,24 +56,22 @@
         <span>@Model.StudentName</span>
     </div>
 
-    <!-- Title + Back -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="fw-bold mb-0">@Model.StudentName</h2>
 
         <a asp-controller="MarkStudents"
-               asp-action="Index"
-               asp-route-assignmentId="@Model.AssignmentId"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-courseTitle="@Model.CourseTitle"
-               asp-route-assessmentName="@Model.AssessmentName"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester"
-               class="btn btn-outline-secondary">
+           asp-action="Index"
+           asp-route-assignmentId="@Model.AssignmentId"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
+           class="btn btn-outline-secondary">
             ← Back
         </a>
     </div>
 
-    <!-- Summary Card -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
 
@@ -112,45 +110,71 @@
                     </div>
                 </div>
 
-                <!-- Rubric Table -->
-                <div class="table-responsive">
-                    <table class="table table-bordered align-middle text-center">
+                <div class="table-responsive" style="overflow-x: visible;">
+                    <table class="table table-bordered rubric-marking-table align-middle text-center">
                         <thead>
                             <tr>
-                                <th class="text-start">Criteria</th>
-                                <th>Weight</th>
-                                <th>LOs</th>
+                                <th class="criteria-col">Criteria</th>
+                                <th class="weight-col">Weight</th>
+                                <th class="lo-col">LOs</th>
                                 @foreach (var level in Model.Levels)
                                 {
-                                    <th>@level</th>
+                                    <th class="level-header-col">@level</th>
                                 }
-                                <th>Calculated Marks</th>
+                                <th class="marks-col">Calculated Marks</th>
+                            </tr>
+                            <tr>
+                                <th></th>
+                                <th></th>
+                                <th></th>
+                                @foreach (var level in Model.Levels)
+                                {
+                                    var levelName = Model.Criteria
+                                    .SelectMany(c => c.LevelDescriptions)
+                                    .FirstOrDefault(l => l.Score == level)?.ScaleName ?? "";
+
+                                    <th class="scale-name-header">@levelName</th>
+                                }
+                                <th></th>
                             </tr>
                         </thead>
 
                         <tbody>
                             @if (Model.Criteria.Any())
                             {
+                                int rowNo = 1;
+
                                 foreach (var criterion in Model.Criteria)
                                 {
                                     <tr>
-                                        <td class="text-start">@criterion.CriterionTitle</td>
+                                        <td class="text-start criterion-text">
+                                            @rowNo. @criterion.CriterionTitle
+                                        </td>
+
                                         <td>@criterion.Weight</td>
                                         <td>@criterion.LOs</td>
 
                                         @foreach (var level in Model.Levels)
                                         {
-                                            <td>
-                                                @if (criterion.AvailableLevels.Contains(level))
+                                            var levelInfo = criterion.LevelDescriptions
+                                            .FirstOrDefault(l => l.Score == level);
+
+                                            <td class="level-desc-cell">
+                                                @if (levelInfo != null)
                                                 {
                                                     var isSelected = criterion.SelectedLevel == level ? "selected" : "";
 
                                                     <button type="button"
-                                                            class="level-btn @isSelected"
+                                                            class="level-btn rubric-cell-btn @isSelected"
                                                             data-criterion-id="@criterion.CriterionId"
                                                             data-level="@level"
-                                                            data-weight="@criterion.Weight">
-                                                        @level
+                                                            data-weight="@criterion.Weight"
+                                                            @(isImpersonated ? "disabled" : "")>
+                                                        <div class="cell-score">@level</div>
+                                                        <div class="cell-scale">@levelInfo.ScaleName</div>
+                                                        <div class="cell-description">
+                                                            @levelInfo.Description
+                                                        </div>
                                                     </button>
                                                 }
                                                 else
@@ -160,10 +184,13 @@
                                             </td>
                                         }
 
-                                        <td class="calculated-marks" data-criterion-id="@criterion.CriterionId">
+                                        <td class="calculated-marks fw-semibold"
+                                            data-criterion-id="@criterion.CriterionId">
                                             @criterion.CalculatedMarks.ToString("0.00")
                                         </td>
                                     </tr>
+
+                                    rowNo++;
                                 }
                             }
                             else
@@ -185,49 +212,40 @@
                     </table>
                 </div>
 
-                <!-- Comments -->
-                
                 <div class="mt-3">
                     <label class="form-label fw-semibold">Comments</label>
-                    <textarea class="form-control" rows="3" name="comment" placeholder="Add comments here...">@Model.Comment</textarea>
+                    <textarea class="form-control"
+                              rows="3"
+                              name="comment"
+                              placeholder="Add comments here..."
+                              @(isImpersonated ? "disabled" : "")>@Model.Comment</textarea>
                 </div>
 
                 <div class="mt-3 d-flex justify-content-end gap-2">
                     <a asp-controller="MarkStudents"
-                           asp-action="LOAchievementReport"
-                           asp-route-studentId="@Model.StudentInternalId"
-                           asp-route-assignmentId="@Model.AssignmentId"
-                           asp-route-courseCode="@Model.CourseCode"
-                           asp-route-courseTitle="@Model.CourseTitle"
-                           asp-route-assessmentName="@Model.AssessmentName"
-                           asp-route-year="@Model.Year"
-                           asp-route-trimester="@Model.Trimester"
-                           class="btn btn-warning">
+                       asp-action="LOAchievementReport"
+                       asp-route-studentId="@Model.StudentInternalId"
+                       asp-route-assignmentId="@Model.AssignmentId"
+                       asp-route-courseCode="@Model.CourseCode"
+                       asp-route-courseTitle="@Model.CourseTitle"
+                       asp-route-assessmentName="@Model.AssessmentName"
+                       asp-route-year="@Model.Year"
+                       asp-route-trimester="@Model.Trimester"
+                       class="btn btn-warning">
                         View LO Achievement Result
                     </a>
 
-                    <button type="submit" class="btn btn-danger"
-                        @(string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value) ? "" : "disabled")>
+                    <button type="submit" class="btn btn-danger" @(isImpersonated ? "disabled" : "")>
                         Save Marks
                     </button>
 
-                    <button type="button"
+                    <button type="submit"
+                            form="clearMarksForm"
                             class="btn btn-outline-danger"
-                        @(string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value) ? $"onclick=\"document.getElementById('clearMarksForm').submit();\"" : "disabled")>
+                            @(isImpersonated ? "disabled" : "")>
                         Clear Marks
                     </button>
                 </div>
-            </form>
-
-            <form id="clearMarksForm" asp-controller="MarkStudents" asp-action="ClearMarks" method="post" style="display:none;">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
-                <input type="hidden" name="studentId" value="@Model.StudentInternalId" />
-                <input type="hidden" name="courseCode" value="@Model.CourseCode" />
-                <input type="hidden" name="courseTitle" value="@Model.CourseTitle" />
-                <input type="hidden" name="assessmentName" value="@Model.AssessmentName" />
-                <input type="hidden" name="year" value="@Model.Year" />
-                <input type="hidden" name="trimester" value="@Model.Trimester" />
             </form>
 
         </div>
@@ -235,26 +253,105 @@
 
 </div>
 
+<form id="clearMarksForm" asp-controller="MarkStudents" asp-action="ClearMarks" method="post" style="display:none;">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
+    <input type="hidden" name="studentId" value="@Model.StudentInternalId" />
+    <input type="hidden" name="courseCode" value="@Model.CourseCode" />
+    <input type="hidden" name="courseTitle" value="@Model.CourseTitle" />
+    <input type="hidden" name="assessmentName" value="@Model.AssessmentName" />
+    <input type="hidden" name="year" value="@Model.Year" />
+    <input type="hidden" name="trimester" value="@Model.Trimester" />
+</form>
+
 <style>
-    .level-btn {
-        min-width: 40px;
-        padding: 4px 10px;
-        border: 1px solid #ccc;
-        background-color: #fff;
-        border-radius: 6px;
-        cursor: pointer;
+    .rubric-marking-table {
+        width: 100%;
+        table-layout: fixed;
+        font-size: 0.82rem;
     }
 
-        .level-btn:hover {
-            background-color: #f5f5f5;
+        .rubric-marking-table th,
+        .rubric-marking-table td {
+            vertical-align: top;
+            padding: 8px;
+            word-wrap: break-word;
         }
 
-        .level-btn.selected {
+    .criteria-col {
+        width: 22%;
+    }
+
+    .weight-col,
+    .lo-col,
+    .marks-col {
+        width: 7%;
+    }
+
+    .level-header-col {
+        width: 12.8%;
+        font-size: 1.15rem;
+        font-weight: 600;
+    }
+
+    .scale-name-header {
+        font-size: 0.82rem;
+        font-weight: 500;
+    }
+
+    .criterion-text {
+        font-size: 0.88rem;
+        line-height: 1.25;
+    }
+
+    .level-desc-cell {
+        padding: 0 !important;
+    }
+
+    .rubric-cell-btn {
+        width: 100%;
+        min-height: 135px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        padding: 8px;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 0.82rem;
+        transition: background-color 0.15s ease;
+    }
+
+        .rubric-cell-btn:hover {
+            background-color: rgba(0,0,0,0.05);
+        }
+
+        .rubric-cell-btn.selected {
             background-color: #b32017 !important;
             color: #fff !important;
-            border-color: #b32017 !important;
         }
+
+    .cell-score {
+        font-size: 1rem;
+        font-weight: 700;
+        text-align: center;
+    }
+
+    .cell-scale {
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-align: center;
+    }
+
+    .cell-description {
+        font-size: 0.76rem;
+        line-height: 1.2;
+        flex: 1;
+    }
+    }
 </style>
+
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
@@ -296,12 +393,16 @@
         });
 
         updateHiddenJson();
+        updateTotalScore();
 
         buttons.forEach(function (button) {
             button.addEventListener("click", function () {
+                if (this.disabled) return;
+
                 const criterionId = this.getAttribute("data-criterion-id");
                 const selectedLevel = parseFloat(this.getAttribute("data-level"));
                 const weight = parseFloat(this.getAttribute("data-weight"));
+                const calculated = selectedLevel * weight;
 
                 document.querySelectorAll(".level-btn").forEach(function (btn) {
                     if (btn.getAttribute("data-criterion-id") === criterionId) {
@@ -310,8 +411,6 @@
                 });
 
                 this.classList.add("selected");
-
-                const calculated = selectedLevel * weight;
 
                 const marksCell = document.querySelector(".calculated-marks[data-criterion-id='" + criterionId + "']");
                 if (marksCell) {
