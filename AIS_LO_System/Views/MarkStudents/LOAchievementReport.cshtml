@@ -77,8 +77,6 @@
                             {
                                 var barClass = lo.Status == "Achieved"
                                 ? "bar-achieved"
-                                : lo.Status == "Partially Achieved"
-                                ? "bar-partial"
                                 : "bar-not-achieved";
 
                                 <div class="bar-item">
@@ -99,12 +97,9 @@
                     <p><strong>Overall LO Status:</strong></p>
                     <p class="summary-highlight">@Model.OverallStatusText</p>
 
-                    <div class="legend mt-3">
+                    <<div class="legend mt-3">
                         <div class="legend-item">
                             <span class="legend-box achieved-box"></span> Achieved
-                        </div>
-                        <div class="legend-item">
-                            <span class="legend-box partial-box"></span> Partially Achieved
                         </div>
                         <div class="legend-item">
                             <span class="legend-box not-box"></span> Not Achieved
@@ -322,15 +317,11 @@
     }
 
     .bar-achieved {
-        background: #7fc62d;
-    }
-
-    .bar-partial {
-        background: #e5ef00;
+        background: green;
     }
 
     .bar-not-achieved {
-        background: #ff3d3d;
+        background: red;
     }
 
     .summary-panel {
@@ -356,15 +347,11 @@
     }
 
     .achieved-box {
-        background: #2dbb4f;
-    }
-
-    .partial-box {
-        background: #e5ef00;
+        background: green;
     }
 
     .not-box {
-        background: #ff3d3d;
+        background: red;
     }
 
     .section-title {

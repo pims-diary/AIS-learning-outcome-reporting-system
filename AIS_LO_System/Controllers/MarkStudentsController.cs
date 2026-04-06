@@ -274,13 +274,8 @@ namespace AIS_LO_System.Controllers
                     ? Math.Round((achievedScore / maxScore) * 100, 2)
                     : 0;
 
-                string status;
-                if (percentage >= 70)
-                    status = "Achieved";
-                else if (percentage >= 50)
-                    status = "Partially Achieved";
-                else
-                    status = "Not Achieved";
+                //Modified the bar graph to now have only achieved and not achieved marks
+                string status = percentage >= 50 ? "Achieved" : "Not Achieved";
 
                 return new LOAchievementItemViewModel
                 {
@@ -296,7 +291,6 @@ namespace AIS_LO_System.Controllers
             }).ToList();
 
             var achievedCount = loItems.Count(x => x.Status == "Achieved");
-            var partialCount = loItems.Count(x => x.Status == "Partially Achieved");
             var notAchievedCount = loItems.Count(x => x.Status == "Not Achieved");
             var totalLOCount = loItems.Count;
 
@@ -315,7 +309,6 @@ namespace AIS_LO_System.Controllers
                 Trimester = trimester,
                 AssessmentWeight = 30,
                 AchievedCount = achievedCount,
-                PartialCount = partialCount,
                 NotAchievedCount = notAchievedCount,
                 TotalLOCount = totalLOCount,
                 OverallStatusText = overallStatusText,
