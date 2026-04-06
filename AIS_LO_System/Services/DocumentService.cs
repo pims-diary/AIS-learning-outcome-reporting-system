@@ -99,14 +99,20 @@ namespace AIS_LO_System.Services
             var afterHeader = text.Substring(headerMatch.Index + headerMatch.Length);
             var rawLines = afterHeader.Split('\n');
             var loLines = new List<string>();
+            int consecutiveBlanks = 0;
 
             foreach (var raw in rawLines)
             {
                 var line = raw.Trim();
 
-                // Stop at blank line followed by content (section separator)
+                // Track blank lines — 2+ consecutive blanks = section break
                 if (string.IsNullOrWhiteSpace(line))
-                    break;
+                {
+                    consecutiveBlanks++;
+                    if (consecutiveBlanks >= 2) break;
+                    continue;
+                }
+                consecutiveBlanks = 0;
 
                 // Stop at an ALL CAPS section header (e.g. COURSE DURATION, LEARNING HOURS)
                 if (line.Length < 60 &&
@@ -126,6 +132,11 @@ namespace AIS_LO_System.Services
                     lineLower.StartsWith("late submission") ||
                     lineLower.StartsWith("learning support"))
                     break;
+
+                // Skip header lines like "The learners will be able to:"
+                if (lineLower.Contains("learners will be able to") ||
+                    lineLower.Contains("students will be able to"))
+                    continue;
 
                 loLines.Add(line);
             }
