@@ -204,10 +204,29 @@ namespace AIS_LO_System.Controllers
             if (student == null)
                 return NotFound();
 
+
+
+            var assignment = await _context.Assignments
+    .FirstOrDefaultAsync(a => a.Id == assignmentId);
+
+            var selectedLOIds = new List<int>();
+
+            if (!string.IsNullOrWhiteSpace(assignment?.SelectedLearningOutcomeIds))
+            {
+                selectedLOIds = assignment.SelectedLearningOutcomeIds
+                    .Split(',')
+                    .Where(x => int.TryParse(x, out _))
+                    .Select(int.Parse)
+                    .ToList();
+            }
+
             var learningOutcomes = await _context.LearningOutcomes
-                .Where(lo => lo.CourseCode == courseCode)
+                .Where(lo => lo.CourseCode == courseCode && selectedLOIds.Contains(lo.Id))
                 .OrderBy(lo => lo.OrderNumber)
                 .ToListAsync();
+
+
+
 
             var mappings = await _context.CriterionLOMappings
                 .Include(m => m.RubricCriterion)
