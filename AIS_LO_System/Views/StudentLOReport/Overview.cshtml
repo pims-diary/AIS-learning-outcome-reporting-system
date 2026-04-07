@@ -55,13 +55,58 @@
         </a>
     </div>
 
-    <!-- Placeholder card for next part -->
+    <!-- Assessment status card -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">Assessment Status</h4>
+
+            @if (Model.Assessments.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 60%;">Assessment</th>
+                                <th style="width: 40%;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var assessment in Model.Assessments)
+                            {
+                                <tr>
+                                    <td>@assessment.AssessmentName</td>
+                                    <td>
+                                        @if (assessment.IsGraded)
+                                        {
+                                            <span class="badge bg-success">Graded</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Not Graded</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">
+                    No assessments found for this course yet.
+                </p>
+            }
+        </div>
+    </div>
+
+    <!-- Placeholder for next part -->
     <div class="card shadow-sm">
         <div class="card-body">
-            <h4 class="fw-bold mb-3">Overall LO Achievement Overview</h4>
+            <h4 class="fw-bold mb-3">Next Part</h4>
             <p class="text-muted mb-0">
-                This report page has been created successfully. In the next part, we will add:
-                bar graph, LO analysis, and contribution table.
+                In the next part, we will calculate the combined LO results across only the graded assessments
+                and prepare the data for the bar graph.
             </p>
         </div>
     </div>

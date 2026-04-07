@@ -115,6 +115,32 @@ namespace AIS_LO_System.Controllers
                 return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
             }
 
+            var assignments = await _context.Assignments
+                .Where(a =>
+                    a.CourseCode == courseCode &&
+                    a.Year == year &&
+                    a.Trimester == trimester)
+                .OrderBy(a => a.AssessmentName)
+                .ToListAsync();
+
+            var assessmentStatuses = new List<StudentAssessmentStatusItemViewModel>();
+
+            foreach (var assignment in assignments)
+            {
+                var isGraded = await _context.StudentAssessmentMarks.AnyAsync(m =>
+                    m.StudentRefId == studentId &&
+                    m.CourseCode == courseCode &&
+                    m.AssessmentName == assignment.AssessmentName &&
+                    m.IsMarked);
+
+                assessmentStatuses.Add(new StudentAssessmentStatusItemViewModel
+                {
+                    AssignmentId = assignment.Id,
+                    AssessmentName = assignment.AssessmentName,
+                    IsGraded = isGraded
+                });
+            }
+
             var vm = new StudentCourseLOOverviewViewModel
             {
                 StudentInternalId = student.Id,
@@ -123,7 +149,8 @@ namespace AIS_LO_System.Controllers
                 CourseCode = courseCode,
                 CourseTitle = courseTitle,
                 Year = year,
-                Trimester = trimester
+                Trimester = trimester,
+                Assessments = assessmentStatuses
             };
 
             return View(vm);

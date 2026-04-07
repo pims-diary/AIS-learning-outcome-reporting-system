@@ -1,4 +1,6 @@
-﻿namespace AIS_LO_System.Models.Reports
+﻿using System.Collections.Generic;
+
+namespace AIS_LO_System.Models.Reports
 {
     public class StudentCourseLOOverviewViewModel
     {
@@ -12,6 +14,8 @@
         public int Year { get; set; }
         public int Trimester { get; set; }
 
+        public List<StudentAssessmentStatusItemViewModel> Assessments { get; set; } = new();
+
         public string TrimesterLabel =>
             Trimester switch
             {
@@ -20,5 +24,12 @@
                 3 => $"{Year} - Trimester 3",
                 _ => Year.ToString()
             };
+    }
+
+    public class StudentAssessmentStatusItemViewModel
+    {
+        public int AssignmentId { get; set; }
+        public string AssessmentName { get; set; } = string.Empty;
+        public bool IsGraded { get; set; }
     }
 }
