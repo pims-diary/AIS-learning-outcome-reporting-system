@@ -76,5 +76,57 @@ namespace AIS_LO_System.Controllers
 
             return View(vm);
         }
+
+        [HttpGet]
+        public async Task<IActionResult> Overview(
+            int studentId,
+            string courseCode,
+            string courseTitle,
+            int year,
+            int trimester)
+        {
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c =>
+                    c.Code == courseCode &&
+                    c.Year == year &&
+                    c.Trimester == trimester);
+
+            if (course == null)
+            {
+                TempData["Error"] = "Course not found.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            var student = await _context.Students
+                .FirstOrDefaultAsync(s => s.Id == studentId);
+
+            if (student == null)
+            {
+                TempData["Error"] = "Student not found.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            var isEnrolled = await _context.StudentCourseEnrolments
+                .AnyAsync(e => e.CourseId == course.Id && e.StudentId == studentId);
+
+            if (!isEnrolled)
+            {
+                TempData["Error"] = "This student is not enrolled in the selected course.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            var vm = new StudentCourseLOOverviewViewModel
+            {
+                StudentInternalId = student.Id,
+                StudentId = student.StudentId,
+                StudentName = student.FullName,
+                CourseCode = courseCode,
+                CourseTitle = courseTitle,
+                Year = year,
+                Trimester = trimester
+            };
+
+            return View(vm);
+        }
     }
 }
