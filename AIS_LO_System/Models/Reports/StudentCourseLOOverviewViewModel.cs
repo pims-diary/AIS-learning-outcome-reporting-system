@@ -15,6 +15,11 @@ namespace AIS_LO_System.Models.Reports
         public int Trimester { get; set; }
 
         public List<StudentAssessmentStatusItemViewModel> Assessments { get; set; } = new();
+        public List<StudentCourseLOSummaryItemViewModel> LOSummaries { get; set; } = new();
+
+        public int AchievedCount { get; set; }
+        public int NotAchievedCount { get; set; }
+        public int TotalLOCount { get; set; }
 
         public string TrimesterLabel =>
             Trimester switch
@@ -31,5 +36,18 @@ namespace AIS_LO_System.Models.Reports
         public int AssignmentId { get; set; }
         public string AssessmentName { get; set; } = string.Empty;
         public bool IsGraded { get; set; }
+    }
+
+    public class StudentCourseLOSummaryItemViewModel
+    {
+        public int LearningOutcomeId { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public string LearningOutcomeText { get; set; } = string.Empty;
+
+        public decimal AchievedScore { get; set; }
+        public decimal MaxScore { get; set; }
+        public decimal Percentage { get; set; }
+
+        public string Status { get; set; } = "Not Achieved";
     }
 }

@@ -124,6 +124,7 @@ namespace AIS_LO_System.Controllers
                 .ToListAsync();
 
             var assessmentStatuses = new List<StudentAssessmentStatusItemViewModel>();
+            var gradedAssignments = new List<AIS_LO_System.Models.Assignment>();
 
             foreach (var assignment in assignments)
             {
@@ -139,7 +140,92 @@ namespace AIS_LO_System.Controllers
                     AssessmentName = assignment.AssessmentName,
                     IsGraded = isGraded
                 });
+
+                if (isGraded)
+                    gradedAssignments.Add(assignment);
             }
+
+            // Only use graded assignments for LO calculation
+            var gradedAssignmentIds = gradedAssignments.Select(a => a.Id).ToList();
+
+            // Collect selected LO ids from graded assignments only
+            var selectedLOIds = gradedAssignments
+                .Where(a => !string.IsNullOrWhiteSpace(a.SelectedLearningOutcomeIds))
+                .SelectMany(a => a.SelectedLearningOutcomeIds!
+                    .Split(',')
+                    .Where(x => int.TryParse(x, out _))
+                    .Select(int.Parse))
+                .Distinct()
+                .ToList();
+
+            var learningOutcomes = await _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode && selectedLOIds.Contains(lo.Id))
+                .OrderBy(lo => lo.OrderNumber)
+                .ToListAsync();
+
+            var mappings = await _context.CriterionLOMappings
+                .Include(m => m.RubricCriterion)
+                    .ThenInclude(c => c.Levels)
+                .Include(m => m.LearningOutcome)
+                .Where(m =>
+                    m.LearningOutcome.CourseCode == courseCode &&
+                    gradedAssignmentIds.Contains(m.RubricCriterion.Rubric.AssignmentId))
+                .ToListAsync();
+
+            var savedMarks = await _context.StudentCriterionMarks
+                .Where(x => gradedAssignmentIds.Contains(x.AssignmentId) && x.StudentRefId == studentId)
+                .ToListAsync();
+
+            var loSummaries = learningOutcomes.Select(lo =>
+            {
+                var loMappings = mappings
+                    .Where(m => m.LearningOutcomeId == lo.Id)
+                    .ToList();
+
+                decimal achievedScore = 0;
+                decimal maxScore = 0;
+
+                foreach (var mapping in loMappings)
+                {
+                    var saved = savedMarks.FirstOrDefault(x =>
+                        x.AssignmentId == mapping.RubricCriterion.Rubric.AssignmentId &&
+                        x.RubricCriterionId == mapping.RubricCriterionId);
+
+                    if (saved != null)
+                    {
+                        achievedScore += saved.CalculatedScore;
+                    }
+
+                    var maxLevel = mapping.RubricCriterion?.Levels?
+                        .OrderByDescending(l => l.Score)
+                        .FirstOrDefault();
+
+                    if (maxLevel != null)
+                    {
+                        maxScore += maxLevel.Score * mapping.Weight;
+                    }
+                }
+
+                var percentage = maxScore > 0
+                    ? Math.Round((achievedScore / maxScore) * 100, 2)
+                    : 0;
+
+                var status = percentage >= 50 ? "Achieved" : "Not Achieved";
+
+                return new StudentCourseLOSummaryItemViewModel
+                {
+                    LearningOutcomeId = lo.Id,
+                    Label = $"LO{lo.OrderNumber}",
+                    LearningOutcomeText = lo.LearningOutcomeText,
+                    AchievedScore = achievedScore,
+                    MaxScore = maxScore,
+                    Percentage = percentage,
+                    Status = status
+                };
+            }).ToList();
+
+            var achievedCount = loSummaries.Count(x => x.Status == "Achieved");
+            var notAchievedCount = loSummaries.Count(x => x.Status == "Not Achieved");
 
             var vm = new StudentCourseLOOverviewViewModel
             {
@@ -150,7 +236,11 @@ namespace AIS_LO_System.Controllers
                 CourseTitle = courseTitle,
                 Year = year,
                 Trimester = trimester,
-                Assessments = assessmentStatuses
+                Assessments = assessmentStatuses,
+                LOSummaries = loSummaries,
+                AchievedCount = achievedCount,
+                NotAchievedCount = notAchievedCount,
+                TotalLOCount = loSummaries.Count
             };
 
             return View(vm);
