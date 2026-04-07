@@ -63,12 +63,16 @@
                     <input type="hidden" name="year" value="@Model.Year" />
                     <input type="hidden" name="trimester" value="@Model.Trimester" />
 
+                    
+
                     <input type="text"
+                           id="studentReportSearch"
                            name="searchTerm"
                            value="@Model.SearchTerm"
                            class="form-control"
                            placeholder="Search Student ID..."
                            style="width:260px;" />
+
 
                     <button type="submit" class="btn btn-outline-secondary">
                         Search
@@ -117,3 +121,17 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById("studentReportSearch");
+
+        if (searchInput) {
+            searchInput.addEventListener("input", function () {
+                if (this.value.trim() === "") {
+                    this.form.submit();
+                }
+            });
+        }
+    });
+</script>
