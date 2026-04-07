@@ -147,7 +147,15 @@
         </div>
 
         <div class="accordion-body">
-            <a asp-action="StudentReport">Student Report</a>
+            <a asp-controller="StudentLOReport"
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                Student LO Report
+            </a>
+
             <a asp-action="CourseLOReport">Course LO Report</a>
         </div>
     </div>
