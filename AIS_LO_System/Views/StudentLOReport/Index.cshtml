@@ -1,0 +1,143 @@
+﻿@model AIS_LO_System.Models.Reports.StudentLOReportListViewModel
+
+@{
+    ViewData["Title"] = "Student LO Report";
+    Layout = "_DashboardLayout";
+}
+
+<div class="container mt-4">
+
+    <!-- Breadcrumb -->
+    <div class="breadcrumb mb-3">
+        <a class="crumb-link"
+           asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
+            @Model.CourseCode @Model.CourseTitle
+        </a>
+
+        <span>/</span>
+
+        <span class="crumb-link">Reports</span>
+
+        <span>/</span>
+
+        <span>Student LO Report</span>
+    </div>
+
+    <!-- Title + Back -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">Student LO Report</h2>
+
+        <a asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
+           class="btn btn-outline-secondary">
+            ← Go Back
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+                <div>
+                    <h4 class="fw-bold mb-1">Student List</h4>
+                    <div class="text-muted">
+                        <strong>Students Enrolled:</strong> @Model.TotalStudentsEnrolled
+                    </div>
+                </div>
+
+                <!-- Search -->
+                <form method="get"
+                      asp-controller="StudentLOReport"
+                      asp-action="Index"
+                      class="d-flex gap-2">
+                    <input type="hidden" name="courseCode" value="@Model.CourseCode" />
+                    <input type="hidden" name="courseTitle" value="@Model.CourseTitle" />
+                    <input type="hidden" name="year" value="@Model.Year" />
+                    <input type="hidden" name="trimester" value="@Model.Trimester" />
+
+                    
+
+                    <input type="text"
+                           id="studentReportSearch"
+                           name="searchTerm"
+                           value="@Model.SearchTerm"
+                           class="form-control"
+                           placeholder="Search Student ID..."
+                           style="width:260px;" />
+
+
+                    <button type="submit" class="btn btn-outline-secondary">
+                        Search
+                    </button>
+                </form>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width: 25%;">Student ID</th>
+                            <th style="width: 45%;">Student Name</th>
+                            <th style="width: 30%;" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Students.Any())
+                        {
+                            foreach (var student in Model.Students)
+                            {
+                                <tr>
+                                    <td>@student.StudentId</td>
+                                    <td>@student.StudentName</td>
+                                    <td class="text-center">
+                                        <a asp-controller="StudentLOReport"
+                                           asp-action="Overview"
+                                           asp-route-studentId="@student.InternalId"
+                                           asp-route-courseCode="@Model.CourseCode"
+                                           asp-route-courseTitle="@Model.CourseTitle"
+                                           asp-route-year="@Model.Year"
+                                           asp-route-trimester="@Model.Trimester"
+                                           class="btn btn-danger">
+                                            View Report
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">
+                                    No students found.
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById("studentReportSearch");
+
+        if (searchInput) {
+            searchInput.addEventListener("input", function () {
+                if (this.value.trim() === "") {
+                    this.form.submit();
+                }
+            });
+        }
+    });
+</script>
