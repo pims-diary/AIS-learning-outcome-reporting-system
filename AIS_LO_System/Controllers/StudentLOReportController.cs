@@ -145,27 +145,18 @@ namespace AIS_LO_System.Controllers
                     gradedAssignments.Add(assignment);
             }
 
-            // Only use graded assignments for LO calculation
             var gradedAssignmentIds = gradedAssignments.Select(a => a.Id).ToList();
 
-            // Collect selected LO ids from graded assignments only
-            var selectedLOIds = gradedAssignments
-                .Where(a => !string.IsNullOrWhiteSpace(a.SelectedLearningOutcomeIds))
-                .SelectMany(a => a.SelectedLearningOutcomeIds!
-                    .Split(',')
-                    .Where(x => int.TryParse(x, out _))
-                    .Select(int.Parse))
-                .Distinct()
-                .ToList();
-
             var learningOutcomes = await _context.LearningOutcomes
-                .Where(lo => lo.CourseCode == courseCode && selectedLOIds.Contains(lo.Id))
+                .Where(lo => lo.CourseCode == courseCode)
                 .OrderBy(lo => lo.OrderNumber)
                 .ToListAsync();
 
             var mappings = await _context.CriterionLOMappings
                 .Include(m => m.RubricCriterion)
                     .ThenInclude(c => c.Levels)
+                .Include(m => m.RubricCriterion)
+                    .ThenInclude(c => c.Rubric)
                 .Include(m => m.LearningOutcome)
                 .Where(m =>
                     m.LearningOutcome.CourseCode == courseCode &&
@@ -192,18 +183,14 @@ namespace AIS_LO_System.Controllers
                         x.RubricCriterionId == mapping.RubricCriterionId);
 
                     if (saved != null)
-                    {
                         achievedScore += saved.CalculatedScore;
-                    }
 
                     var maxLevel = mapping.RubricCriterion?.Levels?
                         .OrderByDescending(l => l.Score)
                         .FirstOrDefault();
 
                     if (maxLevel != null)
-                    {
                         maxScore += maxLevel.Score * mapping.Weight;
-                    }
                 }
 
                 var percentage = maxScore > 0
@@ -224,6 +211,141 @@ namespace AIS_LO_System.Controllers
                 };
             }).ToList();
 
+            var loAnalyses = new List<StudentCourseLOAnalysisItemViewModel>();
+
+            foreach (var lo in loSummaries)
+            {
+                var assessmentBreakdown = new List<string>();
+
+                foreach (var assignment in assignments)
+                {
+                    var statusItem = assessmentStatuses.FirstOrDefault(x => x.AssignmentId == assignment.Id);
+                    var isGraded = statusItem?.IsGraded ?? false;
+
+                    if (!isGraded)
+                    {
+                        assessmentBreakdown.Add($"{assignment.AssessmentName}: Not Graded");
+                        continue;
+                    }
+
+                    var assignmentMappings = mappings
+                        .Where(m =>
+                            m.LearningOutcomeId == lo.LearningOutcomeId &&
+                            m.RubricCriterion.Rubric.AssignmentId == assignment.Id)
+                        .ToList();
+
+                    if (!assignmentMappings.Any())
+                    {
+                        assessmentBreakdown.Add($"{assignment.AssessmentName}: LO not assessed");
+                        continue;
+                    }
+
+                    decimal assignmentAchieved = 0;
+                    decimal assignmentMax = 0;
+
+                    foreach (var mapping in assignmentMappings)
+                    {
+                        var saved = savedMarks.FirstOrDefault(x =>
+                            x.AssignmentId == assignment.Id &&
+                            x.RubricCriterionId == mapping.RubricCriterionId);
+
+                        if (saved != null)
+                            assignmentAchieved += saved.CalculatedScore;
+
+                        var maxLevel = mapping.RubricCriterion?.Levels?
+                            .OrderByDescending(l => l.Score)
+                            .FirstOrDefault();
+
+                        if (maxLevel != null)
+                            assignmentMax += maxLevel.Score * mapping.Weight;
+                    }
+
+                    var assignmentPercentage = assignmentMax > 0
+                        ? Math.Round((assignmentAchieved / assignmentMax) * 100, 2)
+                        : 0;
+
+                    assessmentBreakdown.Add($"{assignment.AssessmentName}: {assignmentPercentage:0.##}%");
+                }
+
+                loAnalyses.Add(new StudentCourseLOAnalysisItemViewModel
+                {
+                    LearningOutcomeId = lo.LearningOutcomeId,
+                    Label = lo.Label,
+                    LearningOutcomeText = lo.LearningOutcomeText,
+                    Percentage = lo.Percentage,
+                    Status = lo.Status,
+                    AssessmentBreakdown = assessmentBreakdown
+                });
+            }
+
+            var contributionTable = new List<StudentCourseLOContributionItemViewModel>();
+
+            foreach (var assignment in assignments)
+            {
+                var statusItem = assessmentStatuses.FirstOrDefault(x => x.AssignmentId == assignment.Id);
+
+                var contributionItem = new StudentCourseLOContributionItemViewModel
+                {
+                    AssignmentId = assignment.Id,
+                    AssessmentName = assignment.AssessmentName,
+                    IsGraded = statusItem?.IsGraded ?? false,
+                    StatusText = (statusItem?.IsGraded ?? false) ? "Graded" : "Not Graded"
+                };
+
+                if (!contributionItem.IsGraded)
+                {
+                    contributionItem.Contributions.Add("Not Graded");
+                    contributionItem.Achievements.Add("Not Graded");
+                }
+                else
+                {
+                    foreach (var lo in loSummaries)
+                    {
+                        var mappingsForLO = mappings
+                            .Where(m =>
+                                m.LearningOutcomeId == lo.LearningOutcomeId &&
+                                m.RubricCriterion.Rubric.AssignmentId == assignment.Id)
+                            .ToList();
+
+                        if (!mappingsForLO.Any())
+                        {
+                            contributionItem.Contributions.Add($"{lo.Label}: LO not assessed");
+                            contributionItem.Achievements.Add($"{lo.Label}: LO not assessed");
+                            continue;
+                        }
+
+                        decimal achieved = 0;
+                        decimal max = 0;
+
+                        foreach (var mapping in mappingsForLO)
+                        {
+                            var saved = savedMarks.FirstOrDefault(x =>
+                                x.AssignmentId == assignment.Id &&
+                                x.RubricCriterionId == mapping.RubricCriterionId);
+
+                            if (saved != null)
+                                achieved += saved.CalculatedScore;
+
+                            var maxLevel = mapping.RubricCriterion?.Levels?
+                                .OrderByDescending(l => l.Score)
+                                .FirstOrDefault();
+
+                            if (maxLevel != null)
+                                max += maxLevel.Score * mapping.Weight;
+                        }
+
+                        var percentage = max > 0
+                            ? Math.Round((achieved / max) * 100, 2)
+                            : 0;
+
+                        contributionItem.Contributions.Add($"{lo.Label}: {max:0.##}");
+                        contributionItem.Achievements.Add($"{lo.Label}: {percentage:0.##}%");
+                    }
+                }
+
+                contributionTable.Add(contributionItem);
+            }
+
             var achievedCount = loSummaries.Count(x => x.Status == "Achieved");
             var notAchievedCount = loSummaries.Count(x => x.Status == "Not Achieved");
 
@@ -238,6 +360,8 @@ namespace AIS_LO_System.Controllers
                 Trimester = trimester,
                 Assessments = assessmentStatuses,
                 LOSummaries = loSummaries,
+                LOAnalyses = loAnalyses,
+                Contributions = contributionTable,
                 AchievedCount = achievedCount,
                 NotAchievedCount = notAchievedCount,
                 TotalLOCount = loSummaries.Count

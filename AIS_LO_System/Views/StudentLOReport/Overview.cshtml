@@ -53,34 +53,170 @@
         </a>
     </div>
 
-    <!-- Assessment status -->
+    <!-- Bar graph -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
-            <h4 class="fw-bold mb-3">Assessment Status</h4>
+            <h4 class="fw-bold mb-3">Overall LO Achievement Overview</h4>
 
-            @if (Model.Assessments.Any())
+            @if (Model.LOSummaries.Any())
+            {
+                <div class="chart-box">
+                    <div class="y-axis-label top">100</div>
+                    <div class="chart-grid">
+                        <div class="grid-line line-80"></div>
+                        <div class="grid-line line-60"></div>
+                        <div class="grid-line line-40"></div>
+                        <div class="grid-line line-20"></div>
+
+                        <div class="bars-wrap">
+                            @foreach (var lo in Model.LOSummaries)
+                            {
+                                var barClass = lo.Status == "Achieved"
+                                ? "bar-achieved"
+                                : "bar-not-achieved";
+
+                                <div class="bar-item">
+                                    <div class="bar-percent">@lo.Percentage.ToString("0.##")%</div>
+                                    <div class="bar @barClass" style="height:@lo.Percentage%;"></div>
+                                    <div class="bar-label">@lo.Label</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-info-box">
+                    <div class="chart-info-status">
+                        @Model.AchievedCount of @Model.TotalLOCount Learning Outcomes Achieved
+                    </div>
+
+                    <div class="legend-inline">
+                        <div class="legend-item">
+                            <span class="legend-box achieved-box"></span> Achieved
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-box not-box"></span> Not Achieved
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">
+                    No graded assessment data is available yet for this student in this course.
+                </p>
+            }
+        </div>
+    </div>
+
+    <!-- Analysis -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">Learning Outcome Analysis</h4>
+
+            @if (!Model.LOSummaries.Any())
+            {
+                <p class="text-muted mb-0">
+                    No LO analysis is available yet because no assessments have been graded.
+                </p>
+            }
+            else
+            {
+                @foreach (var item in Model.LOAnalyses)
+                {
+                    <div class="analysis-block">
+                        <div class="analysis-title">
+                            @item.Label - @item.Percentage.ToString("0.##")% (@item.Status)
+                        </div>
+
+                        <div class="analysis-text mb-2">
+                            <strong>@item.Label</strong>: @item.LearningOutcomeText
+                        </div>
+
+                        @foreach (var line in item.AssessmentBreakdown)
+                        {
+                            <div class="analysis-text">@line</div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <!-- Contribution Table -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">Assessment Contribution to Course Learning Outcomes</h4>
+
+            @if (!Model.LOSummaries.Any() && !Model.Contributions.Any())
+            {
+                <p class="text-muted mb-0">
+                    No contribution data is available yet.
+                </p>
+            }
+            else
             {
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table table-bordered align-middle">
                         <thead>
                             <tr>
-                                <th style="width: 60%;">Assessment</th>
-                                <th style="width: 40%;">Status</th>
+                                <th>Assessment</th>
+                                <th>Status</th>
+                                <th>Total Contribution to LO(s)</th>
+                                <th>Student Achievement</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (var assessment in Model.Assessments)
+                            @foreach (var item in Model.Contributions)
                             {
                                 <tr>
-                                    <td>@assessment.AssessmentName</td>
+                                    <td>@item.AssessmentName</td>
+
                                     <td>
-                                        @if (assessment.IsGraded)
+                                        @if (item.IsGraded)
                                         {
-                                            <span class="badge bg-success">Graded</span>
+                                            <span class="badge bg-success">@item.StatusText</span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-secondary">Not Graded</span>
+                                            <span class="badge bg-secondary">@item.StatusText</span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @foreach (var contribution in item.Contributions)
+                                        {
+                                            <div>@contribution</div>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @foreach (var achievement in item.Achievements)
+                                        {
+                                            <div>@achievement</div>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @if (item.IsGraded)
+                                        {
+                                            <a asp-controller="MarkStudents"
+                                               asp-action="LOAchievementReport"
+                                               asp-route-studentId="@Model.StudentInternalId"
+                                               asp-route-assignmentId="@item.AssignmentId"
+                                               asp-route-courseCode="@Model.CourseCode"
+                                               asp-route-courseTitle="@Model.CourseTitle"
+                                               asp-route-assessmentName="@item.AssessmentName"
+                                               asp-route-year="@Model.Year"
+                                               asp-route-trimester="@Model.Trimester"
+                                               class="btn btn-sm btn-danger">
+                                                View Report
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
                                         }
                                     </td>
                                 </tr>
@@ -89,36 +225,26 @@
                     </table>
                 </div>
             }
-            else
-            {
-                <p class="text-muted mb-0">No assessments found for this course yet.</p>
-            }
         </div>
     </div>
 
-    <!-- LO summary check -->
+    <!-- Combined LO Summary -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <h4 class="fw-bold mb-3">Combined LO Summary</h4>
 
             @if (Model.LOSummaries.Any())
             {
-                <div class="mb-3 text-muted">
-                    <strong>Achieved:</strong> @Model.AchievedCount /
-                    <strong>Not Achieved:</strong> @Model.NotAchievedCount /
-                    <strong>Total:</strong> @Model.TotalLOCount
-                </div>
-
                 <div class="table-responsive">
                     <table class="table table-bordered align-middle">
                         <thead>
                             <tr>
                                 <th>LO</th>
                                 <th>Learning Outcome</th>
-                                <th>Achieved Score</th>
-                                <th>Max Score</th>
-                                <th>Percentage</th>
-                                <th>Status</th>
+                                <th>Student Score</th>
+                                <th>Maximum Possible Score</th>
+                                <th>Achievement (%)</th>
+                                <th>LO Result</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -154,14 +280,161 @@
             }
         </div>
     </div>
-
-    <!-- Placeholder -->
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h4 class="fw-bold mb-3">Next Part</h4>
-            <p class="text-muted mb-0">
-                In the next part, we will convert this combined LO summary into the bar graph section.
-            </p>
-        </div>
-    </div>
 </div>
+
+<style>
+    .chart-box {
+        position: relative;
+        padding-left: 34px;
+        padding-top: 18px;
+    }
+
+    .y-axis-label.top {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-size: 0.95rem;
+        color: #c62828;
+        font-weight: 700;
+    }
+
+    .chart-grid {
+        position: relative;
+        height: 340px;
+        border-left: 2px solid #555;
+        border-bottom: 2px solid #555;
+        margin-top: 10px;
+    }
+
+    .grid-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px solid #bbb;
+    }
+
+    .line-80 {
+        top: 20%;
+    }
+
+    .line-60 {
+        top: 40%;
+    }
+
+    .line-40 {
+        top: 60%;
+    }
+
+    .line-20 {
+        top: 80%;
+    }
+
+    .bars-wrap {
+        position: absolute;
+        left: 30px;
+        right: 30px;
+        bottom: 0;
+        top: 0;
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-end;
+        padding-bottom: 36px;
+    }
+
+    .bar-item {
+        width: 90px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .bar {
+        width: 40px;
+        min-height: 2px;
+        border: 1px solid #555;
+    }
+
+    .bar-percent {
+        font-size: 1rem;
+        color: #c62828;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .bar-label {
+        margin-top: 8px;
+        font-size: 0.95rem;
+        color: #c62828;
+        font-weight: 600;
+    }
+
+    .bar-achieved {
+        background: green;
+    }
+
+    .bar-not-achieved {
+        background: red;
+    }
+
+    .chart-info-box {
+        margin-top: 16px;
+        padding: 12px 14px;
+        background: #fafafa;
+        border: 1px solid #e1e1e1;
+        border-radius: 6px;
+        font-size: 0.92rem;
+    }
+
+    .chart-info-status {
+        font-weight: 700;
+        color: #b32017;
+        margin-bottom: 8px;
+    }
+
+    .legend-inline {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        font-size: 0.9rem;
+    }
+
+    .legend-box {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 8px;
+    }
+
+    .achieved-box {
+        background: green;
+    }
+
+    .not-box {
+        background: red;
+    }
+
+    .analysis-block {
+        padding: 12px 0;
+        border-bottom: 1px solid #ececec;
+    }
+
+        .analysis-block:last-child {
+            border-bottom: none;
+        }
+
+    .analysis-title {
+        font-weight: 700;
+        color: #b32017;
+        margin-bottom: 6px;
+    }
+
+    .analysis-text {
+        font-size: 0.95rem;
+        color: #333;
+    }
+</style>

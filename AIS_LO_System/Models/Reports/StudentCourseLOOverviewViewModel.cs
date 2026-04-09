@@ -16,6 +16,8 @@ namespace AIS_LO_System.Models.Reports
 
         public List<StudentAssessmentStatusItemViewModel> Assessments { get; set; } = new();
         public List<StudentCourseLOSummaryItemViewModel> LOSummaries { get; set; } = new();
+        public List<StudentCourseLOAnalysisItemViewModel> LOAnalyses { get; set; } = new();
+        public List<StudentCourseLOContributionItemViewModel> Contributions { get; set; } = new();
 
         public int AchievedCount { get; set; }
         public int NotAchievedCount { get; set; }
@@ -49,5 +51,26 @@ namespace AIS_LO_System.Models.Reports
         public decimal Percentage { get; set; }
 
         public string Status { get; set; } = "Not Achieved";
+    }
+
+    public class StudentCourseLOAnalysisItemViewModel
+    {
+        public int LearningOutcomeId { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public string LearningOutcomeText { get; set; } = string.Empty;
+        public decimal Percentage { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public List<string> AssessmentBreakdown { get; set; } = new();
+    }
+
+    public class StudentCourseLOContributionItemViewModel
+    {
+        public int AssignmentId { get; set; }
+        public string AssessmentName { get; set; } = string.Empty;
+        public bool IsGraded { get; set; }
+        public string StatusText { get; set; } = string.Empty;
+
+        public List<string> Contributions { get; set; } = new();
+        public List<string> Achievements { get; set; } = new();
     }
 }
