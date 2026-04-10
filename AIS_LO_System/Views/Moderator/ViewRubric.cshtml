@@ -1,0 +1,53 @@
+﻿@model AIS_LO_System.Models.Rubric
+@using AIS_LO_System.Models
+@{
+    ViewData["Title"] = "Review: Rubric";
+    Layout = "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+<link rel="stylesheet" href="~/css/rubric.css" />
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
+        <h1>Rubric — @ViewBag.AssessmentName</h1>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</span>
+    </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission })
+
+    @if (Model == null || !Model.Criteria.Any())
+    {
+        <div class="mod-empty">No rubric has been created yet.</div>
+    }
+    else
+    {
+        <div class="rubric-table-wrap" style="margin-top:24px;">
+            <table class="rubric-table">
+                <thead>
+                    <tr>
+                        <th>Criterion</th>
+                        @foreach (var level in Model.Criteria.First().Levels)
+                        {
+                            <th>@level.ScaleName (@level.Score%)</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var criterion in Model.Criteria)
+                    {
+                        <tr>
+                            <td><strong>@criterion.CriterionName</strong></td>
+                            @foreach (var level in criterion.Levels)
+                            {
+                                <td>@level.Description</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

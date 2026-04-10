@@ -76,7 +76,9 @@ namespace AIS_LO_System.ViewComponents
                 SelectedYear = selectedYear,
                 SelectedTrimester = selectedTrimester,
                 Years = years,
-                TrimestersByYear = trimestersByYear
+                TrimestersByYear = trimestersByYear,
+                IsModeratorOfAnyCourse = userId > 0 && await _context.Courses
+                    .AnyAsync(c => c.ModeratorId == userId)
             };
 
             return View(vm);

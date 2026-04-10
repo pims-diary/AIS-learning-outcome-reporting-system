@@ -1,0 +1,29 @@
+﻿@using AIS_LO_System.Models
+@{
+    ViewData["Title"] = "Review: Student LO Report";
+    Layout = "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
+        <h1>Student LO Report — @ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</h1>
+    </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission })
+
+    <div style="margin-top: 24px;">
+        <p>This report covers the learning outcome achievement for all enrolled students.</p>
+        <a asp-controller="StudentLOReport" asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester"
+               class="mod-btn-view" target="_blank">
+            Open Report ↗
+        </a>
+    </div>
+</div>

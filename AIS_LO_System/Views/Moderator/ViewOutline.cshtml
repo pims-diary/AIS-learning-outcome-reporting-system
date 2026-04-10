@@ -1,0 +1,36 @@
+﻿@using AIS_LO_System.Models
+@{
+    ViewData["Title"] = "Review: Course Outline";
+    Layout = "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
+        <h1>Course Outline — @ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</h1>
+    </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission })
+
+    @if (ViewBag.OutlineUrl != null)
+    {
+        var url = (string)ViewBag.OutlineUrl;
+        if (url.EndsWith(".pdf"))
+        {
+            <iframe src="@url" class="mod-doc-frame"></iframe>
+        }
+        else
+        {
+            <div class="mod-doc-download">
+                <a href="@url" download class="mod-btn-view">⬇ Download Course Outline (.docx)</a>
+            </div>
+        }
+    }
+    else
+    {
+        <div class="mod-empty">No course outline has been uploaded yet.</div>
+    }
+</div>

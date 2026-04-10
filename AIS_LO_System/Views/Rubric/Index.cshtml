@@ -13,22 +13,22 @@
     <!-- Breadcrumb -->
     <div class="breadcrumb">
         <a asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             @ViewBag.CourseCode @($"{ViewBag.Year}-S{ViewBag.Trimester}")
         </a>
 
         <span>/</span>
 
         <a asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-action="Index"
+               asp-route-assessmentName="@ViewBag.AssessmentName"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             Assessments
         </a>
 
@@ -43,13 +43,13 @@
         <h1>Rubric Management</h1>
 
         <a asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester"
-           class="go-back">
+               asp-action="Index"
+               asp-route-assessmentName="@ViewBag.AssessmentName"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-courseTitle="@ViewBag.CourseTitle"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester"
+               class="go-back">
             ← Go Back
         </a>
     </div>
@@ -60,12 +60,20 @@
             ✅ @TempData["Success"]
         </div>
     }
+    @if (TempData["Info"] != null)
+    {
+        <div style="background:#cfe2ff; border:1px solid #b6d4fe; color:#084298; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
+            @TempData["Info"]
+        </div>
+    }
     @if (TempData["Error"] != null)
     {
         <div style="background:#f8d7da; border:1px solid #f5c6cb; color:#721c24; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
             ❌ @TempData["Error"]
         </div>
     }
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
 
     <!-- Action Buttons -->
     @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
@@ -93,8 +101,8 @@
             @if (Model != null)
             {
                 <a asp-action="Edit"
-                   asp-route-id="@Model.Id"
-                   class="red-btn">
+                       asp-route-id="@Model.Id"
+                       class="red-btn">
                     Edit Rubric
                 </a>
             }

@@ -16,11 +16,13 @@ namespace LOARS.Web.Controllers
     {
         private readonly IWebHostEnvironment _env;
         private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;
 
-        public CourseInformationController(IWebHostEnvironment env, ApplicationDbContext context)
+        public CourseInformationController(IWebHostEnvironment env, ApplicationDbContext context, SubmissionService submissions)
         {
             _env = env;
             _context = context;
+            _submissions = submissions;
         }
 
         private bool AllowOutlineReupload(string courseCode, int year, int trimester)
@@ -41,13 +43,12 @@ namespace LOARS.Web.Controllers
         // COURSE OUTLINE (VIEW)
         // -------------------------
         [HttpGet]
-        public IActionResult Outline(string courseCode, int year, int trimester)
+        public async Task<IActionResult> Outline(string courseCode, int year, int trimester)
         {
             SetCourseContext(courseCode, year, trimester);
 
             ViewBag.CanReupload = AllowOutlineReupload(courseCode, year, trimester);
 
-            // Check for the outline in all supported formats — prefer PDF for browser preview
             var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
             var baseName = GetOutlineBaseName(courseCode, year, trimester);
 
@@ -63,6 +64,11 @@ namespace LOARS.Web.Controllers
             }
 
             ViewBag.OutlineUrl = outlineUrl;
+
+            // Show current submission status
+            ViewBag.Submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.CourseOutline);
+
             return View();
         }
 
@@ -178,6 +184,20 @@ namespace LOARS.Web.Controllers
             {
                 TempData["Success"] = "Course outline uploaded, but some outline data could not be extracted.";
                 TempData["Error"] = $"Upload succeeded, but Learning Outcomes or Assessments could not be synced from this file. {ex.Message}";
+            }
+
+            // Auto-submit to moderator for approval
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            var course = _context.Courses.FirstOrDefault(c =>
+                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            if (course?.ModeratorId != null && userId > 0)
+            {
+                await _submissions.SubmitAsync(
+                    courseCode, year, trimester,
+                    SubmissionItemType.CourseOutline, null,
+                    $"Course Outline — {courseCode} {year} T{trimester}",
+                    userId);
+                TempData["Info"] = "📨 Submitted to moderator for approval.";
             }
 
             return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });

@@ -1,0 +1,72 @@
+﻿@using AIS_LO_System.Models
+@{
+    ViewData["Title"] = "Review: Student Marks";
+    Layout = "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+    var assignment = ViewBag.Assignment as Assignment;
+    var marks = ViewBag.Marks as List<StudentAssessmentMark> ?? new();
+    var rubric = ViewBag.Rubric as Rubric;
+    var criterionMarks = ViewBag.CriterionMarks as List<StudentCriterionMark> ?? new();
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
+        <h1>Student Marks — @assignment?.AssessmentName</h1>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</span>
+    </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission })
+
+    @if (!marks.Any())
+    {
+        <div class="mod-empty">No marks have been submitted yet.</div>
+    }
+    else
+    {
+        <div style="margin-top:24px; overflow-x:auto;">
+            <table class="mod-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Student ID</th>
+                        <th>Status</th>
+                        @if (rubric != null)
+                        {
+                            @foreach (var c in rubric.Criteria)
+                            {
+                                <th>@c.CriterionName</th>
+                            }
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var mark in marks)
+                    {
+                        <tr>
+                            <td>@(mark.Student?.FullName ?? "—")</td>
+                            <td>@(mark.Student?.StudentId ?? "—")</td>
+                            <td>
+                                <span class="@(mark.IsMarked ? "mod-status-approved" : "mod-status-pending") mod-status">
+                                    @(mark.IsMarked ? "Marked" : "Not Marked")
+                                </span>
+                            </td>
+                            @if (rubric != null)
+                            {
+                                @foreach (var criterion in rubric.Criteria)
+                                {
+                                    var cm = criterionMarks.FirstOrDefault(x =>
+                                        x.StudentRefId == mark.Student?.Id &&
+                                        x.RubricCriterionId == criterion.Id);
+                                    <td>@(cm != null ? $"{cm.CalculatedScore:0.##}%" : "—")</td>
+                                }
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

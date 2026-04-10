@@ -1,0 +1,500 @@
+﻿/* ─────────────────────────────────────────────────
+   MODERATOR INBOX & DOCUMENT REVIEW STYLES
+   ───────────────────────────────────────────────── */
+
+.mod-page {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px 64px;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
+/* ── Header ── */
+.mod-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.mod-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin: 0 0 4px;
+}
+
+.mod-subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+}
+
+.mod-badge-pending {
+    display: inline-flex;
+    align-items: center;
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* ── Alerts ── */
+.mod-alert {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.mod-alert-success {
+    background: #d1fae5;
+    border: 1px solid #6ee7b7;
+    color: #065f46;
+}
+
+.mod-alert-error {
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #991b1b;
+}
+
+/* ── Sections ── */
+.mod-section {
+    margin-bottom: 48px;
+}
+
+.mod-section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #374151;
+    margin: 0 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.mod-empty {
+    color: #9ca3af;
+    font-size: 14px;
+    padding: 24px 0;
+}
+
+.mod-empty-section {
+    color: #9ca3af;
+    font-size: 14px;
+    padding: 16px 0;
+}
+
+/* ── Pending Cards ── */
+.mod-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.mod-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+
+.mod-card-pending {
+    border-left: 4px solid #f59e0b;
+}
+
+.mod-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.mod-card-course {
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-right: 8px;
+}
+
+.mod-card-type {
+    display: inline-block;
+    background: #f3f4f6;
+    color: #374151;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.mod-card-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 6px;
+}
+
+.mod-card-meta {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 14px;
+}
+
+.mod-card-view {
+    margin-bottom: 16px;
+}
+
+/* ── Status Pills ── */
+.mod-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.mod-status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.mod-status-approved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.mod-status-denied {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* ── Review Form ── */
+.mod-review-form {
+    border-top: 1px solid #f3f4f6;
+    padding-top: 16px;
+}
+
+.mod-comment-wrap {
+    margin-bottom: 12px;
+}
+
+.mod-comment {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+    .mod-comment:focus {
+        outline: none;
+        border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+
+.mod-review-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.mod-btn-approve {
+    padding: 9px 20px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+    .mod-btn-approve:hover {
+        background: #047857;
+    }
+
+.mod-btn-deny {
+    padding: 9px 20px;
+    background: #fff;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+    .mod-btn-deny:hover {
+        background: #fee2e2;
+        border-color: #dc2626;
+    }
+
+/* ── View/Back Buttons ── */
+.mod-btn-view {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #f3f4f6;
+    color: #1f2937;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+    .mod-btn-view:hover {
+        background: #e5e7eb;
+        color: #1f2937;
+        text-decoration: none;
+    }
+
+.mod-back {
+    display: inline-block;
+    color: #6b7280;
+    font-size: 14px;
+    text-decoration: none;
+    margin-bottom: 16px;
+}
+
+    .mod-back:hover {
+        color: #111827;
+        text-decoration: none;
+    }
+
+/* ── Document view header ── */
+.mod-doc-header {
+    margin-bottom: 20px;
+}
+
+    .mod-doc-header h1 {
+        font-size: 22px;
+        font-weight: 700;
+        color: #111827;
+        margin: 8px 0 4px;
+    }
+
+.mod-doc-frame {
+    width: 100%;
+    height: 700px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+.mod-doc-download {
+    margin-top: 16px;
+}
+
+.mod-doc-meta {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 8px;
+}
+
+/* ── History Table ── */
+.mod-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+    .mod-table th {
+        text-align: left;
+        padding: 10px 12px;
+        background: #f9fafb;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        color: #374151;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .mod-table td {
+        padding: 12px 12px;
+        border-bottom: 1px solid #f3f4f6;
+        color: #1f2937;
+        vertical-align: top;
+    }
+
+    .mod-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .mod-table a {
+        color: #4f46e5;
+        text-decoration: none;
+    }
+
+        .mod-table a:hover {
+            text-decoration: underline;
+        }
+
+.mod-type-tag {
+    display: inline-block;
+    background: #f3f4f6;
+    color: #6b7280;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 11px;
+    margin-left: 6px;
+}
+
+.mod-date {
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.mod-comment-cell {
+    max-width: 240px;
+    font-size: 13px;
+    color: #4b5563;
+}
+
+/* ─────────────────────────────────────────────────
+   SUBMISSION STATUS BANNER (shown on lecturer pages)
+   ───────────────────────────────────────────────── */
+
+.sub-status-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    border: 1px solid transparent;
+}
+
+.sub-status-pending {
+    background: #fffbeb;
+    border-color: #fcd34d;
+    color: #78350f;
+}
+
+.sub-status-approved {
+    background: #ecfdf5;
+    border-color: #6ee7b7;
+    color: #064e3b;
+}
+
+.sub-status-denied {
+    background: #fff1f2;
+    border-color: #fda4af;
+    color: #9f1239;
+}
+
+.sub-status-icon {
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.sub-status-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+}
+
+    .sub-status-body strong {
+        font-weight: 700;
+    }
+
+.sub-status-comment {
+    font-style: italic;
+}
+
+.sub-status-date {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-left: auto;
+}
+
+/* ─────────────────────────────────────────────────
+   SIDEBAR MODERATOR LINK
+   ───────────────────────────────────────────────── */
+
+.sidebar-mod-section {
+    padding: 8px 16px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    margin-bottom: 4px;
+}
+
+.sidebar-mod-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #fbbf24;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    background: rgba(251,191,36,0.1);
+    transition: background 0.15s;
+}
+
+    .sidebar-mod-link:hover {
+        background: rgba(251,191,36,0.2);
+        color: #f59e0b;
+        text-decoration: none;
+    }
+
+.sidebar-mod-icon {
+    font-size: 16px;
+}
+
+/* ── Inline document preview inside cards ── */
+.mod-doc-inline {
+    margin: 16px 0;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 16px;
+}
+
+.mod-inline-frame {
+    width: 100%;
+    height: 500px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+}
+
+.mod-docx-preview {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 24px 32px;
+    max-height: 500px;
+    overflow-y: auto;
+    font-size: 14px;
+    line-height: 1.7;
+    color: #1a1a1a;
+}
+
+.mod-rubric-table td,
+.mod-rubric-table th {
+    font-size: 13px;
+    vertical-align: top;
+}
+
+.mod-report-link {
+    margin-top: 12px;
+}

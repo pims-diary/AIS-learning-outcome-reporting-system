@@ -1,0 +1,40 @@
+﻿@model AIS_LO_System.Models.Assignment
+@using AIS_LO_System.Models
+@{
+    ViewData["Title"] = "Review: Assignment Document";
+    Layout = "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+    var latest = Model.Files?.OrderByDescending(f => f.VersionNumber).FirstOrDefault();
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+<link rel="stylesheet" href="~/css/assignment-information.css" />
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
+        <h1>Assignment Document — @Model.AssessmentName</h1>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</span>
+    </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission })
+
+    @if (latest != null)
+    {
+        if (latest.FilePath.EndsWith(".pdf"))
+        {
+            <iframe src="@latest.FilePath" class="mod-doc-frame"></iframe>
+        }
+        else
+        {
+            <div class="mod-doc-download">
+                <a href="@latest.FilePath" download class="mod-btn-view">⬇ Download Assignment Document</a>
+            </div>
+        }
+        <p class="mod-doc-meta">Version @latest.VersionNumber · Uploaded @latest.UploadDate.ToString("dd MMM yyyy, h:mm tt")</p>
+    }
+    else
+    {
+        <div class="mod-empty">No assignment document has been uploaded yet.</div>
+    }
+</div>

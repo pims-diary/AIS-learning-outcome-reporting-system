@@ -9,10 +9,12 @@ namespace AIS_LO_System.Controllers
     public class AssignmentController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;
 
-        public AssignmentController(ApplicationDbContext context)
+        public AssignmentController(ApplicationDbContext context, SubmissionService submissions)
         {
             _context = context;
+            _submissions = submissions;
         }
 
         [HttpGet]
@@ -59,7 +61,7 @@ namespace AIS_LO_System.Controllers
         }
 
         [HttpGet]
-        public IActionResult Information(int id)
+        public async Task<IActionResult> Information(int id)
         {
             var assignment = _context.Assignments
                 .Include(a => a.Files)
@@ -72,6 +74,11 @@ namespace AIS_LO_System.Controllers
             ViewBag.Year = assignment.Year;
             ViewBag.Trimester = assignment.Trimester;
             ViewBag.AssessmentName = assignment.AssessmentName;
+
+            // Submission status for this assignment document
+            ViewBag.Submission = await _submissions.GetLatestAsync(
+                assignment.CourseCode, assignment.Year, assignment.Trimester,
+                SubmissionItemType.AssignmentDocument, assignment.Id);
 
             // Cross-check LOs if there's an uploaded file
             var latest = assignment.Files?
@@ -197,6 +204,20 @@ namespace AIS_LO_System.Controllers
             catch
             {
                 TempData["Success"] = uploadMessage;
+            }
+
+            // Auto-submit to moderator for approval
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            var course = _context.Courses.FirstOrDefault(c =>
+                c.Code == assignment.CourseCode && c.Year == assignment.Year && c.Trimester == assignment.Trimester);
+            if (course?.ModeratorId != null && userId > 0)
+            {
+                await _submissions.SubmitAsync(
+                    assignment.CourseCode, assignment.Year, assignment.Trimester,
+                    SubmissionItemType.AssignmentDocument, assignment.Id,
+                    $"{assignment.AssessmentName} — Assignment Document",
+                    userId);
+                TempData["Info"] = "📨 Submitted to moderator for approval.";
             }
 
             return RedirectToAction("Information", new { id = assignment.Id });

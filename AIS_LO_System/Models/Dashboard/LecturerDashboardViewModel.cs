@@ -14,6 +14,9 @@ namespace LOARS.Web.Models.Dashboard
         // Courses for selected year/trimester
         public List<CourseCard> Courses { get; set; } = new();
 
+        /// <summary>True when this user is the assigned moderator of at least one course.</summary>
+        public bool IsModeratorOfAnyCourse { get; set; }
+
         public string ContextLabel => $"{SelectedYear} - Trimester {SelectedTrimester}";
     }
 }

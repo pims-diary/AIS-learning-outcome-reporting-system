@@ -1,0 +1,38 @@
+﻿@model AIS_LO_System.Models.CourseSubmission?
+@using AIS_LO_System.Models
+
+@if (Model != null)
+{
+    var cssClass = Model.Status switch
+    {
+        SubmissionStatus.Pending => "sub-status-pending",
+        SubmissionStatus.Approved => "sub-status-approved",
+        SubmissionStatus.Denied => "sub-status-denied",
+        _ => ""
+    };
+    var icon = Model.Status switch
+    {
+        SubmissionStatus.Pending => "⏳",
+        SubmissionStatus.Approved => "✅",
+        SubmissionStatus.Denied => "❌",
+        _ => ""
+    };
+    <div class="sub-status-banner @cssClass">
+        <span class="sub-status-icon">@icon</span>
+        <div class="sub-status-body">
+            <strong>@Model.Status</strong>
+            @if (!string.IsNullOrWhiteSpace(Model.ModeratorComment))
+            {
+                <span class="sub-status-comment">— @Model.ModeratorComment</span>
+            }
+            @if (Model.ReviewedAt.HasValue)
+            {
+                <span class="sub-status-date">Reviewed @Model.ReviewedAt.Value.ToString("dd MMM yyyy")</span>
+            }
+            else
+            {
+                <span class="sub-status-date">Submitted @Model.SubmittedAt.ToString("dd MMM yyyy, h:mm tt")</span>
+            }
+        </div>
+    </div>
+}

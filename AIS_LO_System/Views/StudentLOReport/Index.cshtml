@@ -10,11 +10,11 @@
     <!-- Breadcrumb -->
     <div class="breadcrumb mb-3">
         <a class="crumb-link"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
+               asp-controller="CourseDashboard"
+               asp-action="Index"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester">
             @Model.CourseCode @Model.CourseTitle
         </a>
 
@@ -32,14 +32,16 @@
         <h2 class="fw-bold mb-0">Student LO Report</h2>
 
         <a asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="btn btn-outline-secondary">
+               asp-action="Index"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               class="btn btn-outline-secondary">
             ← Go Back
         </a>
     </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
 
     <div class="card shadow-sm">
         <div class="card-body">
@@ -99,13 +101,13 @@
                                     <td>@student.StudentName</td>
                                     <td class="text-center">
                                         <a asp-controller="StudentLOReport"
-                                           asp-action="Overview"
-                                           asp-route-studentId="@student.InternalId"
-                                           asp-route-courseCode="@Model.CourseCode"
-                                           asp-route-courseTitle="@Model.CourseTitle"
-                                           asp-route-year="@Model.Year"
-                                           asp-route-trimester="@Model.Trimester"
-                                           class="btn btn-danger">
+                                               asp-action="Overview"
+                                               asp-route-studentId="@student.InternalId"
+                                               asp-route-courseCode="@Model.CourseCode"
+                                               asp-route-courseTitle="@Model.CourseTitle"
+                                               asp-route-year="@Model.Year"
+                                               asp-route-trimester="@Model.Trimester"
+                                               class="btn btn-danger">
                                             View Report
                                         </a>
                                     </td>
