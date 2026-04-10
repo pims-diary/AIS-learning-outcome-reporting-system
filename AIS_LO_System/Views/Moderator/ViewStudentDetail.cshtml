@@ -44,7 +44,7 @@
            asp-route-submissionId="@submission?.Id"
            class="mod-back">← Back to Class Marks</a>
         <h1>Student Detail — @assignment?.AssessmentName</h1>
-        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</span>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@(ViewBag.Trimester)</span>
     </div>
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission })

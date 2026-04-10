@@ -10,7 +10,7 @@
 <div class="mod-page">
     <div class="mod-doc-header">
         <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
-        <h1>Student LO Report — @ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</h1>
+        <h1>Student LO Report — @ViewBag.CourseCode @ViewBag.Year T@(ViewBag.Trimester)</h1>
     </div>
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission })

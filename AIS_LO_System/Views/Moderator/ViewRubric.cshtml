@@ -14,7 +14,7 @@
     <div class="mod-doc-header">
         <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
         <h1>Rubric — @ViewBag.AssessmentName</h1>
-        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</span>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@(ViewBag.Trimester)</span>
     </div>
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission })
@@ -25,20 +25,19 @@
     }
     else
     {
-        <div class="rubric-table-wrap" style="margin-top:24px;">
-            <table class="rubric-table">
+        <div class="rubric-table-wrap" style="margin-top:24px; max-height:70vh; overflow-y:auto;">
+            <table class="rubric-table" style="width:auto; margin:0 auto;">
                 <thead>
                     <tr>
                         <th>Criterion</th>
+                        @if (hasLOMappings)
+                        {
+                            <th style="background:#f0f7ff; white-space:nowrap;">Mapped LOs</th>
+                            <th style="background:#f0f7ff; white-space:nowrap;">Weight (%)</th>
+                        }
                         @foreach (var level in Model.Criteria.First().Levels)
                         {
                             <th>@level.ScaleName (@level.Score)</th>
-                        }
-                        @if (hasLOMappings)
-                        {
-                            <!-- FIX #1: Show LO and Weight columns when mappings exist -->
-                            <th style="background:#f0f7ff; white-space:nowrap;">Mapped LOs</th>
-                            <th style="background:#f0f7ff; white-space:nowrap;">Weight (%)</th>
                         }
                     </tr>
                 </thead>
@@ -47,10 +46,6 @@
                     {
                         <tr>
                             <td><strong>@criterion.CriterionName</strong></td>
-                            @foreach (var level in criterion.Levels)
-                            {
-                                <td>@level.Description</td>
-                            }
                             @if (hasLOMappings)
                             {
                                 var mappings = criterion.LOMappings.ToList();
@@ -80,6 +75,10 @@
                                         <span style="color:#999; font-weight:400;">—</span>
                                     }
                                 </td>
+                            }
+                            @foreach (var level in criterion.Levels)
+                            {
+                                <td>@level.Description</td>
                             }
                         </tr>
                     }

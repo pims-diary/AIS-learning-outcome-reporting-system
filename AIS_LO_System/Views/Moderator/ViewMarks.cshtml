@@ -15,7 +15,7 @@
     <div class="mod-doc-header">
         <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
         <h1>Student Marks — @assignment?.AssessmentName</h1>
-        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</span>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@(ViewBag.Trimester)</span>
     </div>
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission })
@@ -33,17 +33,8 @@
                         <th>Student</th>
                         <th>Student ID</th>
                         <th>Status</th>
-                        @if (rubric != null)
-                        {
-                            @foreach (var c in rubric.Criteria)
-                            {
-                                <!-- FIX #3: Show score per criterion column -->
-                                <th>@c.CriterionName</th>
-                            }
-                        }
                         <th>Total Score</th>
-                        <!-- FIX #3: New "Detail" column -->
-                        <th>Detail</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -62,18 +53,6 @@
                                     @(mark.IsMarked ? "Marked" : "Not Marked")
                                 </span>
                             </td>
-                            @if (rubric != null)
-                            {
-                                @foreach (var criterion in rubric.Criteria)
-                                {
-                                    var cm = criterionMarks.FirstOrDefault(x =>
-                                        x.StudentRefId == mark.Student?.Id &&
-                                        x.RubricCriterionId == criterion.Id);
-                                    <td style="text-align:center;">
-                                        @(cm != null ? $"{cm.CalculatedScore:0.##}%" : "—")
-                                    </td>
-                                }
-                            }
                             <td style="text-align:center; font-weight:700;">
                                 @if (studentCritMarks.Any())
                                 {
@@ -84,7 +63,6 @@
                                     <span style="color:#aaa;">—</span>
                                 }
                             </td>
-                            <!-- FIX #3: Link to per-student detail view -->
                             <td style="text-align:center;">
                                 @if (mark.Student != null)
                                 {
