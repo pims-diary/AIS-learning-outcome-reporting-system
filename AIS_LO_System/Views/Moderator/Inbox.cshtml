@@ -4,14 +4,8 @@
 @{
     ViewData["Title"] = "Moderator Inbox";
     Layout = "_DashboardLayout";
-
     var allSubmissions = ViewBag.AllSubmissions as List<CourseSubmission> ?? new();
     var moderatedCourses = ViewBag.ModeratedCourses as List<Course> ?? new();
-    var outlineUrls = ViewBag.OutlineUrls as Dictionary<int, string?> ?? new();
-    var assignments = ViewBag.Assignments as Dictionary<int, Assignment?> ?? new();
-    var rubrics = ViewBag.Rubrics as Dictionary<int, Rubric?> ?? new();
-    var markData = ViewBag.MarkData as Dictionary<int, (Assignment? asgn, List<StudentAssessmentMark> marks, Rubric? rubric, List<StudentCriterionMark> criterionMarks)>
-                           ?? new();
 }
 
 <link rel="stylesheet" href="~/css/moderator.css" />
@@ -50,7 +44,7 @@
 
             @if (!Model.Any())
             {
-                <div class="mod-empty-section">No pending submissions — all caught up! ✅</div>
+                <div class="mod-empty-section">No pending submissions</div>
             }
             else
             {
@@ -74,177 +68,16 @@
                                 on @sub.SubmittedAt.ToString("dd MMM yyyy, h:mm tt")
                             </div>
 
-                            <!-- Inline document -->
-                            <div class="mod-doc-inline">
+                            @{
+                                var viewUrl = GetViewUrl(sub);
+                            }
+                            @if (viewUrl != null)
+                            {
+                                <div style="margin-bottom:14px;">
+                                    <a href="@viewUrl" class="mod-btn-view">View</a>
+                                </div>
+                            }
 
-                                @if (sub.ItemType == SubmissionItemType.CourseOutline)
-                                {
-                                    var url = outlineUrls.GetValueOrDefault(sub.Id);
-                                    if (url != null)
-                                    {
-                                        if (url.EndsWith(".pdf"))
-                                        {
-                                            <iframe src="@url" class="mod-inline-frame"></iframe>
-                                        }
-                                        else
-                                        {
-                                            <div id="docx-@(sub.Id)" class="mod-docx-preview">Loading preview…</div>
-                                            <script>
-                                                                    fetch('@url').then(r=>r.arrayBuffer())
-                                                                        .then(buf=>mammoth.convertToHtml({arrayBuffer:buf}))
-                                                                        .then(res=>{ document.getElementById('docx-@(sub.Id)').innerHTML=res.value; })
-                                                                        .catch(()=>{ document.getElementById('docx-@(sub.Id)').innerHTML='<a href="@url" download>Download to view</a>'; });
-                                            </script>
-                                        }
-                                    }
-                                    else
-                                    {
-
-                                        <div class="mod-empty">No outline file uploaded yet.</div>
-                                    }
-                                }
-
-                                else if (sub.ItemType == SubmissionItemType.AssignmentDocument)
-                                {
-                                    var asgn = assignments.GetValueOrDefault(sub.Id);
-                                    var latest = asgn?.Files?.OrderByDescending(f => f.VersionNumber).FirstOrDefault();
-                                    if (latest != null)
-                                    {
-                                        if (latest.FilePath.EndsWith(".pdf"))
-                                        {
-                                            <iframe src="@latest.FilePath" class="mod-inline-frame"></iframe>
-                                        }
-                                        else
-                                        {
-                                            <div id="docx-@(sub.Id)" class="mod-docx-preview">Loading preview…</div>
-                                            <script>
-                                                                    fetch('@latest.FilePath').then(r=>r.arrayBuffer())
-                                                                        .then(buf=>mammoth.convertToHtml({arrayBuffer:buf}))
-                                                                        .then(res=>{ document.getElementById('docx-@(sub.Id)').innerHTML=res.value; })
-                                                                        .catch(()=>{ document.getElementById('docx-@(sub.Id)').innerHTML='<a href="@latest.FilePath" download>Download to view</a>'; });
-                                            </script>
-                                        }
-                                        <p class="mod-doc-meta">Version @latest.VersionNumber · @latest.UploadDate.ToString("dd MMM yyyy")</p>
-                                    }
-                                    else
-                                    {
-
-                                        <div class="mod-empty">No document uploaded yet.</div>
-                                    }
-                                }
-
-                                else if (sub.ItemType == SubmissionItemType.Rubric)
-                                {
-                                    var rubric = rubrics.GetValueOrDefault(sub.Id);
-                                    if (rubric != null && rubric.Criteria.Any())
-                                    {
-                                        <div style="overflow-x:auto; margin-top:12px;">
-                                            <table class="mod-table mod-rubric-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Criterion</th>
-                                                        @foreach (var lvl in rubric.Criteria.First().Levels)
-                                                        {
-                                                            <th>@lvl.ScaleName (@lvl.Score%)</th>
-                                                        }
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach (var criterion in rubric.Criteria)
-                                                    {
-                                                        <tr>
-                                                            <td><strong>@criterion.CriterionName</strong></td>
-                                                            @foreach (var lvl in criterion.Levels)
-                                                            {
-                                                                <td style="font-size:13px;">@lvl.Description</td>
-                                                            }
-                                                        </tr>
-                                                    }
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    }
-                                    else
-                                    {
-
-                                        <div class="mod-empty">No rubric created yet.</div>
-                                    }
-                                }
-
-                                else if (sub.ItemType == SubmissionItemType.StudentMarks)
-                                {
-                                    if (markData.TryGetValue(sub.Id, out var mEntry))
-                                    {
-                                        var (marksAsgn, marks, marksRubric, criterionMarks) = mEntry;
-                                        if (marks.Any())
-                                        {
-                                            <div style="overflow-x:auto; margin-top:12px;">
-                                                <table class="mod-table">
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Student</th>
-                                                            <th>ID</th>
-                                                            <th>Status</th>
-                                                            @if (marksRubric != null)
-                                                            {
-                                                                @foreach (var c in marksRubric.Criteria)
-                                                                {
-                                                                    <th>@c.CriterionName</th>
-                                                                }
-                                                            }
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach (var mark in marks)
-                                                        {
-                                                            <tr>
-                                                                <td>@(mark.Student?.FullName ?? "—")</td>
-                                                                <td>@(mark.Student?.StudentId ?? "—")</td>
-                                                                <td>
-                                                                    <span class="mod-status @(mark.IsMarked ? "mod-status-approved" : "mod-status-pending")">
-                                                                        @(mark.IsMarked ? "Marked" : "Pending")
-                                                                    </span>
-                                                                </td>
-                                                                @if (marksRubric != null)
-                                                                {
-                                                                    @foreach (var criterion in marksRubric.Criteria)
-                                                                    {
-                                                                        var cm = criterionMarks.FirstOrDefault(x =>
-                                                                            x.StudentRefId == mark.Student!.Id &&
-                                                                            x.RubricCriterionId == criterion.Id);
-                                                                        <td>@(cm != null ? $"{cm.CalculatedScore:0.##}%" : "—")</td>
-                                                                    }
-                                                                }
-                                                            </tr>
-                                                        }
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        }
-                                        else
-                                        {
-
-                                            <div class="mod-empty">No marks submitted yet.</div>
-                                        }
-                                    }
-                                }
-
-                                else if (sub.ItemType == SubmissionItemType.StudentLOReport)
-                                {
-                                    <div style="margin-top:12px;">
-                                        <a asp-controller="StudentLOReport" asp-action="Index"
-                                               asp-route-courseCode="@sub.CourseCode"
-                                               asp-route-courseTitle=""
-                                               asp-route-year="@sub.Year"
-                                               asp-route-trimester="@sub.Trimester"
-                                               class="mod-btn-view" target="_blank">
-                                            Open Student LO Report ↗
-                                        </a>
-                                    </div>
-                                }
-
-                            </div><!-- end mod-doc-inline -->
-                            <!-- Approve / Deny -->
                             <form asp-action="Review" method="post" class="mod-review-form">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="submissionId" value="@sub.Id" />
@@ -254,10 +87,10 @@
                                               rows="2"></textarea>
                                 </div>
                                 <div class="mod-review-actions">
-                                    <button type="submit" name="decision" value="approve" class="mod-btn-approve">✅ Approve</button>
+                                    <button type="submit" name="decision" value="approve" class="mod-btn-approve">Approve</button>
                                     <button type="submit" name="decision" value="deny" class="mod-btn-deny"
                                             onclick="return validateDeny(this)">
-                                        ❌ Deny
+                                        Deny
                                     </button>
                                 </div>
                             </form>
@@ -330,19 +163,33 @@
         SubmissionItemType.CourseLOReport => "Course LO Report",
         _ => t.ToString()
     };
+
+    string? GetViewUrl(CourseSubmission sub) => sub.ItemType switch
+    {
+        SubmissionItemType.CourseOutline =>
+            Url.Action("ViewOutline", "Moderator", new { sub.CourseCode, sub.Year, sub.Trimester, submissionId = sub.Id }),
+        SubmissionItemType.AssignmentDocument =>
+            Url.Action("ViewAssignment", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.Rubric =>
+            Url.Action("ViewRubric", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.StudentMarks =>
+            Url.Action("ViewMarks", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.StudentLOReport =>
+            Url.Action("ViewStudentLOReport", "Moderator", new { submissionId = sub.Id }),
+        _ => null
+    };
 }
 
 @section Scripts {
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
     <script>
         function validateDeny(btn) {
-        const form = btn.closest('form');
-        const comment = form.querySelector('textarea[name="comment"]').value.trim();
-        if (!comment) {
-        alert('Please add a comment explaining the reason for denial.');
-        return false;
-        }
-        return confirm('Deny this submission?');
+            const form = btn.closest('form');
+            const comment = form.querySelector('textarea[name="comment"]').value.trim();
+            if (!comment) {
+                alert('Please add a comment explaining the reason for denial.');
+                return false;
+            }
+            return confirm('Deny this submission?');
         }
     </script>
 }
