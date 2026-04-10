@@ -37,14 +37,23 @@
                         {
                             @foreach (var c in rubric.Criteria)
                             {
+                                <!-- FIX #3: Show score per criterion column -->
                                 <th>@c.CriterionName</th>
                             }
                         }
+                        <th>Total Score</th>
+                        <!-- FIX #3: New "Detail" column -->
+                        <th>Detail</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var mark in marks)
                     {
+                        var studentCritMarks = criterionMarks
+                            .Where(x => x.StudentRefId == mark.Student?.Id)
+                            .ToList();
+                        var totalScore = studentCritMarks.Sum(x => x.CalculatedScore);
+
                         <tr>
                             <td>@(mark.Student?.FullName ?? "—")</td>
                             <td>@(mark.Student?.StudentId ?? "—")</td>
@@ -60,9 +69,34 @@
                                     var cm = criterionMarks.FirstOrDefault(x =>
                                         x.StudentRefId == mark.Student?.Id &&
                                         x.RubricCriterionId == criterion.Id);
-                                    <td>@(cm != null ? $"{cm.CalculatedScore:0.##}%" : "—")</td>
+                                    <td style="text-align:center;">
+                                        @(cm != null ? $"{cm.CalculatedScore:0.##}%" : "—")
+                                    </td>
                                 }
                             }
+                            <td style="text-align:center; font-weight:700;">
+                                @if (studentCritMarks.Any())
+                                {
+                                    @($"{totalScore:0.##}%")
+                                }
+                                else
+                                {
+                                    <span style="color:#aaa;">—</span>
+                                }
+                            </td>
+                            <!-- FIX #3: Link to per-student detail view -->
+                            <td style="text-align:center;">
+                                @if (mark.Student != null)
+                                {
+                                    <a asp-action="ViewStudentDetail"
+                                           asp-route-submissionId="@submission?.Id"
+                                           asp-route-studentRefId="@mark.Student.Id"
+                                           class="mod-btn-view"
+                                           style="padding:5px 14px; font-size:13px;">
+                                        View
+                                    </a>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>

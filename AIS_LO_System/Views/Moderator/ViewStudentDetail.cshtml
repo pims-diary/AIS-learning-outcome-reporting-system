@@ -1,0 +1,180 @@
+﻿@using AIS_LO_System.Models
+@{
+    ViewData["Title"] = "Review: Student Detail";
+    Layout = "_DashboardLayout";
+    var submission     = ViewBag.Submission     as CourseSubmission;
+    var assignment     = ViewBag.Assignment     as Assignment;
+    var student        = ViewBag.Student        as Student;
+    var rubric         = ViewBag.Rubric         as Rubric;
+    var criterionMarks = ViewBag.CriterionMarks as List<StudentCriterionMark> ?? new();
+    var overallMark    = ViewBag.OverallMark    as StudentAssessmentMark;
+
+    // Compute total here so it's available without a nested @{ } inside @if/@else.
+    var totalCalculated = criterionMarks.Sum(m => m.CalculatedScore);
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<style>
+    .detail-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .detail-table th { background:#f4f6f9; padding:10px 14px; text-align:left;
+                       border-bottom:2px solid #e0e4ea; font-weight:600; color:#374151; }
+    .detail-table td { padding:10px 14px; border-bottom:1px solid #e9edf2; vertical-align:top; }
+    .detail-table tr:last-child td { border-bottom:none; }
+    .score-cell { text-align:center; font-weight:700; font-size:16px; }
+    .level-badge { display:inline-block; background:#eef2ff; color:#3730a3;
+                   border-radius:6px; padding:2px 8px; font-size:12px; font-weight:600; }
+    .lo-pill { display:inline-block; background:#e8f0fe; color:#1a6fbb;
+               border-radius:20px; padding:2px 9px; font-size:12px; font-weight:600;
+               margin:1px 2px; }
+    .student-header { display:flex; align-items:center; gap:16px; margin:20px 0 24px;
+                      padding:16px 20px; background:#f8fafc; border-radius:12px;
+                      border:1px solid #e2e8f0; }
+    .student-avatar { width:48px; height:48px; border-radius:50%; background:#3b82f6;
+                      color:#fff; font-size:18px; font-weight:700; display:flex;
+                      align-items:center; justify-content:center; flex-shrink:0; }
+    .student-info h3 { margin:0 0 2px; font-size:17px; }
+    .student-info p  { margin:0; font-size:13px; color:#666; }
+    .total-row td { background:#f0fdf4 !important; font-weight:700; }
+</style>
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="ViewMarks"
+           asp-route-submissionId="@submission?.Id"
+           class="mod-back">← Back to Class Marks</a>
+        <h1>Student Detail — @assignment?.AssessmentName</h1>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</span>
+    </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission })
+
+    @if (student == null)
+    {
+        <div class="mod-empty">Student not found.</div>
+    }
+    else
+    {
+        <div class="student-header">
+            <div class="student-avatar">
+                @(student.FullName.Length > 0 ? student.FullName[0].ToString().ToUpper() : "?")
+            </div>
+            <div class="student-info">
+                <h3>@student.FullName</h3>
+                <p>
+                    Student ID: <strong>@student.StudentId</strong>
+                    &nbsp;·&nbsp; Programme: <strong>@(student.Programme ?? "—")</strong>
+                    &nbsp;·&nbsp; Status:
+                    @if (overallMark?.IsMarked == true)
+                    {
+                        <span style="color:#1a7f3c; font-weight:600;">✅ Marked</span>
+                    }
+                    else
+                    {
+                        <span style="color:#999;">Not Marked</span>
+                    }
+                </p>
+            </div>
+        </div>
+
+        @if (rubric == null || !rubric.Criteria.Any())
+        {
+            <div class="mod-empty">No rubric criteria found for this assessment.</div>
+        }
+        else if (!criterionMarks.Any())
+        {
+            <div class="mod-empty">No criterion marks recorded for this student yet.</div>
+        }
+        else
+        {
+            <div style="overflow-x:auto; margin-top:4px;">
+                <table class="detail-table">
+                    <thead>
+                        <tr>
+                            <th style="width:28%;">Criterion</th>
+                            <th style="width:130px; text-align:center;">Score Selected</th>
+                            <th style="width:110px; text-align:center;">Weight (%)</th>
+                            <th style="width:130px; text-align:center;">Calculated Score</th>
+                            <th>Mapped LOs</th>
+                            <th>Comment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var criterion in rubric.Criteria)
+                        {
+                            var cm = criterionMarks.FirstOrDefault(x => x.RubricCriterionId == criterion.Id);
+                            var selectedLevel = criterion.Levels.FirstOrDefault(l => l.Score == cm?.SelectedLevel);
+                            var mappedLOs = criterion.LOMappings
+                                .Where(m => m.LearningOutcome != null)
+                                .Select(m => m.LearningOutcome!)
+                                .DistinctBy(lo => lo.Id)
+                                .OrderBy(lo => lo.OrderNumber)
+                                .ToList();
+
+                            <tr>
+                                <td><strong>@criterion.CriterionName</strong></td>
+                                <td class="score-cell">
+                                    @if (cm != null)
+                                    {
+                                        <span class="level-badge">@cm.SelectedLevel / 4</span>
+                                        @if (selectedLevel != null)
+                                        {
+                                            <div style="font-size:12px; color:#555; font-weight:400; margin-top:3px;">
+                                                @selectedLevel.ScaleName
+                                            </div>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#aaa;">—</span>
+                                    }
+                                </td>
+                                <td class="score-cell">
+                                    @if (cm != null)
+                                    {
+                                        @($"{cm.Weight:0.##}%")
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#aaa;">—</span>
+                                    }
+                                </td>
+                                <td class="score-cell" style="color:@(cm != null ? "#1a7f3c" : "#aaa");">
+                                    @if (cm != null)
+                                    {
+                                        @($"{cm.CalculatedScore:0.##}%")
+                                    }
+                                    else
+                                    {
+                                        <text>—</text>
+                                    }
+                                </td>
+                                <td>
+                                    @foreach (var lo in mappedLOs)
+                                    {
+                                        <span class="lo-pill">LO@(lo.OrderNumber)</span>
+                                    }
+                                    @if (!mappedLOs.Any())
+                                    {
+                                        <span style="color:#aaa; font-size:13px;">—</span>
+                                    }
+                                </td>
+                                <td style="font-size:13px; color:#555;">
+                                    @(cm?.Comment ?? "—")
+                                </td>
+                            </tr>
+                        }
+
+                        <tr class="total-row">
+                            <td colspan="3" style="text-align:right; padding-right:20px;">Overall Score</td>
+                            <td class="score-cell" style="color:#1a7f3c; font-size:18px;">
+                                @($"{totalCalculated:0.##}%")
+                            </td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>

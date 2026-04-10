@@ -153,6 +153,7 @@
 </div>
 
 @functions {
+    // FIX #2: Added LOMapping case
     string FormatItemType(SubmissionItemType t) => t switch
     {
         SubmissionItemType.CourseOutline => "Course Outline",
@@ -161,13 +162,16 @@
         SubmissionItemType.StudentMarks => "Student Marks",
         SubmissionItemType.StudentLOReport => "Student LO Report",
         SubmissionItemType.CourseLOReport => "Course LO Report",
+        SubmissionItemType.LOMapping => "LO Mapping",       // FIX #2
         _ => t.ToString()
     };
 
+    // FIX #2: Added LOMapping URL; FIX #3: ViewStudentDetail linked from ViewMarks
     string? GetViewUrl(CourseSubmission sub) => sub.ItemType switch
     {
         SubmissionItemType.CourseOutline =>
-            Url.Action("ViewOutline", "Moderator", new { sub.CourseCode, sub.Year, sub.Trimester, submissionId = sub.Id }),
+            Url.Action("ViewOutline", "Moderator",
+                new { sub.CourseCode, sub.Year, sub.Trimester, submissionId = sub.Id }),
         SubmissionItemType.AssignmentDocument =>
             Url.Action("ViewAssignment", "Moderator", new { submissionId = sub.Id }),
         SubmissionItemType.Rubric =>
@@ -176,6 +180,8 @@
             Url.Action("ViewMarks", "Moderator", new { submissionId = sub.Id }),
         SubmissionItemType.StudentLOReport =>
             Url.Action("ViewStudentLOReport", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.LOMapping =>                              // FIX #2
+            Url.Action("ViewLOMapping", "Moderator", new { submissionId = sub.Id }),
         _ => null
     };
 }

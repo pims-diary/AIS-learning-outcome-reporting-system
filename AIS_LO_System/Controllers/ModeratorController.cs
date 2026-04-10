@@ -4,6 +4,7 @@ using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+
 namespace AIS_LO_System.Controllers
 {
     [Authorize(Roles = "Lecturer")]
@@ -70,7 +71,6 @@ namespace AIS_LO_System.Controllers
             var submission = await _context.CourseSubmissions.FindAsync(submissionId);
             if (submission == null) return NotFound();
 
-            // Verify moderator owns this course
             if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester))
                 return Forbid();
 
@@ -151,6 +151,7 @@ namespace AIS_LO_System.Controllers
 
         // ─────────────────────────────────────────────────
         // VIEW RUBRIC (read-only for moderator)
+        // FIX #1: Now also loads LO Mappings so they appear in the table
         // ─────────────────────────────────────────────────
         [HttpGet]
         public async Task<IActionResult> ViewRubric(int submissionId)
@@ -162,9 +163,13 @@ namespace AIS_LO_System.Controllers
             if (submission == null) return NotFound();
             if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
 
+            // FIX #1: Include LOMappings → LearningOutcome so the view can display them
             var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                     .ThenInclude(c => c.Levels)
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.LOMappings)
+                        .ThenInclude(m => m.LearningOutcome)
                 .Include(r => r.Assignment)
                 .FirstOrDefaultAsync(r => r.Id == submission.ItemRefId);
 
@@ -178,11 +183,46 @@ namespace AIS_LO_System.Controllers
             ViewBag.Trimester = submission.Trimester;
             ViewBag.AssessmentName = rubric?.Assignment?.AssessmentName ?? submission.ItemLabel;
 
+            // FIX #2: Pass a flag so the view knows if LO mapping has been done yet
+            ViewBag.HasLOMappings = rubric != null && rubric.Criteria.Any(c => c.LOMappings.Any());
+
             return View(rubric);
         }
 
         // ─────────────────────────────────────────────────
-        // VIEW STUDENT MARKS (read-only for moderator)
+        // FIX #2: VIEW LO MAPPING (read-only for moderator, approve/deny)
+        // ─────────────────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> ViewLOMapping(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null) return NotFound();
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
+
+            // submission.ItemRefId == AssignmentId for LOMapping submissions
+            var rubric = await _context.Rubrics
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.LOMappings)
+                        .ThenInclude(m => m.LearningOutcome)
+                .Include(r => r.Assignment)
+                .FirstOrDefaultAsync(r => r.AssignmentId == submission.ItemRefId);
+
+            if (rubric == null) return NotFound();
+
+            ViewBag.Submission = submission;
+            ViewBag.CourseCode = submission.CourseCode;
+            ViewBag.Year = submission.Year;
+            ViewBag.Trimester = submission.Trimester;
+            ViewBag.AssessmentName = rubric.Assignment?.AssessmentName ?? submission.ItemLabel;
+
+            return View(rubric);
+        }
+
+        // ─────────────────────────────────────────────────
+        // VIEW STUDENT MARKS (read-only for moderator) — class list
         // ─────────────────────────────────────────────────
         [HttpGet]
         public async Task<IActionResult> ViewMarks(int submissionId)
@@ -198,9 +238,6 @@ namespace AIS_LO_System.Controllers
                 .FirstOrDefaultAsync(a => a.Id == submission.ItemRefId);
 
             if (assignment == null) return NotFound();
-
-            var course = await _context.Courses.FirstOrDefaultAsync(c =>
-                c.Code == submission.CourseCode && c.Year == submission.Year && c.Trimester == submission.Trimester);
 
             var marks = await _context.StudentAssessmentMarks
                 .Include(m => m.Student)
@@ -220,6 +257,66 @@ namespace AIS_LO_System.Controllers
             ViewBag.Marks = marks;
             ViewBag.CriterionMarks = criterionMarks;
             ViewBag.Rubric = rubric;
+            ViewBag.CourseCode = submission.CourseCode;
+            ViewBag.Year = submission.Year;
+            ViewBag.Trimester = submission.Trimester;
+
+            return View();
+        }
+
+        // ─────────────────────────────────────────────────
+        // FIX #3: VIEW INDIVIDUAL STUDENT DETAIL
+        // Shows one student's per-criterion scores in full
+        // ─────────────────────────────────────────────────
+        [HttpGet]
+        public async Task<IActionResult> ViewStudentDetail(int submissionId, int studentRefId)
+        {
+            var submission = await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null) return NotFound();
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
+
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == submission.ItemRefId);
+
+            if (assignment == null) return NotFound();
+
+            var student = await _context.Students.FindAsync(studentRefId);
+            if (student == null) return NotFound();
+
+            // Get the rubric with criteria + levels + LO mappings
+            var rubric = await _context.Rubrics
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.Levels)
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.LOMappings)
+                        .ThenInclude(m => m.LearningOutcome)
+                .FirstOrDefaultAsync(r => r.AssignmentId == assignment.Id);
+
+            if (rubric != null)
+                foreach (var c in rubric.Criteria)
+                    c.Levels = c.Levels.OrderByDescending(l => l.Score).ToList();
+
+            // Get this student's criterion marks
+            var criterionMarks = await _context.StudentCriterionMarks
+                .Where(m => m.AssignmentId == assignment.Id && m.StudentRefId == studentRefId)
+                .ToListAsync();
+
+            // Overall mark row
+            var overallMark = await _context.StudentAssessmentMarks
+                .FirstOrDefaultAsync(m =>
+                    m.StudentRefId == studentRefId &&
+                    m.CourseCode == submission.CourseCode &&
+                    m.AssessmentName == assignment.AssessmentName);
+
+            ViewBag.Submission = submission;
+            ViewBag.Assignment = assignment;
+            ViewBag.Student = student;
+            ViewBag.Rubric = rubric;
+            ViewBag.CriterionMarks = criterionMarks;
+            ViewBag.OverallMark = overallMark;
             ViewBag.CourseCode = submission.CourseCode;
             ViewBag.Year = submission.Year;
             ViewBag.Trimester = submission.Trimester;

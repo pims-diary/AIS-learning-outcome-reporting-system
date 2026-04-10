@@ -9,7 +9,8 @@ namespace AIS_LO_System.Models
         Rubric,
         StudentMarks,
         StudentLOReport,
-        CourseLOReport
+        CourseLOReport,
+        LOMapping          // FIX #2: manually-assigned LO mapping sent for moderator review
     }
 
     public enum SubmissionStatus
@@ -37,7 +38,7 @@ namespace AIS_LO_System.Models
         public SubmissionItemType ItemType { get; set; }
 
         /// <summary>
-        /// FK to the relevant item — AssignmentId for AssignmentDocument/Rubric,
+        /// FK to the relevant item — AssignmentId for AssignmentDocument/Rubric/LOMapping,
         /// null for CourseOutline / CourseLOReport.
         /// For StudentMarks: the Assignment.Id whose marks were submitted.
         /// For StudentLOReport: null (course-level).

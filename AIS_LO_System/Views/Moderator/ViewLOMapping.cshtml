@@ -1,0 +1,144 @@
+﻿@model AIS_LO_System.Models.Rubric
+@using AIS_LO_System.Models
+@{
+    ViewData["Title"] = "Review: LO Mapping";
+    Layout = "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+
+    // Compute all summary variables here (top-level @{}) so they are available
+    // anywhere in the page without needing nested @{ } inside @if/@else blocks.
+    var allMappings = Model?.Criteria.SelectMany(c => c.LOMappings).ToList()
+                      ?? new List<CriterionLOMapping>();
+    var totalWeight = allMappings
+                          .Select(m => new { m.RubricCriterionId, m.Weight })
+                          .DistinctBy(x => x.RubricCriterionId)
+                          .Sum(x => x.Weight);
+    var uniqueLOs = allMappings
+                        .Where(m => m.LearningOutcome != null)
+                        .Select(m => m.LearningOutcome!.OrderNumber)
+                        .Distinct()
+                        .OrderBy(n => n)
+                        .ToList();
+    var weightOk = Math.Abs(totalWeight - 100) <= 0.01m;
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<style>
+    .lo-map-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .lo-map-table th { background: #f4f6f9; padding: 10px 14px; text-align: left;
+                       border-bottom: 2px solid #e0e4ea; font-weight: 600; color: #374151; }
+    .lo-map-table td { padding: 10px 14px; border-bottom: 1px solid #e9edf2; vertical-align: top; }
+    .lo-map-table tr:last-child td { border-bottom: none; }
+    .lo-pill { display: inline-block; background: #e8f0fe; color: #1a6fbb;
+               border-radius: 20px; padding: 3px 10px; font-size: 13px; font-weight: 600;
+               margin: 2px 3px 2px 0; }
+    .weight-val { font-weight: 700; color: #111; }
+    .lo-desc { font-size: 13px; color: #555; margin-top: 2px; }
+    .summary-bar { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
+    .summary-chip { background: #f4f6f9; border-radius: 10px; padding: 10px 18px;
+                    font-size: 14px; color: #374151; }
+    .summary-chip strong { font-size: 18px; display: block; color: #111; }
+</style>
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
+        <h1>LO Mapping — @ViewBag.AssessmentName</h1>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@ViewBag.Trimester</span>
+    </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission })
+
+    @if (Model == null || !Model.Criteria.Any())
+    {
+        <div class="mod-empty">No rubric criteria found.</div>
+    }
+    else
+    {
+        <div class="summary-bar" style="margin-top:20px;">
+            <div class="summary-chip">
+                <strong>@Model.Criteria.Count</strong> Criteria
+            </div>
+            <div class="summary-chip">
+                <strong>@($"{totalWeight:0.##}%")</strong> Total Weight
+            </div>
+            <div class="summary-chip">
+                <strong>@uniqueLOs.Count</strong> LOs Mapped
+                @if (uniqueLOs.Any())
+                {
+                    <span style="font-size:12px; color:#555;">
+                        (@string.Join(", ", uniqueLOs.Select(n => $"LO{n}")))
+                    </span>
+                }
+            </div>
+            <div class="summary-chip"
+                 style="background:@(weightOk ? "#e6f9ed" : "#fff4e5");
+                        color:@(weightOk ? "#1a7f3c" : "#b45309");">
+                @if (weightOk)
+                {
+                    <strong>✅ Valid</strong>
+                    <span style="font-size:12px;">Total = 100%</span>
+                }
+                else
+                {
+                    <strong>⚠️ Invalid</strong>
+                    <span style="font-size:12px;">Total ≠ 100%</span>
+                }
+            </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="lo-map-table">
+                <thead>
+                    <tr>
+                        <th style="width:30%;">Criterion</th>
+                        <th>Mapped Learning Outcomes</th>
+                        <th style="width:120px; text-align:center;">Weight (%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var criterion in Model.Criteria)
+                    {
+                        var mappings  = criterion.LOMappings.ToList();
+                        var mappedLOs = mappings
+                            .Where(m => m.LearningOutcome != null)
+                            .Select(m => m.LearningOutcome!)
+                            .DistinctBy(lo => lo.Id)
+                            .OrderBy(lo => lo.OrderNumber)
+                            .ToList();
+                        var weight = mappings.FirstOrDefault()?.Weight ?? 0;
+
+                        <tr>
+                            <td><strong>@criterion.CriterionName</strong></td>
+                            <td>
+                                @if (mappedLOs.Any())
+                                {
+                                    @foreach (var lo in mappedLOs)
+                                    {
+                                        <span class="lo-pill">LO@(lo.OrderNumber)</span>
+                                        <div class="lo-desc">@lo.LearningOutcomeText</div>
+                                    }
+                                }
+                                else
+                                {
+                                    <span style="color:#aaa;">Not mapped</span>
+                                }
+                            </td>
+                            <td style="text-align:center;">
+                                @if (weight > 0)
+                                {
+                                    <span class="weight-val">@($"{weight:0.##}%")</span>
+                                }
+                                else
+                                {
+                                    <span style="color:#aaa;">—</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

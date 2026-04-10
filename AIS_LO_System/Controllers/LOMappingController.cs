@@ -9,10 +9,12 @@ namespace AIS_LO_System.Controllers
     public class LOMappingController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;   // FIX #2
 
-        public LOMappingController(ApplicationDbContext context)
+        public LOMappingController(ApplicationDbContext context, SubmissionService submissions)
         {
             _context = context;
+            _submissions = submissions;
         }
 
         // ======================================================
@@ -30,7 +32,6 @@ namespace AIS_LO_System.Controllers
             if (assignmentId == 0)
                 return BadRequest("Assignment ID is required.");
 
-            // Pass context to view
             ViewBag.AssignmentId = assignmentId;
             ViewBag.AssessmentName = assessmentName;
             ViewBag.CourseCode = courseCode;
@@ -38,11 +39,9 @@ namespace AIS_LO_System.Controllers
             ViewBag.Year = year;
             ViewBag.Trimester = trimester;
 
-            // Get the assignment to check selected LOs
             var assignment = await _context.Assignments
                 .FirstOrDefaultAsync(a => a.Id == assignmentId);
 
-            // Get the rubric with criteria
             var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                     .ThenInclude(c => c.LOMappings)
@@ -63,13 +62,11 @@ namespace AIS_LO_System.Controllers
                 });
             }
 
-            // ✅ UPDATED: Get LOs from database (synced from Epic 4)
             var learningOutcomes = await _context.LearningOutcomes
                 .Where(lo => lo.CourseCode == courseCode)
                 .OrderBy(lo => lo.OrderNumber)
                 .ToListAsync();
 
-            // ✅ UPDATED: If no LOs exist, show error - teacher must add them in Epic 4!
             if (!learningOutcomes.Any())
             {
                 TempData["Error"] = "Please add learning outcomes in Course Information first.";
@@ -88,8 +85,7 @@ namespace AIS_LO_System.Controllers
                 await TryRecoverAssignmentLOsFromOutlineAsync(assignment, learningOutcomes);
             }
 
-            // Get selected LO IDs from assignment
-            List<int> selectedLOIds = new List<int>();
+            List<int> selectedLOIds = new();
             if (!string.IsNullOrEmpty(assignment?.SelectedLearningOutcomeIds))
             {
                 selectedLOIds = assignment.SelectedLearningOutcomeIds
@@ -100,11 +96,9 @@ namespace AIS_LO_System.Controllers
             }
             else
             {
-                // If no selection saved, select all by default
                 selectedLOIds = learningOutcomes.Select(lo => lo.Id).ToList();
             }
 
-            // If LOs are locked by course outline, only show allowed LOs
             bool losLocked = assignment?.LOsLockedByOutline ?? false;
             if (losLocked && selectedLOIds.Any())
             {
@@ -113,7 +107,11 @@ namespace AIS_LO_System.Controllers
                     .ToList();
             }
 
-            // Create view model
+            // FIX #2: Pass existing submission status so the page can show it
+            var existingSubmission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.LOMapping, assignmentId);
+            ViewBag.LOMappingSubmission = existingSubmission;
+
             var viewModel = new LOMappingViewModel
             {
                 Rubric = rubric,
@@ -178,6 +176,7 @@ namespace AIS_LO_System.Controllers
 
         // ======================================================
         // SAVE LO MAPPINGS
+        // FIX #2: After a successful save, submit the LO mapping to the moderator
         // ======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -193,27 +192,20 @@ namespace AIS_LO_System.Controllers
         {
             try
             {
-                // Get the assignment
                 var assignment = await _context.Assignments
                     .FirstOrDefaultAsync(a => a.Id == assignmentId);
 
                 if (assignment != null)
                 {
-                    // Only update selected LOs if not locked by course outline
                     if (!assignment.LOsLockedByOutline)
                     {
                         if (selectedLOIds != null && selectedLOIds.Any())
-                        {
                             assignment.SelectedLearningOutcomeIds = string.Join(",", selectedLOIds);
-                        }
                         else
-                        {
                             assignment.SelectedLearningOutcomeIds = null;
-                        }
                     }
                 }
 
-                // Get the rubric
                 var rubric = await _context.Rubrics
                     .Include(r => r.Criteria)
                         .ThenInclude(c => c.LOMappings)
@@ -258,11 +250,8 @@ namespace AIS_LO_System.Controllers
                     }
                 }
 
-                // Remove all existing mappings for this rubric's criteria
-                var existingMappings = rubric.Criteria
-                    .SelectMany(c => c.LOMappings)
-                    .ToList();
-
+                // Remove old mappings
+                var existingMappings = rubric.Criteria.SelectMany(c => c.LOMappings).ToList();
                 _context.CriterionLOMappings.RemoveRange(existingMappings);
 
                 // Add new mappings
@@ -270,26 +259,20 @@ namespace AIS_LO_System.Controllers
                 {
                     foreach (var input in mappings)
                     {
-                        // Validate criterion exists
                         var criterion = rubric.Criteria.FirstOrDefault(c => c.Id == input.CriterionId);
                         if (criterion == null) continue;
-
-                        // Validate weight
                         if (input.Weight <= 0) continue;
 
-                        // Add mappings for each selected LO
                         if (input.SelectedLOIds != null && input.SelectedLOIds.Any())
                         {
                             foreach (var loId in input.SelectedLOIds)
                             {
-                                var mapping = new CriterionLOMapping
+                                _context.CriterionLOMappings.Add(new CriterionLOMapping
                                 {
                                     RubricCriterionId = input.CriterionId,
                                     LearningOutcomeId = loId,
                                     Weight = input.Weight
-                                };
-
-                                _context.CriterionLOMappings.Add(mapping);
+                                });
                             }
                         }
                     }
@@ -298,6 +281,22 @@ namespace AIS_LO_System.Controllers
                 await _context.SaveChangesAsync();
 
                 TempData["Success"] = "LO mappings and weights saved successfully!";
+
+                // FIX #2: Submit the LO mapping to the moderator for approval
+                int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+                var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                    c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+                if (course?.ModeratorId != null && userId > 0)
+                {
+                    await _submissions.SubmitAsync(
+                        courseCode, year, trimester,
+                        SubmissionItemType.LOMapping, assignmentId,
+                        $"{assessmentName} — LO Mapping",
+                        userId);
+                    TempData["Info"] = "📨 LO mapping submitted to moderator for approval.";
+                }
+
                 return RedirectToAction(nameof(Index), new
                 {
                     assignmentId,
