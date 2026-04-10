@@ -3,9 +3,10 @@
 
 @{
     ViewData["Title"] = "Moderator Inbox";
-    Layout = "_DashboardLayout";
+    Layout = User.IsInRole("Admin") ? "_AdminLayout" : "_DashboardLayout";
     var allSubmissions = ViewBag.AllSubmissions as List<CourseSubmission> ?? new();
     var moderatedCourses = ViewBag.ModeratedCourses as List<Course> ?? new();
+    bool isAdmin = (bool)(ViewBag.IsAdmin ?? false);
 }
 
 <link rel="stylesheet" href="~/css/moderator.css" />
@@ -15,7 +16,16 @@
     <div class="mod-header">
         <div>
             <h1 class="mod-title">Moderator Inbox</h1>
-            <p class="mod-subtitle">Review and approve submissions from lecturers for your assigned courses.</p>
+            <p class="mod-subtitle">
+                @if (isAdmin)
+                {
+                    <span>All course submissions system-wide — admin override access.</span>
+                }
+                else
+                {
+                    <span>Review and approve submissions from lecturers for your assigned courses.</span>
+                }
+            </p>
         </div>
         @if ((int)ViewBag.PendingCount > 0)
         {
@@ -23,7 +33,7 @@
         }
     </div>
 
-    @if (!moderatedCourses.Any())
+    @if (!isAdmin && !moderatedCourses.Any())
     {
         <div class="mod-empty"><p>You are not assigned as moderator for any courses.</p></div>
     }

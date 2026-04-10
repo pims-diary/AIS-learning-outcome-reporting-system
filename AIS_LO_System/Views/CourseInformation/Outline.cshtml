@@ -161,11 +161,13 @@
                     </script>
                 }
             }
-            else
+            else if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
             {
+                @* Admin locked re-upload — show disabled state but only when not impersonating *@
                 <button class="btn-primary" type="button" disabled>Re-upload Course Outline</button>
                 <div class="denied">Action Denied (permission required).</div>
             }
+            @* During impersonation: show nothing *@
         </div>
     </div>
 </div>

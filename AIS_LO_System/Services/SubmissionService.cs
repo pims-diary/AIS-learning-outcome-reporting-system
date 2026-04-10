@@ -106,9 +106,27 @@ namespace AIS_LO_System.Services
             return sub?.Status == SubmissionStatus.Approved;
         }
 
-        /// <summary>
-        /// Returns all pending submissions for courses where the given user is the moderator.
-        /// </summary>
+        /// <summary>Returns all pending submissions across all courses (admin use).</summary>
+        public async Task<List<CourseSubmission>> GetAllPendingAsync()
+        {
+            return await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .Where(s => s.Status == SubmissionStatus.Pending)
+                .OrderBy(s => s.SubmittedAt)
+                .ToListAsync();
+        }
+
+        /// <summary>Returns all submissions across all courses (admin use).</summary>
+        public async Task<List<CourseSubmission>> GetAllSubmissionsAsync()
+        {
+            return await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .Include(s => s.ReviewedBy)
+                .OrderByDescending(s => s.SubmittedAt)
+                .ToListAsync();
+        }
+
+        /// <summary>Returns all pending submissions for courses where the given user is the moderator.</summary>
         public async Task<List<CourseSubmission>> GetPendingForModeratorAsync(int moderatorUserId)
         {
             var moderatedCourseCodes = await _context.Courses

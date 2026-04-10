@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AIS_LO_System.Controllers
 {
-    [Authorize(Roles = "Lecturer")]
+    [Authorize(Roles = "Lecturer,Admin")]
     public class ModeratorController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -30,8 +30,11 @@ namespace AIS_LO_System.Controllers
             return id;
         }
 
+        private bool IsAdmin() => User.IsInRole("Admin");
+
         private async Task<bool> IsModerator(string courseCode, int year, int trimester)
         {
+            if (IsAdmin()) return true; // admin can moderate any course
             var userId = GetUserId();
             var course = await _context.Courses.FirstOrDefaultAsync(c =>
                 c.Code == courseCode && c.Year == year && c.Trimester == trimester);
@@ -46,14 +49,21 @@ namespace AIS_LO_System.Controllers
         {
             var userId = GetUserId();
 
-            var moderatedCourses = await _context.Courses
-                .Where(c => c.ModeratorId == userId)
-                .ToListAsync();
+            // Admin sees all courses; lecturer sees only their moderated courses
+            var moderatedCourses = IsAdmin()
+                ? await _context.Courses.ToListAsync()
+                : await _context.Courses.Where(c => c.ModeratorId == userId).ToListAsync();
 
             ViewBag.ModeratedCourses = moderatedCourses;
+            ViewBag.IsAdmin = IsAdmin();
 
-            var pending = await _submissions.GetPendingForModeratorAsync(userId);
-            var all = await _submissions.GetAllForModeratorAsync(userId);
+            var pending = IsAdmin()
+                ? await _submissions.GetAllPendingAsync()
+                : await _submissions.GetPendingForModeratorAsync(userId);
+
+            var all = IsAdmin()
+                ? await _submissions.GetAllSubmissionsAsync()
+                : await _submissions.GetAllForModeratorAsync(userId);
 
             ViewBag.PendingCount = pending.Count;
             ViewBag.AllSubmissions = all;
