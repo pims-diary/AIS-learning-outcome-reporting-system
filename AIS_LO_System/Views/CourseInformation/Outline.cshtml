@@ -22,14 +22,14 @@
             <a asp-controller="LecturerDashboard" asp-action="Index">Home</a>
             <span class="sep">/</span>
             <a asp-controller="LecturerDashboard" asp-action="Index"
-               asp-route-year="@ViewBag.Year" asp-route-trimester="@ViewBag.Trimester">
+                   asp-route-year="@ViewBag.Year" asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.Year – Tri @ViewBag.Trimester
             </a>
             <span class="sep">/</span>
             <a asp-controller="CourseDashboard" asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 @ViewBag.CourseCode
             </a>
             <span class="sep">/</span>
@@ -37,10 +37,10 @@
         </div>
 
         <a class="backlink"
-           asp-controller="CourseDashboard" asp-action="Index"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
+               asp-controller="CourseDashboard" asp-action="Index"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
             ← Go Back
         </a>
     </div>
@@ -52,12 +52,18 @@
         {
             <div class="success-msg">@TempData["Success"]</div>
         }
+        @if (TempData["Info"] != null)
+        {
+            <div class="success-msg" style="background:#cfe2ff;border-color:#b6d4fe;color:#084298;">@TempData["Info"]</div>
+        }
         @if (TempData["Error"] != null)
         {
             <div style="background:#fff3cd; border:1px solid #ffc107; color:#856404; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
                 @TempData["Error"]
             </div>
         }
+
+        @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
 
         @if (isPdf)
         {
@@ -96,22 +102,22 @@
             <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
             <script>
                 (function () {
-                    const url = "@(outlineUrl)@(cacheBust)";
-                    const loading = document.getElementById("docx-loading");
-                    const preview = document.getElementById("docx-preview");
+                const url = "@(outlineUrl)@(cacheBust)";
+                const loading = document.getElementById("docx-loading");
+                const preview = document.getElementById("docx-preview");
 
-                    fetch(url)
-                        .then(r => r.arrayBuffer())
-                        .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
-                        .then(result => {
-                            preview.innerHTML = result.value;
-                            preview.style.display = "block";
-                            loading.style.display = "none";
-                        })
-                        .catch(err => {
-                            loading.innerHTML = "<span style='color:#999;'>Could not preview this document. Please use the download button above.</span>";
-                            console.error("DOCX preview error:", err);
-                        });
+                fetch(url)
+                .then(r => r.arrayBuffer())
+                .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
+                .then(result => {
+                preview.innerHTML = result.value;
+                preview.style.display = "block";
+                loading.style.display = "none";
+                })
+                .catch(err => {
+                loading.innerHTML = "<span style='color:#999;'>Could not preview this document. Please use the download button above.</span>";
+                console.error("DOCX preview error:", err);
+                });
                 })();
             </script>
         }
@@ -143,155 +149,157 @@
                 {
                     <script>
                         document.getElementById('outlineUploadForm').addEventListener('submit', function(e) {
-                            var confirmed = confirm(
-                                "⚠️ Re-uploading the course outline will reset all assessments, rubrics, LO mappings, and weights for this course.\n\n" +
-                                "Any marking progress may also be affected.\n\n" +
-                                "Are you sure you want to continue?"
-                            );
-                            if (!confirmed) {
-                                e.preventDefault();
-                            }
+                        var confirmed = confirm(
+                        "⚠️ Re-uploading the course outline will reset all assessments, rubrics, LO mappings, and weights for this course.\n\n" +
+                        "Any marking progress may also be affected.\n\n" +
+                        "Are you sure you want to continue?"
+                        );
+                        if (!confirmed) {
+                        e.preventDefault();
+                        }
                         });
                     </script>
                 }
             }
-            else
+            else if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
             {
+                @* Admin locked re-upload — show disabled state but only when not impersonating *@
                 <button class="btn-primary" type="button" disabled>Re-upload Course Outline</button>
                 <div class="denied">Action Denied (permission required).</div>
             }
+            @* During impersonation: show nothing *@
         </div>
     </div>
 </div>
 
 <style>
     .success-msg {
-        background: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-        padding: 12px 16px;
-        border-radius: 6px;
-        margin-bottom: 16px;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
     }
 
     .crumb a {
-        color: #333;
-        text-decoration: none;
+    color: #333;
+    text-decoration: none;
     }
 
-        .crumb a:hover {
-            color: #0066cc;
-            text-decoration: underline;
-        }
+    .crumb a:hover {
+    color: #0066cc;
+    text-decoration: underline;
+    }
 
     /* Word doc download card */
     .doc-card {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        background: #f8f9fa;
-        border: 1px solid #e0e0e0;
-        border-radius: 12px;
-        padding: 20px 24px;
-        margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 8px;
     }
 
     .doc-icon {
-        flex-shrink: 0;
+    flex-shrink: 0;
     }
 
     .doc-info {
-        flex: 1;
+    flex: 1;
     }
 
     .doc-name {
-        font-size: 15px;
-        font-weight: 600;
-        color: #1a1a1a;
-        margin-bottom: 4px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 4px;
     }
 
     .doc-type {
-        font-size: 13px;
-        color: #666;
+    font-size: 13px;
+    color: #666;
     }
 
     .btn-download {
-        display: inline-block;
-        padding: 10px 20px;
-        background: #2B579A;
-        color: #fff;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 500;
-        white-space: nowrap;
+    display: inline-block;
+    padding: 10px 20px;
+    background: #2B579A;
+    color: #fff;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
     }
 
-        .btn-download:hover {
-            background: #1e3f73;
-            color: #fff;
-        }
+    .btn-download:hover {
+    background: #1e3f73;
+    color: #fff;
+    }
 
     /* DOCX inline preview */
     .docx-preview-frame {
-        background: #fff;
-        border: 1px solid #e0e0e0;
-        border-radius: 12px;
-        padding: 32px 40px;
-        margin-top: 16px;
-        max-height: 700px;
-        overflow-y: auto;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        font-size: 14px;
-        line-height: 1.7;
-        color: #1a1a1a;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 32px 40px;
+    margin-top: 16px;
+    max-height: 700px;
+    overflow-y: auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 14px;
+    line-height: 1.7;
+    color: #1a1a1a;
     }
 
-        .docx-preview-frame h1, .docx-preview-frame h2, .docx-preview-frame h3 {
-            color: #2B579A;
-            margin-top: 20px;
-        }
+    .docx-preview-frame h1, .docx-preview-frame h2, .docx-preview-frame h3 {
+    color: #2B579A;
+    margin-top: 20px;
+    }
 
-        .docx-preview-frame table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 12px 0;
-        }
+    .docx-preview-frame table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    }
 
-        .docx-preview-frame td, .docx-preview-frame th {
-            border: 1px solid #d0d0d0;
-            padding: 8px 12px;
-            text-align: left;
-        }
+    .docx-preview-frame td, .docx-preview-frame th {
+    border: 1px solid #d0d0d0;
+    padding: 8px 12px;
+    text-align: left;
+    }
 
-        .docx-preview-frame img {
-            max-width: 100%;
-            height: auto;
-        }
+    .docx-preview-frame img {
+    max-width: 100%;
+    height: auto;
+    }
 
     .docx-loading {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 12px;
-        padding: 40px 20px;
-        color: #888;
-        font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 40px 20px;
+    color: #888;
+    font-size: 14px;
     }
 
     .loading-spinner {
-        width: 22px;
-        height: 22px;
-        border: 3px solid #e0e0e0;
-        border-top-color: #2B579A;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
+    width: 22px;
+    height: 22px;
+    border: 3px solid #e0e0e0;
+    border-top-color: #2B579A;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
     }
 
     @@keyframes spin {
-        to {
-            transform: rotate(360deg);
-        }
+    to {
+    transform: rotate(360deg);
+    }
     }
 </style>

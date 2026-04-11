@@ -1,5 +1,7 @@
 ﻿using AIS_LO_System.Data;
+using AIS_LO_System.Models;
 using AIS_LO_System.Models.MarkStudents;
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +12,12 @@ namespace AIS_LO_System.Controllers
     public class MarkStudentsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;
 
-        public MarkStudentsController(ApplicationDbContext context)
+        public MarkStudentsController(ApplicationDbContext context, SubmissionService submissions)
         {
             _context = context;
+            _submissions = submissions;
         }
 
         [HttpGet]
@@ -88,6 +92,8 @@ namespace AIS_LO_System.Controllers
             ViewBag.AssessmentName = assessmentName;
             ViewBag.Year = year;
             ViewBag.Trimester = trimester;
+            ViewBag.Submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.StudentMarks, assignmentId);
 
             return View(vm);
         }
@@ -461,6 +467,19 @@ namespace AIS_LO_System.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            // Auto-submit all student marks to moderator when a student is marked
+            int.TryParse(User.FindFirst("UserId")?.Value, out int marksUserId);
+            var marksCourse = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            if (marksCourse?.ModeratorId != null && marksUserId > 0)
+            {
+                await _submissions.SubmitAsync(
+                    courseCode, year, trimester,
+                    SubmissionItemType.StudentMarks, assignmentId,
+                    $"{assessmentName} — Student Marks",
+                    marksUserId);
+            }
 
             TempData["Success"] = "Marks saved successfully.";
             return RedirectToAction("Index", new

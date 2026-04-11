@@ -50,10 +50,12 @@
 
     <!-- Save and Cancel Buttons -->
     <div class="edit-actions">
-        <button type="submit" form="rubricForm" class="btn-save"
-            @(string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value) ? "" : "disabled")>
-            Save Rubric
-        </button>
+        @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
+        {
+            <button type="submit" form="rubricForm" class="btn-save">
+                Save Rubric
+            </button>
+        }
         <a asp-action="Index"
            asp-route-assignmentId="@ViewBag.AssignmentId"
            asp-route-assessmentName="@ViewBag.AssessmentName"
@@ -119,13 +121,19 @@
                         }
 
                         <div class="delete-cell">
-                            <button type="button" class="btn-delete" onclick="deleteCriterion(@i)">🗑️</button>
+                            @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
+                            {
+                                <button type="button" class="btn-delete" onclick="deleteCriterion(@i)">🗑️</button>
+                            }
                         </div>
                     </div>
                 }
             </div>
 
-            <button type="button" class="btn-add-criterion" onclick="addCriterion()">+ Add New Criterion</button>
+            @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
+            {
+                <button type="button" class="btn-add-criterion" onclick="addCriterion()">+ Add New Criterion</button>
+            }
         </div>
 
         <!-- Performance Levels Section -->

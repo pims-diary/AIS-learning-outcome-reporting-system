@@ -1,5 +1,7 @@
 ﻿using AIS_LO_System.Data;
+using AIS_LO_System.Models;
 using AIS_LO_System.Models.Reports;
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +12,12 @@ namespace AIS_LO_System.Controllers
     public class StudentLOReportController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;
 
-        public StudentLOReportController(ApplicationDbContext context)
+        public StudentLOReportController(ApplicationDbContext context, SubmissionService submissions)
         {
             _context = context;
+            _submissions = submissions;
         }
 
         [HttpGet]
@@ -22,7 +26,8 @@ namespace AIS_LO_System.Controllers
             string courseTitle,
             int year,
             int trimester,
-            string? searchTerm)
+            string? searchTerm,
+            bool moderatorView = false)
         {
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>
@@ -73,6 +78,20 @@ namespace AIS_LO_System.Controllers
                 TotalStudentsEnrolled = totalStudentsEnrolled,
                 Students = students
             };
+
+            // Auto-submit report to moderator when lecturer opens it (not when moderator views it)
+            int.TryParse(User.FindFirst("UserId")?.Value, out int reportUserId);
+            if (!moderatorView && course.ModeratorId != null && reportUserId > 0)
+            {
+                await _submissions.SubmitAsync(
+                    courseCode, year, trimester,
+                    SubmissionItemType.StudentLOReport, null,
+                    $"Student LO Report — {courseCode} {year} T{trimester}",
+                    reportUserId);
+            }
+
+            ViewBag.Submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.StudentLOReport);
 
             return View(vm);
         }

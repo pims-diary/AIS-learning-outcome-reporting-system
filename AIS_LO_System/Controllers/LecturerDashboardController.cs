@@ -95,7 +95,8 @@ namespace LOARS.Web.Controllers
                 SelectedTrimester = selectedTrimester,
                 Years = years,
                 TrimestersByYear = trimestersByYear,
-                Courses = courses
+                Courses = courses,
+                IsModeratorOfAnyCourse = await _context.Courses.AnyAsync(c => c.ModeratorId == userId)
             };
 
             return View(vm);

@@ -1,4 +1,5 @@
 ﻿@model LOARS.Web.Models.Dashboard.LecturerDashboardViewModel
+@using AIS_LO_System.Models
 @{
     Layout = null;
 }
@@ -9,6 +10,16 @@
         <span class="sidebar-title">Home</span>
         <button class="sidebar-close" onclick="toggleSidebar()">✕</button>
     </div>
+
+    @if (Model.IsModeratorOfAnyCourse)
+    {
+        <div class="sidebar-mod-section">
+            <a asp-controller="Moderator" asp-action="Inbox" class="sidebar-mod-link">
+                <span class="sidebar-mod-icon">📋</span>
+                Moderator Inbox
+            </a>
+        </div>
+    }
 
     @foreach (var year in Model.Years.OrderByDescending(y => y))
     {

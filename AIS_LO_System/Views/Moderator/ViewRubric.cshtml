@@ -1,0 +1,98 @@
+﻿@model AIS_LO_System.Models.Rubric
+@using AIS_LO_System.Models
+@{
+    ViewData["Title"] = "Review: Rubric";
+    Layout = "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+    bool hasLOMappings = ViewBag.HasLOMappings == true;
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+<link rel="stylesheet" href="~/css/rubric.css" />
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
+        <h1>Rubric — @ViewBag.AssessmentName</h1>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@(ViewBag.Trimester)</span>
+    </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission })
+
+    @if (Model == null || !Model.Criteria.Any())
+    {
+        <div class="mod-empty">No rubric has been created yet.</div>
+    }
+    else
+    {
+        <div class="rubric-table-wrap" style="margin-top:24px; max-height:70vh; overflow-y:auto;">
+            <table class="rubric-table" style="width:auto; margin:0 auto;">
+                <thead>
+                    <tr>
+                        <th>Criterion</th>
+                        @if (hasLOMappings)
+                        {
+                            <th style="background:#f0f7ff; white-space:nowrap;">Mapped LOs</th>
+                            <th style="background:#f0f7ff; white-space:nowrap;">Weight (%)</th>
+                        }
+                        @foreach (var level in Model.Criteria.First().Levels)
+                        {
+                            <th>@level.ScaleName (@level.Score)</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var criterion in Model.Criteria)
+                    {
+                        <tr>
+                            <td><strong>@criterion.CriterionName</strong></td>
+                            @if (hasLOMappings)
+                            {
+                                var mappings = criterion.LOMappings.ToList();
+                                var loLabels = mappings
+                                    .Select(m => m.LearningOutcome != null ? $"LO{m.LearningOutcome.OrderNumber}" : "—")
+                                    .Distinct()
+                                    .ToList();
+                                var weight = mappings.FirstOrDefault()?.Weight ?? 0;
+
+                                <td style="background:#f7fbff; text-align:center; font-weight:600; color:#1a6fbb;">
+                                    @if (loLabels.Any())
+                                    {
+                                        @string.Join(", ", loLabels)
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#999; font-weight:400;">—</span>
+                                    }
+                                </td>
+                                <td style="background:#f7fbff; text-align:center; font-weight:600;">
+                                    @if (weight > 0)
+                                    {
+                                        @($"{weight:0.##}%")
+                                    }
+                                    else
+                                    {
+                                        <span style="color:#999; font-weight:400;">—</span>
+                                    }
+                                </td>
+                            }
+                            @foreach (var level in criterion.Levels)
+                            {
+                                <td>@level.Description</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (!hasLOMappings)
+        {
+            <div style="margin-top:16px; padding:12px 16px; background:#fff8e1; border:1px solid #ffe082;
+                border-radius:8px; color:#7a5f00; font-size:14px;">
+                ⚠️ LO mappings have not been assigned for this rubric yet. The lecturer will need to
+                complete the LO Mapping and Weighting page before those can be reviewed here.
+            </div>
+        }
+    }
+</div>

@@ -36,6 +36,9 @@ namespace AIS_LO_System.Data
         public DbSet<StudentAssessmentMark> StudentAssessmentMarks { get; set; }
         public DbSet<StudentCriterionMark> StudentCriterionMarks { get; set; }
 
+        // Moderation
+        public DbSet<CourseSubmission> CourseSubmissions { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -84,6 +87,21 @@ namespace AIS_LO_System.Data
             modelBuilder.Entity<StudentCriterionMark>()
                 .Property(x => x.CalculatedScore)
                 .HasPrecision(18, 2);
+
+            // CourseSubmission → SubmittedBy (NoAction to avoid cascade conflicts)
+            modelBuilder.Entity<CourseSubmission>()
+                .HasOne(s => s.SubmittedBy)
+                .WithMany()
+                .HasForeignKey(s => s.SubmittedByUserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // CourseSubmission → ReviewedBy (optional, NoAction)
+            modelBuilder.Entity<CourseSubmission>()
+                .HasOne(s => s.ReviewedBy)
+                .WithMany()
+                .HasForeignKey(s => s.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .IsRequired(false);
 
             // Rubric cascade
             modelBuilder.Entity<Rubric>()

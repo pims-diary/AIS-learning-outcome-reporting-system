@@ -1,0 +1,211 @@
+﻿@model List<AIS_LO_System.Models.CourseSubmission>
+@using AIS_LO_System.Models
+
+@{
+    ViewData["Title"] = "Moderator Inbox";
+    Layout = User.IsInRole("Admin") ? "_AdminLayout" : "_DashboardLayout";
+    var allSubmissions = ViewBag.AllSubmissions as List<CourseSubmission> ?? new();
+    var moderatedCourses = ViewBag.ModeratedCourses as List<Course> ?? new();
+    bool isAdmin = (bool)(ViewBag.IsAdmin ?? false);
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<div class="mod-page">
+
+    <div class="mod-header">
+        <div>
+            <h1 class="mod-title">Moderator Inbox</h1>
+            <p class="mod-subtitle">
+                @if (isAdmin)
+                {
+                    <span>All course submissions system-wide — admin override access.</span>
+                }
+                else
+                {
+                    <span>Review and approve submissions from lecturers for your assigned courses.</span>
+                }
+            </p>
+        </div>
+        @if ((int)ViewBag.PendingCount > 0)
+        {
+            <span class="mod-badge-pending">@ViewBag.PendingCount pending</span>
+        }
+    </div>
+
+    @if (!isAdmin && !moderatedCourses.Any())
+    {
+        <div class="mod-empty"><p>You are not assigned as moderator for any courses.</p></div>
+    }
+    else
+    {
+        @if (TempData["Success"] != null)
+        {
+            <div class="mod-alert mod-alert-success">@TempData["Success"]</div>
+        }
+        @if (TempData["Error"] != null)
+        {
+            <div class="mod-alert mod-alert-error">@TempData["Error"]</div>
+        }
+
+        <!-- PENDING -->
+        <section class="mod-section">
+            <h2 class="mod-section-title">Pending Review</h2>
+
+            @if (!Model.Any())
+            {
+                <div class="mod-empty-section">No pending submissions</div>
+            }
+            else
+            {
+                <div class="mod-cards">
+                    @foreach (var sub in Model)
+                    {
+                        <div class="mod-card mod-card-pending">
+
+                            <div class="mod-card-top">
+                                <div>
+                                    <span class="mod-card-course">@sub.CourseCode</span>
+                                    <span class="mod-card-course" style="opacity:0.6;">@sub.Year T@(sub.Trimester)</span>
+                                    <span class="mod-card-type">@FormatItemType(sub.ItemType)</span>
+                                </div>
+                                <span class="mod-status mod-status-pending">Pending</span>
+                            </div>
+
+                            <div class="mod-card-label">@sub.ItemLabel</div>
+                            <div class="mod-card-meta">
+                                Submitted by <strong>@(sub.SubmittedBy?.FullName ?? "—")</strong>
+                                on @sub.SubmittedAt.ToString("dd MMM yyyy, h:mm tt")
+                            </div>
+
+                            @{
+                                var viewUrl = GetViewUrl(sub);
+                            }
+                            @if (viewUrl != null)
+                            {
+                                <div style="margin-bottom:14px;">
+                                    <a href="@viewUrl" class="mod-btn-view">View</a>
+                                </div>
+                            }
+
+                            <form asp-action="Review" method="post" class="mod-review-form">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="submissionId" value="@sub.Id" />
+                                <div class="mod-comment-wrap">
+                                    <textarea name="comment" class="mod-comment"
+                                              placeholder="Comment (required for denial, optional for approval)…"
+                                              rows="2"></textarea>
+                                </div>
+                                <div class="mod-review-actions">
+                                    <button type="submit" name="decision" value="approve" class="mod-btn-approve">Approve</button>
+                                    <button type="submit" name="decision" value="deny" class="mod-btn-deny"
+                                            onclick="return validateDeny(this)">
+                                        Deny
+                                    </button>
+                                </div>
+                            </form>
+
+                        </div>
+                    }
+                </div>
+            }
+        </section>
+
+        <!-- HISTORY -->
+        <section class="mod-section">
+            <h2 class="mod-section-title">Review History</h2>
+            @{
+                var history = allSubmissions.Where(s => s.Status != SubmissionStatus.Pending).ToList();
+            }
+            @if (!history.Any())
+            {
+                <div class="mod-empty-section">No reviews yet.</div>
+            }
+            else
+            {
+                <table class="mod-table">
+                    <thead>
+                        <tr>
+                            <th>Course</th>
+                            <th>Period</th>
+                            <th>Document</th>
+                            <th>Submitted</th>
+                            <th>Status</th>
+                            <th>Comment</th>
+                            <th>Reviewed</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sub in history)
+                        {
+                            <tr>
+                                <td>@sub.CourseCode</td>
+                                <td class="mod-date">@sub.Year T@(sub.Trimester)</td>
+                                <td>
+                                    @sub.ItemLabel
+                                    <span class="mod-type-tag">@FormatItemType(sub.ItemType)</span>
+                                </td>
+                                <td class="mod-date">@sub.SubmittedAt.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <span class="mod-status @(sub.Status == SubmissionStatus.Approved ? "mod-status-approved" : "mod-status-denied")">
+                                        @sub.Status
+                                    </span>
+                                </td>
+                                <td class="mod-comment-cell">@(sub.ModeratorComment ?? "—")</td>
+                                <td class="mod-date">@(sub.ReviewedAt?.ToString("dd MMM yyyy") ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </section>
+    }
+</div>
+
+@functions {
+    // FIX #2: Added LOMapping case
+    string FormatItemType(SubmissionItemType t) => t switch
+    {
+        SubmissionItemType.CourseOutline => "Course Outline",
+        SubmissionItemType.AssignmentDocument => "Assignment Document",
+        SubmissionItemType.Rubric => "Rubric",
+        SubmissionItemType.StudentMarks => "Student Marks",
+        SubmissionItemType.StudentLOReport => "Student LO Report",
+        SubmissionItemType.CourseLOReport => "Course LO Report",
+        SubmissionItemType.LOMapping => "LO Mapping",       // FIX #2
+        _ => t.ToString()
+    };
+
+    // FIX #2: Added LOMapping URL; FIX #3: ViewStudentDetail linked from ViewMarks
+    string? GetViewUrl(CourseSubmission sub) => sub.ItemType switch
+    {
+        SubmissionItemType.CourseOutline =>
+            Url.Action("ViewOutline", "Moderator",
+                new { sub.CourseCode, sub.Year, sub.Trimester, submissionId = sub.Id }),
+        SubmissionItemType.AssignmentDocument =>
+            Url.Action("ViewAssignment", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.Rubric =>
+            Url.Action("ViewRubric", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.StudentMarks =>
+            Url.Action("ViewMarks", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.StudentLOReport =>
+            Url.Action("ViewStudentLOReport", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.LOMapping =>                              // FIX #2
+            Url.Action("ViewLOMapping", "Moderator", new { submissionId = sub.Id }),
+        _ => null
+    };
+}
+
+@section Scripts {
+    <script>
+        function validateDeny(btn) {
+            const form = btn.closest('form');
+            const comment = form.querySelector('textarea[name="comment"]').value.trim();
+            if (!comment) {
+                alert('Please add a comment explaining the reason for denial.');
+                return false;
+            }
+            return confirm('Deny this submission?');
+        }
+    </script>
+}

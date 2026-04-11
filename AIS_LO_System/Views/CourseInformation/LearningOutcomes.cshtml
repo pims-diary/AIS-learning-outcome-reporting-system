@@ -96,11 +96,13 @@
                         @(los.Count == 0 ? "Add Learning Outcomes" : "Edit Learning Outcomes")
                     </a>
                 }
-                else
+                else if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
                 {
+                    @* Admin locked editing — show disabled state but only when not impersonating *@
                     <button class="btn-primary" type="button" disabled>Edit Learning Outcomes</button>
                     <div class="denied">Action Denied (permission required).</div>
                 }
+                @* During impersonation: show nothing *@
             </div>
         }
         else

@@ -322,6 +322,7 @@
 .admin-td-actions {
     text-align: right;
     white-space: nowrap;
+    min-width: 340px;
 }
 
 .admin-empty {
@@ -782,6 +783,7 @@ tr.row-inactive td {
     gap: 8px;
     flex-wrap: nowrap;
     white-space: nowrap;
+    min-width: 340px;
 }
 
 /* ==============================================
@@ -1030,3 +1032,89 @@ a.enrol-tag {
         grid-template-columns: 1fr;
     }
 }
+
+/* ── Action menu dropdown (replaces flat button row) ── */
+.admin-td-actions {
+    text-align: right;
+    white-space: nowrap;
+    min-width: 340px;
+}
+
+.action-menu-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.action-menu-btn {
+    background: none;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    color: #555;
+    transition: background 0.15s;
+}
+
+    .action-menu-btn:hover {
+        background: #f3f4f6;
+    }
+
+.action-menu-dropdown {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    min-width: 180px;
+    z-index: 200;
+    overflow: hidden;
+}
+
+.action-menu-wrap.open .action-menu-dropdown {
+    display: block;
+}
+
+.action-menu-dropdown form {
+    display: block;
+    margin: 0;
+    padding: 0;
+}
+
+.action-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 13.5px;
+    font-weight: 500;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #1f2937;
+    transition: background 0.1s;
+}
+
+    .action-menu-item:hover {
+        background: #f9fafb;
+    }
+
+.action-item-warn {
+    color: #b45309;
+}
+
+.action-item-ok {
+    color: #065f46;
+}
+
+.action-item-danger {
+    color: #dc2626;
+}
+
+    .action-item-danger:hover {
+        background: #fff1f2;
+    }

@@ -235,14 +235,14 @@
                         View LO Achievement Result
                     </a>
 
-                    <button type="submit" class="btn btn-danger" @(isImpersonated ? "disabled" : "")>
+                    <button type="submit" class="btn btn-danger" @(isImpersonated ? "disabled style=\"display:none\"" : "")>
                         Save Marks
                     </button>
 
                     <button type="submit"
                             form="clearMarksForm"
                             class="btn btn-outline-danger"
-                            @(isImpersonated ? "disabled" : "")>
+                            @(isImpersonated ? "disabled style=\"display:none\"" : "")>
                         Clear Marks
                     </button>
                 </div>

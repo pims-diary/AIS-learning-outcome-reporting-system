@@ -1,0 +1,311 @@
+﻿@model AIS_LO_System.ViewComponents.NotificationViewModel
+
+<style>
+    /* ── Bell wrapper ── */
+    .notif-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .notif-btn {
+        position: relative;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 8px;
+        color: inherit;
+        font-size: 18px;
+        line-height: 1;
+        transition: background 0.15s;
+    }
+    .notif-btn:hover { background: rgba(0,0,0,0.06); }
+
+    /* Badge bubble */
+    .notif-badge {
+        position: absolute;
+        top: 0; right: 0;
+        min-width: 18px; height: 18px;
+        background: #c21c00;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0 4px;
+        pointer-events: none;
+        line-height: 1;
+    }
+
+    /* ── Dropdown panel ── */
+    .notif-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 340px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+        z-index: 2000;
+        overflow: hidden;
+    }
+    .notif-dropdown.open { display: block; }
+
+    .notif-header {
+        padding: 12px 16px 10px;
+        font-weight: 700;
+        font-size: 14px;
+        border-bottom: 1px solid #f0f0f0;
+        color: #111;
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .notif-header-sub {
+        font-size: 12px; color: #888; font-weight: 400;
+    }
+
+    .notif-list { max-height: 380px; overflow-y: auto; }
+
+    .notif-item {
+        display: flex;
+        flex-direction: column;
+        padding: 11px 16px;
+        border-bottom: 1px solid #f4f4f4;
+        text-decoration: none;
+        color: #222;
+        transition: background 0.12s;
+        gap: 3px;
+    }
+    .notif-item:hover { background: #f8fafc; }
+    .notif-item:last-child { border-bottom: none; }
+
+    .notif-item-top {
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .notif-label { font-size: 13px; font-weight: 600; flex: 1; }
+    .notif-course { font-size: 11px; color: #888; }
+    .notif-date   { font-size: 11px; color: #aaa; white-space: nowrap; }
+    .notif-comment { font-size: 12px; color: #666; font-style: italic;
+                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    /* Status pills */
+    .notif-pending  { background: #fff3cd; color: #856404; }
+    .notif-approved { background: #d1fae5; color: #065f46; }
+    .notif-denied   { background: #fee2e2; color: #991b1b; }
+
+    .notif-pill {
+        display: inline-block;
+        border-radius: 20px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .notif-empty {
+        padding: 24px 16px;
+        text-align: center;
+        color: #aaa;
+        font-size: 13px;
+    }
+
+    .notif-footer {
+        padding: 10px 16px;
+        border-top: 1px solid #f0f0f0;
+        text-align: center;
+    }
+    .notif-footer a {
+        font-size: 13px; color: #1a6fbb; text-decoration: none; font-weight: 600;
+    }
+    .notif-footer a:hover { text-decoration: underline; }
+</style>
+
+<div class="notif-wrapper" id="notifWrapper">
+    <button class="icon-btn notif-btn" onclick="toggleNotif(event)" title="Notifications">
+        <i class="bi bi-bell"></i>
+        @if (Model.Count > 0)
+        {
+            <span class="notif-badge">@(Model.Count > 9 ? "9+" : Model.Count.ToString())</span>
+        }
+    </button>
+
+    <div class="notif-dropdown" id="notifDropdown">
+        <div class="notif-header">
+            <span>
+                @(Model.IsModerator ? "Pending Review" : "Recent Decisions")
+            </span>
+            @if (Model.Count > 0)
+            {
+                <span class="notif-header-sub">@Model.Count @(Model.Count == 1 ? "item" : "items")</span>
+            }
+        </div>
+
+        <div class="notif-list">
+            @if (!Model.Items.Any())
+            {
+                <div class="notif-empty">
+                    <i class="bi bi-check2-circle" style="font-size:24px; display:block; margin-bottom:6px;"></i>
+                    @(Model.IsModerator ? "No pending submissions" : "No recent decisions")
+                </div>
+            }
+            else
+            {
+                @foreach (var item in Model.Items)
+                {
+                    <a class="notif-item" href="@item.Href">
+                        <div class="notif-item-top">
+                            <span class="notif-label">@item.Label</span>
+                            <span class="notif-pill @item.StatusCss">@item.StatusText</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                            <span class="notif-course">@item.CourseCode</span>
+                            <span class="notif-date">@item.Date.ToString("dd MMM, h:mm tt")</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(item.Comment))
+                        {
+                            <div class="notif-comment">💬 @item.Comment</div>
+                        }
+                    </a>
+                }
+            }
+        </div>
+
+        @if (Model.IsModerator)
+        {
+            <div class="notif-footer">
+                <a asp-controller="Moderator" asp-action="Inbox">View full inbox →</a>
+            </div>
+        }
+    </div>
+</div>
+
+<script>
+    function toggleNotif(e) {
+        e.stopPropagation();
+        document.getElementById('notifDropdown').classList.toggle('open');
+        // Close user menu if open
+        document.getElementById('userDropdown')?.classList.remove('open');
+    }
+
+    // Close when clicking outside
+    document.addEventListener('click', function () {
+        document.getElementById('notifDropdown')?.classList.remove('open');
+    });
+</script>
+
+@if (!Model.IsModerator && Model.Items.Any())
+{
+    <!-- Instagram-style decision popup for lecturers -->
+    <div id="decisionOverlay" style="
+        display:none;
+        position:fixed; inset:0; z-index:9999;
+        background:rgba(0,0,0,0.55);
+        backdrop-filter:blur(2px);
+        align-items:center; justify-content:center;">
+
+        <div style="
+            background:#fff;
+            border-radius:16px;
+            box-shadow:0 12px 48px rgba(0,0,0,0.22);
+            width:100%; max-width:400px;
+            margin:0 16px;
+            overflow:hidden;
+            animation: popIn 0.2s ease;">
+
+            <!-- Icon -->
+            <div style="padding:28px 24px 0; text-align:center;">
+                <div style="
+                    width:56px; height:56px; border-radius:50%;
+                    background:#f0f4ff; display:inline-flex;
+                    align-items:center; justify-content:center;
+                    font-size:26px; margin-bottom:14px;">
+                    🔔
+                </div>
+                <div style="font-size:17px; font-weight:700; color:#111; margin-bottom:6px;">
+                    Moderator Decision
+                </div>
+                <div style="font-size:13px; color:#888; margin-bottom:20px;">
+                    The moderator has reviewed your submission(s).
+                </div>
+            </div>
+
+            <!-- Decision items -->
+            <div id="decisionPopupBody" style="
+                max-height:260px; overflow-y:auto;
+                border-top:1px solid #f0f0f0;
+                border-bottom:1px solid #f0f0f0;
+                padding:4px 0;">
+            </div>
+
+            <!-- Actions -->
+            <div style="padding:0; text-align:center;">
+                <button onclick="dismissDecisionPopup()" style="
+                    display:block; width:100%; padding:15px;
+                    background:none; border:none; cursor:pointer;
+                    font-size:14px; font-weight:700; color:#1a6fbb;
+                    border-bottom:1px solid #f0f0f0;">
+                    OK
+                </button>
+                <button onclick="dismissDecisionPopup()" style="
+                    display:block; width:100%; padding:15px;
+                    background:none; border:none; cursor:pointer;
+                    font-size:14px; color:#555;">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @@keyframes popIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+    </style>
+
+    <script>
+        (function () {
+            const STORAGE_KEY = 'seen_notif_ids';
+            const seen = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+            const decisions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.Select(i => new {
+                id = i.Label + "_" + i.Date.Ticks,
+                label = i.Label,
+                course = i.CourseCode,
+                status = i.StatusText,
+                statusCss = i.StatusCss,
+                comment = i.Comment,
+                date = i.Date.ToString("dd MMM yyyy, h:mm tt")
+            })));
+
+            const unseen = decisions.filter(d => !seen.includes(d.id));
+            if (unseen.length === 0) return;
+
+            const body = document.getElementById('decisionPopupBody');
+            body.innerHTML = unseen.map(d => `
+                <div style="padding:12px 24px; border-bottom:1px solid #f8f8f8;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:3px;">
+                        <span style="font-weight:600; font-size:13px; color:#111;">${d.label}</span>
+                        <span class="notif-pill ${d.statusCss}">${d.status}</span>
+                    </div>
+                    <div style="font-size:12px; color:#aaa;">${d.course} · ${d.date}</div>
+                    ${d.comment ? `<div style="font-size:12px; color:#555; font-style:italic; margin-top:4px;">💬 ${d.comment}</div>` : ''}
+                </div>
+            `).join('');
+
+            window._unseenDecisionIds = unseen.map(d => d.id);
+            const overlay = document.getElementById('decisionOverlay');
+            overlay.style.display = 'flex';
+        })();
+
+        function dismissDecisionPopup() {
+            const overlay = document.getElementById('decisionOverlay');
+            overlay.style.display = 'none';
+            const STORAGE_KEY = 'seen_notif_ids';
+            const seen = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const allSeen = [...new Set([...seen, ...(window._unseenDecisionIds || [])])];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(allSeen));
+        }
+    </script>
+}

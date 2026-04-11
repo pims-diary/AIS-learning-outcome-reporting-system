@@ -53,6 +53,13 @@
                        class="admin-sb-link @(currentAction == "Permissions" ? "active" : "")">
                     Permissions
                 </a>
+
+                <div class="admin-sb-section">MODERATION</div>
+
+                <a asp-controller="Moderator" asp-action="Inbox"
+                       class="admin-sb-link @(currentController == "Moderator" ? "active" : "")">
+                    📋 Moderator Inbox
+                </a>
             </nav>
         </aside>
 

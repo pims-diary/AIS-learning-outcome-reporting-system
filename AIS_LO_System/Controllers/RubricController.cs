@@ -1,5 +1,6 @@
 ﻿using AIS_LO_System.Data;
 using AIS_LO_System.Models;
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
@@ -10,10 +11,12 @@ namespace AIS_LO_System.Controllers
     public class RubricController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;
 
-        public RubricController(ApplicationDbContext context)
+        public RubricController(ApplicationDbContext context, SubmissionService submissions)
         {
             _context = context;
+            _submissions = submissions;
         }
 
         // ======================================================
@@ -41,6 +44,11 @@ namespace AIS_LO_System.Controllers
                 .Include(r => r.Criteria)
                 .ThenInclude(c => c.Levels)
                 .FirstOrDefaultAsync(r => r.AssignmentId == assignmentId);
+
+            // Load submission status for this rubric
+            ViewBag.Submission = rubric != null
+                ? await _submissions.GetLatestAsync(courseCode, year, trimester, SubmissionItemType.Rubric, rubric.Id)
+                : null;
 
             // Order levels by score descending for each criterion
             if (rubric != null)
@@ -283,6 +291,20 @@ namespace AIS_LO_System.Controllers
                     successMsg += $" {mappingsCreated} LO mapping(s) auto-applied.";
 
                 TempData["Success"] = successMsg;
+
+                // Auto-submit to moderator for approval
+                int.TryParse(User.FindFirst("UserId")?.Value, out int uploadUserId);
+                var uploadCourse = await _context.Courses.FirstOrDefaultAsync(c =>
+                    c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+                if (uploadCourse?.ModeratorId != null && uploadUserId > 0)
+                {
+                    await _submissions.SubmitAsync(
+                        courseCode, year, trimester,
+                        SubmissionItemType.Rubric, rubric.Id,
+                        $"{assessmentName} — Rubric",
+                        uploadUserId);
+                    TempData["Info"] = "📨 Rubric submitted to moderator for approval.";
+                }
                 return RedirectToAction(nameof(Index), new
                 {
                     assignmentId,
@@ -414,6 +436,22 @@ namespace AIS_LO_System.Controllers
             TempData["Success"] = "Rubric updated successfully!";
 
             var assignment = await _context.Assignments.FindAsync(assignmentId);
+            if (assignment == null)
+                return RedirectToAction(nameof(Index), new { assignmentId });
+
+            // Re-submit to moderator since rubric changed
+            int.TryParse(User.FindFirst("UserId")?.Value, out int editUserId);
+            var editCourse = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == assignment.CourseCode && c.Year == assignment.Year && c.Trimester == assignment.Trimester);
+            if (editCourse?.ModeratorId != null && editUserId > 0)
+            {
+                await _submissions.SubmitAsync(
+                    assignment.CourseCode, assignment.Year, assignment.Trimester,
+                    SubmissionItemType.Rubric, rubric.Id,
+                    $"{assignment.AssessmentName} — Rubric",
+                    editUserId);
+                TempData["Info"] = "📨 Updated rubric submitted to moderator for approval.";
+            }
 
             if (assignment == null)
                 return RedirectToAction(nameof(Index), new { assignmentId });
