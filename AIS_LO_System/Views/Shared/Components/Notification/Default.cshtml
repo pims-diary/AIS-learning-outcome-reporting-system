@@ -193,3 +193,119 @@
         document.getElementById('notifDropdown')?.classList.remove('open');
     });
 </script>
+
+@if (!Model.IsModerator && Model.Items.Any())
+{
+    <!-- Instagram-style decision popup for lecturers -->
+    <div id="decisionOverlay" style="
+        display:none;
+        position:fixed; inset:0; z-index:9999;
+        background:rgba(0,0,0,0.55);
+        backdrop-filter:blur(2px);
+        align-items:center; justify-content:center;">
+
+        <div style="
+            background:#fff;
+            border-radius:16px;
+            box-shadow:0 12px 48px rgba(0,0,0,0.22);
+            width:100%; max-width:400px;
+            margin:0 16px;
+            overflow:hidden;
+            animation: popIn 0.2s ease;">
+
+            <!-- Icon -->
+            <div style="padding:28px 24px 0; text-align:center;">
+                <div style="
+                    width:56px; height:56px; border-radius:50%;
+                    background:#f0f4ff; display:inline-flex;
+                    align-items:center; justify-content:center;
+                    font-size:26px; margin-bottom:14px;">
+                    🔔
+                </div>
+                <div style="font-size:17px; font-weight:700; color:#111; margin-bottom:6px;">
+                    Moderator Decision
+                </div>
+                <div style="font-size:13px; color:#888; margin-bottom:20px;">
+                    The moderator has reviewed your submission(s).
+                </div>
+            </div>
+
+            <!-- Decision items -->
+            <div id="decisionPopupBody" style="
+                max-height:260px; overflow-y:auto;
+                border-top:1px solid #f0f0f0;
+                border-bottom:1px solid #f0f0f0;
+                padding:4px 0;">
+            </div>
+
+            <!-- Actions -->
+            <div style="padding:0; text-align:center;">
+                <button onclick="dismissDecisionPopup()" style="
+                    display:block; width:100%; padding:15px;
+                    background:none; border:none; cursor:pointer;
+                    font-size:14px; font-weight:700; color:#1a6fbb;
+                    border-bottom:1px solid #f0f0f0;">
+                    OK
+                </button>
+                <button onclick="dismissDecisionPopup()" style="
+                    display:block; width:100%; padding:15px;
+                    background:none; border:none; cursor:pointer;
+                    font-size:14px; color:#555;">
+                    Dismiss
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @@keyframes popIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+    </style>
+
+    <script>
+        (function () {
+            const STORAGE_KEY = 'seen_notif_ids';
+            const seen = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+            const decisions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.Select(i => new {
+                id = i.Label + "_" + i.Date.Ticks,
+                label = i.Label,
+                course = i.CourseCode,
+                status = i.StatusText,
+                statusCss = i.StatusCss,
+                comment = i.Comment,
+                date = i.Date.ToString("dd MMM yyyy, h:mm tt")
+            })));
+
+            const unseen = decisions.filter(d => !seen.includes(d.id));
+            if (unseen.length === 0) return;
+
+            const body = document.getElementById('decisionPopupBody');
+            body.innerHTML = unseen.map(d => `
+                <div style="padding:12px 24px; border-bottom:1px solid #f8f8f8;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:3px;">
+                        <span style="font-weight:600; font-size:13px; color:#111;">${d.label}</span>
+                        <span class="notif-pill ${d.statusCss}">${d.status}</span>
+                    </div>
+                    <div style="font-size:12px; color:#aaa;">${d.course} · ${d.date}</div>
+                    ${d.comment ? `<div style="font-size:12px; color:#555; font-style:italic; margin-top:4px;">💬 ${d.comment}</div>` : ''}
+                </div>
+            `).join('');
+
+            window._unseenDecisionIds = unseen.map(d => d.id);
+            const overlay = document.getElementById('decisionOverlay');
+            overlay.style.display = 'flex';
+        })();
+
+        function dismissDecisionPopup() {
+            const overlay = document.getElementById('decisionOverlay');
+            overlay.style.display = 'none';
+            const STORAGE_KEY = 'seen_notif_ids';
+            const seen = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const allSeen = [...new Set([...seen, ...(window._unseenDecisionIds || [])])];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(allSeen));
+        }
+    </script>
+}

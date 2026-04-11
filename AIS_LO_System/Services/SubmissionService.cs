@@ -35,22 +35,17 @@ namespace AIS_LO_System.Services
 
             if (existing != null && existing.Status == SubmissionStatus.Approved)
             {
-                // Student marks are incremental — new students may be marked after a prior approval.
-                // Reset to Pending so the moderator reviews the updated set.
-                // All other item types (outline, rubric, etc.) are whole-document replacements,
-                // so an existing approval stands until the document is re-uploaded.
-                if (itemType == SubmissionItemType.StudentMarks)
-                {
-                    existing.Status = SubmissionStatus.Pending;
-                    existing.SubmittedAt = DateTime.Now;
-                    existing.SubmittedByUserId = submittedByUserId;
-                    existing.ModeratorComment = null;
-                    existing.ReviewedAt = null;
-                    existing.ReviewedByUserId = null;
-                    await _context.SaveChangesAsync();
-                    return existing;
-                }
-                return existing; // already approved, don't re-submit
+                // Any item type can be updated after a prior approval (e.g. rubric edited,
+                // outline re-uploaded, more marks added). Reset to Pending so the moderator
+                // reviews the updated content.
+                existing.Status = SubmissionStatus.Pending;
+                existing.SubmittedAt = DateTime.Now;
+                existing.SubmittedByUserId = submittedByUserId;
+                existing.ModeratorComment = null;
+                existing.ReviewedAt = null;
+                existing.ReviewedByUserId = null;
+                await _context.SaveChangesAsync();
+                return existing;
             }
 
             if (existing != null && existing.Status == SubmissionStatus.Pending)

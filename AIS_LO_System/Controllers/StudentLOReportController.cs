@@ -26,7 +26,8 @@ namespace AIS_LO_System.Controllers
             string courseTitle,
             int year,
             int trimester,
-            string? searchTerm)
+            string? searchTerm,
+            bool moderatorView = false)
         {
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>
@@ -78,9 +79,9 @@ namespace AIS_LO_System.Controllers
                 Students = students
             };
 
-            // Auto-submit report to moderator when lecturer opens it
+            // Auto-submit report to moderator when lecturer opens it (not when moderator views it)
             int.TryParse(User.FindFirst("UserId")?.Value, out int reportUserId);
-            if (course.ModeratorId != null && reportUserId > 0)
+            if (!moderatorView && course.ModeratorId != null && reportUserId > 0)
             {
                 await _submissions.SubmitAsync(
                     courseCode, year, trimester,

@@ -1,4 +1,5 @@
-﻿@using AIS_LO_System.Models
+﻿@model List<AIS_LO_System.Models.Reports.StudentLOReportListItemViewModel>
+@using AIS_LO_System.Models
 @{
     ViewData["Title"] = "Review: Student LO Report";
     Layout = "_DashboardLayout";
@@ -15,15 +16,65 @@
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission })
 
-    <div style="margin-top: 24px;">
-        <p>This report covers the learning outcome achievement for all enrolled students.</p>
-        <a asp-controller="StudentLOReport" asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester"
-               class="mod-btn-view" target="_blank">
-            Open Report ↗
-        </a>
+    <div class="card shadow-sm mt-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+                <div>
+                    <h4 class="fw-bold mb-1">Student List</h4>
+                    <div class="text-muted"><strong>Students Enrolled:</strong> @ViewBag.TotalEnrolled</div>
+                </div>
+                <form method="get" asp-action="ViewStudentLOReport" class="d-flex gap-2">
+                    <input type="hidden" name="submissionId" value="@submission!.Id" />
+                    <input type="text" name="searchTerm" value="@ViewBag.SearchTerm"
+                           class="form-control" placeholder="Search Student ID..." style="width:240px;" />
+                    <button type="submit" class="btn btn-outline-secondary">Search</button>
+                </form>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width:25%;">Student ID</th>
+                            <th style="width:45%;">Student Name</th>
+                            <th style="width:30%;" class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            foreach (var student in Model)
+                            {
+                                <tr>
+                                    <td>@student.StudentId</td>
+                                    <td>@student.StudentName</td>
+                                    <td class="text-center">
+                                        <a asp-action="ViewStudentLOOverview"
+                                               asp-route-submissionId="@submission!.Id"
+                                               asp-route-studentId="@student.InternalId"
+                                               class="btn btn-sm btn-danger">
+                                            View Report
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="3" class="text-center text-muted">No students found.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        const input = document.querySelector('input[name="searchTerm"]');
+        if (input) input.addEventListener('input', function () {
+            if (this.value.trim() === '') this.form.submit();
+        });
+    </script>
+}
