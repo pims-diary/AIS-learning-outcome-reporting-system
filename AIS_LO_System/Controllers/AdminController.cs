@@ -170,26 +170,24 @@ namespace AIS_LO_System.Controllers
             course.LecturerId = lecturerId;
             course.ModeratorId = moderatorId;
 
-            // Sync LecturerCourseEnrolment: ensure primary lecturer has an enrolment row,
-            // and moderator (if a different person) also has one so they appear on their dashboard.
+            // Sync LecturerCourseEnrolment: ensure lecturer and moderator both have an enrolment row.
+            // Deduplicate first — if the same person is both lecturer and moderator, only one row needed.
             var enrolledUserIds = course.LecturerEnrolments.Select(e => e.UserId).ToHashSet();
 
-            if (lecturerId.HasValue && !enrolledUserIds.Contains(lecturerId.Value))
-            {
-                _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
-                {
-                    UserId = lecturerId.Value,
-                    CourseId = id
-                });
-            }
+            var usersToEnrol = new HashSet<int>();
+            if (lecturerId.HasValue) usersToEnrol.Add(lecturerId.Value);
+            if (moderatorId.HasValue) usersToEnrol.Add(moderatorId.Value);
 
-            if (moderatorId.HasValue && !enrolledUserIds.Contains(moderatorId.Value))
+            foreach (var userId in usersToEnrol)
             {
-                _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
+                if (!enrolledUserIds.Contains(userId))
                 {
-                    UserId = moderatorId.Value,
-                    CourseId = id
-                });
+                    _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
+                    {
+                        UserId = userId,
+                        CourseId = id
+                    });
+                }
             }
 
             await _context.SaveChangesAsync();
