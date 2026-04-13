@@ -21,6 +21,13 @@ namespace AIS_LO_System.Models.Reports
         public List<CourseLOSummaryItemViewModel> LOSummaries { get; set; } = new();
         public List<CourseLOStudentResultItemViewModel> StudentResults { get; set; } = new();
         public List<CourseLOAnalysisItemViewModel> LOAnalyses { get; set; } = new();
+        public List<CourseLOContributionItemViewModel> Contributions { get; set; } = new();
+
+        public List<CourseLOStudentResultItemViewModel> AtRiskStudents { get; set; } = new();
+        public List<CourseLOSummaryItemViewModel> StrongestLOs { get; set; } = new();
+        public List<CourseLOSummaryItemViewModel> WeakestLOs { get; set; } = new();
+
+        public Dictionary<string, string> LORecommendations { get; set; } = new();
 
         public List<string> Messages { get; set; } = new();
 
@@ -46,7 +53,10 @@ namespace AIS_LO_System.Models.Reports
         public int AssignmentId { get; set; }
         public string AssessmentName { get; set; } = string.Empty;
         public int MarksPercentage { get; set; }
+
         public bool HasAnyGradedStudent { get; set; }
+        public int GradedStudentsCount { get; set; }
+        public string StatusText { get; set; } = string.Empty;
     }
 
     public class CourseLOSummaryItemViewModel
@@ -83,5 +93,16 @@ namespace AIS_LO_System.Models.Reports
         public string Status { get; set; } = string.Empty;
 
         public List<string> AssessmentBreakdown { get; set; } = new();
+    }
+
+    public class CourseLOContributionItemViewModel
+    {
+        public int AssignmentId { get; set; }
+        public string AssessmentName { get; set; } = string.Empty;
+        public bool HasAnyGradedStudent { get; set; }
+        public string StatusText { get; set; } = string.Empty;
+
+        public List<string> Contributions { get; set; } = new();
+        public List<string> ClassAchievements { get; set; } = new();
     }
 }

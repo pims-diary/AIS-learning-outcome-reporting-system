@@ -65,16 +65,6 @@ namespace AIS_LO_System.Controllers
                     m.IsMarked)
                 .ToListAsync();
 
-            var assessments = rawAssignments
-                .Select(a => new CourseLOAssessmentItemViewModel
-                {
-                    AssignmentId = a.Id,
-                    AssessmentName = a.AssessmentName,
-                    MarksPercentage = a.MarksPercentage,
-                    HasAnyGradedStudent = gradedAssessmentStatuses.Any(m => m.AssessmentName == a.AssessmentName)
-                })
-                .ToList();
-
             var learningOutcomes = await _context.LearningOutcomes
                 .Where(lo => lo.CourseCode == courseCode)
                 .OrderBy(lo => lo.OrderNumber)
@@ -96,6 +86,35 @@ namespace AIS_LO_System.Controllers
             var allSavedMarks = await _context.StudentCriterionMarks
                 .Where(x => assignmentIds.Contains(x.AssignmentId))
                 .ToListAsync();
+
+            var assessments = rawAssignments
+                .Select(a =>
+                {
+                    var gradedStudentsCount = gradedAssessmentStatuses
+                        .Where(m => m.AssessmentName == a.AssessmentName)
+                        .Select(m => m.StudentRefId)
+                        .Distinct()
+                        .Count();
+
+                    string statusText;
+                    if (gradedStudentsCount == 0)
+                        statusText = "Not Started";
+                    else if (gradedStudentsCount < enrolledStudents.Count)
+                        statusText = "Partially Graded";
+                    else
+                        statusText = "Fully Graded";
+
+                    return new CourseLOAssessmentItemViewModel
+                    {
+                        AssignmentId = a.Id,
+                        AssessmentName = a.AssessmentName,
+                        MarksPercentage = a.MarksPercentage,
+                        HasAnyGradedStudent = gradedStudentsCount > 0,
+                        GradedStudentsCount = gradedStudentsCount,
+                        StatusText = statusText
+                    };
+                })
+                .ToList();
 
             var studentResults = new List<CourseLOStudentResultItemViewModel>();
             var loAggregateRows = new List<(int LearningOutcomeId, decimal Percentage, string Status)>();
@@ -298,8 +317,112 @@ namespace AIS_LO_System.Controllers
                 })
                 .ToList();
 
+            var contributionTable = new List<CourseLOContributionItemViewModel>();
+
+            foreach (var assignment in rawAssignments)
+            {
+                var assessmentVm = assessments.First(x => x.AssignmentId == assignment.Id);
+
+                var contributionItem = new CourseLOContributionItemViewModel
+                {
+                    AssignmentId = assignment.Id,
+                    AssessmentName = assignment.AssessmentName,
+                    HasAnyGradedStudent = assessmentVm.HasAnyGradedStudent,
+                    StatusText = assessmentVm.StatusText
+                };
+
+                if (!assessmentVm.HasAnyGradedStudent)
+                {
+                    contributionItem.Contributions.Add("Not graded yet");
+                    contributionItem.ClassAchievements.Add("Not graded yet");
+                }
+                else
+                {
+                    foreach (var lo in learningOutcomes)
+                    {
+                        var mappingsForLO = mappings
+                            .Where(m =>
+                                m.LearningOutcomeId == lo.Id &&
+                                m.RubricCriterion.Rubric.AssignmentId == assignment.Id)
+                            .ToList();
+
+                        if (!mappingsForLO.Any())
+                        {
+                            contributionItem.Contributions.Add($"LO{lo.OrderNumber}: LO not assessed");
+                            contributionItem.ClassAchievements.Add($"LO{lo.OrderNumber}: LO not assessed");
+                            continue;
+                        }
+
+                        decimal totalContribution = 0;
+
+                        foreach (var mapping in mappingsForLO)
+                        {
+                            var maxLevel = mapping.RubricCriterion?.Levels?
+                                .OrderByDescending(l => l.Score)
+                                .FirstOrDefault();
+
+                            if (maxLevel != null)
+                                totalContribution += maxLevel.Score * mapping.Weight;
+                        }
+
+                        var rows = studentAssessmentLOPercentages
+                            .Where(x =>
+                                x.LearningOutcomeId == lo.Id &&
+                                x.AssignmentId == assignment.Id &&
+                                x.IsGraded)
+                            .ToList();
+
+                        var averageAchievement = rows.Any()
+                            ? Math.Round(rows.Average(x => x.Percentage), 2)
+                            : 0;
+
+                        contributionItem.Contributions.Add($"LO{lo.OrderNumber}: {totalContribution:0.##}");
+                        contributionItem.ClassAchievements.Add($"LO{lo.OrderNumber}: {averageAchievement:0.##}%");
+                    }
+                }
+
+                contributionTable.Add(contributionItem);
+            }
+
             var totalAchievedLOs = loSummaries.Count(x => x.Status == "Achieved");
             var totalNotAchievedLOs = loSummaries.Count(x => x.Status == "Not Achieved");
+
+            var strongestLOs = loSummaries
+                .OrderByDescending(x => x.AveragePercentage)
+                .Take(3)
+                .ToList();
+
+            var weakestLOs = loSummaries
+                .OrderBy(x => x.AveragePercentage)
+                .Take(3)
+                .ToList();
+
+            var loRecommendations = new Dictionary<string, string>();
+            foreach (var lo in loSummaries)
+            {
+                if (lo.AveragePercentage < 50)
+                {
+                    loRecommendations[lo.Label] = "Low class performance. Review teaching approach, rubric alignment, or provide reinforcement activities.";
+                }
+                else if (lo.AveragePercentage < 70)
+                {
+                    loRecommendations[lo.Label] = "Moderate performance. Some students may need targeted support and more practice.";
+                }
+                else
+                {
+                    loRecommendations[lo.Label] = "Strong class performance for this learning outcome.";
+                }
+            }
+
+            int atRiskThreshold = learningOutcomes.Count > 0
+                ? (int)System.Math.Ceiling(learningOutcomes.Count / 2.0)
+                : 0;
+
+            var atRiskStudents = studentResults
+                .Where(s => s.NotAchievedLOCount >= atRiskThreshold && learningOutcomes.Count > 0)
+                .OrderByDescending(s => s.NotAchievedLOCount)
+                .ThenBy(s => s.StudentId)
+                .ToList();
 
             var vm = new CourseLOReportViewModel
             {
@@ -316,10 +439,15 @@ namespace AIS_LO_System.Controllers
                 LOSummaries = loSummaries,
                 StudentResults = studentResults,
                 LOAnalyses = loAnalyses,
+                Contributions = contributionTable,
+                AtRiskStudents = atRiskStudents,
+                StrongestLOs = strongestLOs,
+                WeakestLOs = weakestLOs,
+                LORecommendations = loRecommendations,
                 Messages = new List<string>
                 {
-                    "Class-wide LO graph and analysis have been added.",
-                    "Assessment contribution and student drill-down can be added next."
+                    "Course LO report has been enhanced with class insights.",
+                    "Strongest/weakest LOs, at-risk students, and grading progress are now included."
                 }
             };
 
