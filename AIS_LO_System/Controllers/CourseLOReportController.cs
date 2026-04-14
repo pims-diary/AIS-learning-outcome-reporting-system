@@ -73,15 +73,18 @@ namespace AIS_LO_System.Controllers
             var assignmentIds = rawAssignments.Select(a => a.Id).ToList();
 
             var mappings = await _context.CriterionLOMappings
-                .Include(m => m.RubricCriterion)
-                    .ThenInclude(c => c.Levels)
-                .Include(m => m.RubricCriterion)
-                    .ThenInclude(c => c.Rubric)
-                .Include(m => m.LearningOutcome)
-                .Where(m =>
-                    m.LearningOutcome.CourseCode == courseCode &&
-                    assignmentIds.Contains(m.RubricCriterion.Rubric.AssignmentId))
-                .ToListAsync();
+    .Include(m => m.RubricCriterion)
+        .ThenInclude(c => c.Levels)
+    .Include(m => m.RubricCriterion)
+        .ThenInclude(c => c.Rubric)
+    .Include(m => m.LearningOutcome)
+    .Where(m =>
+        m.LearningOutcome != null &&
+        m.RubricCriterion != null &&
+        m.RubricCriterion.Rubric != null &&
+        m.LearningOutcome.CourseCode == courseCode &&
+        assignmentIds.Contains(m.RubricCriterion.Rubric.AssignmentId))
+    .ToListAsync();
 
             var allSavedMarks = await _context.StudentCriterionMarks
                 .Where(x => assignmentIds.Contains(x.AssignmentId))
@@ -156,8 +159,15 @@ namespace AIS_LO_System.Controllers
 
                     foreach (var mapping in loMappings)
                     {
+                        var rubricAssignmentId = mapping.RubricCriterion?.Rubric?.AssignmentId;
+
+                        if (rubricAssignmentId == null)
+                        {
+                            continue;
+                        }
+
                         var saved = studentSavedMarks.FirstOrDefault(x =>
-                            x.AssignmentId == mapping.RubricCriterion.Rubric.AssignmentId &&
+                            x.AssignmentId == rubricAssignmentId.Value &&
                             x.RubricCriterionId == mapping.RubricCriterionId);
 
                         if (saved != null)
@@ -449,6 +459,275 @@ namespace AIS_LO_System.Controllers
                     "Course LO report has been enhanced with class insights.",
                     "Strongest/weakest LOs, at-risk students, and grading progress are now included."
                 }
+            };
+
+            return View(vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> AssignmentReport(
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester)
+        {
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c =>
+                    c.Code == courseCode &&
+                    c.Year == year &&
+                    c.Trimester == trimester);
+
+            if (course == null)
+            {
+                TempData["Error"] = "Course not found.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a =>
+                    a.Id == assignmentId &&
+                    a.CourseCode == courseCode &&
+                    a.Year == year &&
+                    a.Trimester == trimester);
+
+            if (assignment == null)
+            {
+                TempData["Error"] = "Assessment not found.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            var enrolledStudents = await _context.StudentCourseEnrolments
+                .Where(e => e.CourseId == course.Id)
+                .Include(e => e.Student)
+                .Select(e => e.Student)
+                .Distinct()
+                .OrderBy(s => s.StudentId)
+                .ToListAsync();
+
+            var markedStatuses = await _context.StudentAssessmentMarks
+                .Where(m =>
+                    m.CourseCode == courseCode &&
+                    m.AssessmentName == assignment.AssessmentName &&
+                    m.IsMarked)
+                .ToListAsync();
+
+            var markedStudentIds = markedStatuses
+                .Select(x => x.StudentRefId)
+                .Distinct()
+                .ToList();
+
+            var mappings = await _context.CriterionLOMappings
+                .Include(m => m.RubricCriterion)
+                    .ThenInclude(c => c.Levels)
+                .Include(m => m.RubricCriterion)
+                .Include(m => m.LearningOutcome)
+                .Where(m => m.RubricCriterion.Rubric.AssignmentId == assignmentId)
+                .ToListAsync();
+
+            var learningOutcomes = mappings
+                .Where(m => m.LearningOutcome != null)
+                .Select(m => m.LearningOutcome!)
+                .DistinctBy(lo => lo.Id)
+                .OrderBy(lo => lo.OrderNumber)
+                .ToList();
+
+            var savedMarks = await _context.StudentCriterionMarks
+                .Where(x => x.AssignmentId == assignmentId)
+                .ToListAsync();
+
+            var loAggregateRows = new List<(int LearningOutcomeId, decimal Percentage, string Status)>();
+            var assignmentLOPercentages = new List<(int StudentId, int LearningOutcomeId, decimal Percentage, string Status)>();
+            var studentResults = new List<CourseLOStudentResultItemViewModel>();
+
+            foreach (var student in enrolledStudents)
+            {
+                bool isMarked = markedStudentIds.Contains(student.Id);
+                var studentMarks = savedMarks
+                    .Where(x => x.StudentRefId == student.Id)
+                    .ToList();
+
+                int achievedCount = 0;
+                int notAchievedCount = 0;
+
+                foreach (var lo in learningOutcomes)
+                {
+                    if (!isMarked)
+                    {
+                        assignmentLOPercentages.Add((student.Id, lo.Id, 0, "Not Achieved"));
+                        notAchievedCount++;
+                        loAggregateRows.Add((lo.Id, 0, "Not Achieved"));
+                        continue;
+                    }
+
+                    var loMappings = mappings
+                        .Where(m => m.LearningOutcomeId == lo.Id)
+                        .ToList();
+
+                    decimal achievedScore = 0;
+                    decimal maxScore = 0;
+
+                    foreach (var mapping in loMappings)
+                    {
+                        var saved = studentMarks.FirstOrDefault(x => x.RubricCriterionId == mapping.RubricCriterionId);
+
+                        if (saved != null)
+                            achievedScore += saved.CalculatedScore;
+
+                        var maxLevel = mapping.RubricCriterion?.Levels?
+                            .OrderByDescending(l => l.Score)
+                            .FirstOrDefault();
+
+                        if (maxLevel != null)
+                            maxScore += maxLevel.Score * mapping.Weight;
+                    }
+
+                    var percentage = maxScore > 0
+                        ? Math.Round((achievedScore / maxScore) * 100, 2)
+                        : 0;
+
+                    var status = percentage >= 50 ? "Achieved" : "Not Achieved";
+
+                    if (status == "Achieved")
+                        achievedCount++;
+                    else
+                        notAchievedCount++;
+
+                    assignmentLOPercentages.Add((student.Id, lo.Id, percentage, status));
+                    loAggregateRows.Add((lo.Id, percentage, status));
+                }
+
+                studentResults.Add(new CourseLOStudentResultItemViewModel
+                {
+                    StudentInternalId = student.Id,
+                    StudentId = student.StudentId,
+                    StudentName = student.FullName,
+                    AchievedLOCount = achievedCount,
+                    NotAchievedLOCount = notAchievedCount
+                });
+            }
+
+            var loSummaries = learningOutcomes
+                .Select(lo =>
+                {
+                    var loRows = loAggregateRows
+                        .Where(x => x.LearningOutcomeId == lo.Id)
+                        .ToList();
+
+                    var averagePercentage = loRows.Any()
+                        ? Math.Round(loRows.Average(x => x.Percentage), 2)
+                        : 0;
+
+                    var achievedStudentsCount = loRows.Count(x => x.Status == "Achieved");
+                    var notAchievedStudentsCount = loRows.Count(x => x.Status == "Not Achieved");
+
+                    var status = averagePercentage >= 50 ? "Achieved" : "Not Achieved";
+
+                    return new CourseLOSummaryItemViewModel
+                    {
+                        LearningOutcomeId = lo.Id,
+                        Label = $"LO{lo.OrderNumber}",
+                        LearningOutcomeText = lo.LearningOutcomeText,
+                        AveragePercentage = averagePercentage,
+                        AchievedStudentsCount = achievedStudentsCount,
+                        NotAchievedStudentsCount = notAchievedStudentsCount,
+                        Status = status
+                    };
+                })
+                .ToList();
+
+            var loAnalyses = learningOutcomes
+                .Select(lo =>
+                {
+                    var summary = loSummaries.First(x => x.LearningOutcomeId == lo.Id);
+
+                    var breakdown = studentResults
+                        .Where(s => markedStudentIds.Contains(s.StudentInternalId))
+                        .Select(s =>
+                        {
+                            var row = assignmentLOPercentages.FirstOrDefault(x =>
+                                x.StudentId == s.StudentInternalId &&
+                                x.LearningOutcomeId == lo.Id);
+
+                            return $"{s.StudentName}: {row.Percentage:0.##}%";
+                        })
+                        .ToList();
+
+                    if (!breakdown.Any())
+                    {
+                        breakdown.Add("No students have been marked for this assessment yet.");
+                    }
+
+                    return new CourseLOAnalysisItemViewModel
+                    {
+                        LearningOutcomeId = lo.Id,
+                        Label = summary.Label,
+                        LearningOutcomeText = lo.LearningOutcomeText,
+                        AveragePercentage = summary.AveragePercentage,
+                        Status = summary.Status,
+                        AssessmentBreakdown = breakdown
+                    };
+                })
+                .ToList();
+
+            var strongestLOs = loSummaries
+                .OrderByDescending(x => x.AveragePercentage)
+                .Take(3)
+                .ToList();
+
+            var weakestLOs = loSummaries
+                .OrderBy(x => x.AveragePercentage)
+                .Take(3)
+                .ToList();
+
+            var loRecommendations = new Dictionary<string, string>();
+            foreach (var lo in loSummaries)
+            {
+                if (lo.AveragePercentage < 50)
+                {
+                    loRecommendations[lo.Label] = "Low class performance for this assessment. Review criterion mapping, assessment difficulty, or provide revision support.";
+                }
+                else if (lo.AveragePercentage < 70)
+                {
+                    loRecommendations[lo.Label] = "Moderate performance for this assessment. Some targeted reinforcement may help improve this LO.";
+                }
+                else
+                {
+                    loRecommendations[lo.Label] = "Strong class performance for this assessment LO.";
+                }
+            }
+
+            int atRiskThreshold = learningOutcomes.Count > 0
+                ? (int)System.Math.Ceiling(learningOutcomes.Count / 2.0)
+                : 0;
+
+            var atRiskStudents = studentResults
+                .Where(s => markedStudentIds.Contains(s.StudentInternalId))
+                .Where(s => s.NotAchievedLOCount >= atRiskThreshold && learningOutcomes.Count > 0)
+                .OrderByDescending(s => s.NotAchievedLOCount)
+                .ThenBy(s => s.StudentId)
+                .ToList();
+
+            var vm = new AssignmentClassLOReportViewModel
+            {
+                AssignmentId = assignmentId,
+                AssessmentName = assignment.AssessmentName,
+                CourseCode = courseCode,
+                CourseTitle = courseTitle,
+                Year = year,
+                Trimester = trimester,
+                TotalStudentsEnrolled = enrolledStudents.Count,
+                TotalMarkedStudents = markedStudentIds.Count,
+                TotalAchievedLOs = loSummaries.Count(x => x.Status == "Achieved"),
+                TotalNotAchievedLOs = loSummaries.Count(x => x.Status == "Not Achieved"),
+                LOSummaries = loSummaries,
+                LOAnalyses = loAnalyses,
+                AtRiskStudents = atRiskStudents,
+                StudentResults = studentResults.Where(s => markedStudentIds.Contains(s.StudentInternalId)).ToList(),
+                StrongestLOs = strongestLOs,
+                WeakestLOs = weakestLOs,
+                LORecommendations = loRecommendations
             };
 
             return View(vm);

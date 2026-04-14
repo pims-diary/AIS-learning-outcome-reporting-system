@@ -105,4 +105,41 @@ namespace AIS_LO_System.Models.Reports
         public List<string> Contributions { get; set; } = new();
         public List<string> ClassAchievements { get; set; } = new();
     }
+
+    // NEW: whole-class single-assignment report
+    public class AssignmentClassLOReportViewModel
+    {
+        public int AssignmentId { get; set; }
+        public string AssessmentName { get; set; } = string.Empty;
+
+        public string CourseCode { get; set; } = string.Empty;
+        public string CourseTitle { get; set; } = string.Empty;
+
+        public int Year { get; set; }
+        public int Trimester { get; set; }
+
+        public int TotalStudentsEnrolled { get; set; }
+        public int TotalMarkedStudents { get; set; }
+
+        public int TotalAchievedLOs { get; set; }
+        public int TotalNotAchievedLOs { get; set; }
+
+        public List<CourseLOSummaryItemViewModel> LOSummaries { get; set; } = new();
+        public List<CourseLOAnalysisItemViewModel> LOAnalyses { get; set; } = new();
+        public List<CourseLOStudentResultItemViewModel> AtRiskStudents { get; set; } = new();
+        public List<CourseLOStudentResultItemViewModel> StudentResults { get; set; } = new();
+        public List<CourseLOSummaryItemViewModel> StrongestLOs { get; set; } = new();
+        public List<CourseLOSummaryItemViewModel> WeakestLOs { get; set; } = new();
+
+        public Dictionary<string, string> LORecommendations { get; set; } = new();
+
+        public string TrimesterLabel =>
+            Trimester switch
+            {
+                1 => $"{Year} - Trimester 1",
+                2 => $"{Year} - Trimester 2",
+                3 => $"{Year} - Trimester 3",
+                _ => Year.ToString()
+            };
+    }
 }
