@@ -1,0 +1,625 @@
+﻿@model AIS_LO_System.Models.Reports.CourseLOReportViewModel
+
+@{
+    ViewData["Title"] = "Course LO Report";
+    Layout = "_DashboardLayout";
+}
+
+<div class="container mt-4">
+
+    <div class="breadcrumb mb-3">
+        <a class="crumb-link"
+           asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
+            @Model.CourseCode @Model.CourseTitle
+        </a>
+
+        <span>/</span>
+        <span class="crumb-link">Reports</span>
+        <span>/</span>
+        <span>Course LO Report</span>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">Course LO Report</h2>
+
+        <a asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
+           class="btn btn-outline-secondary">
+            ← Go Back
+        </a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">@Model.CourseCode @Model.CourseTitle</h4>
+
+            <div class="mb-2">
+                <strong>Semester:</strong> @Model.TrimesterLabel
+            </div>
+            <div class="mb-2">
+                <strong>Students Enrolled:</strong> @Model.TotalStudentsEnrolled
+            </div>
+            <div class="mb-2">
+                <strong>Total Assessments:</strong> @Model.TotalAssessments
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3 mb-md-0">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4 class="fw-bold mb-3">Top Performing LOs</h4>
+
+                    @if (Model.StrongestLOs.Any())
+                    {
+                        @foreach (var lo in Model.StrongestLOs)
+                        {
+                            <div class="summary-lo-item good-item">
+                                <div class="fw-semibold">@lo.Label</div>
+                                <div>@lo.AveragePercentage.ToString("0.##")%</div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">No LO data available yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4 class="fw-bold mb-3">Weakest LOs</h4>
+
+                    @if (Model.WeakestLOs.Any())
+                    {
+                        @foreach (var lo in Model.WeakestLOs)
+                        {
+                            <div class="summary-lo-item weak-item">
+                                <div class="fw-semibold">@lo.Label</div>
+                                <div>@lo.AveragePercentage.ToString("0.##")%</div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted mb-0">No LO data available yet.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">At-Risk Students</h4>
+
+            @if (Model.AtRiskStudents.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Student Name</th>
+                                <th>Achieved LOs</th>
+                                <th>Not Achieved LOs</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var student in Model.AtRiskStudents)
+                            {
+                                <tr>
+                                    <td>@student.StudentId</td>
+                                    <td>@student.StudentName</td>
+                                    <td>@student.AchievedLOCount</td>
+                                    <td>@student.NotAchievedLOCount</td>
+                                    <td>
+                                        <span class="badge bg-danger">At Risk</span>
+                                    </td>
+                                    <td>
+                                        <a asp-controller="StudentLOReport"
+                                           asp-action="Overview"
+                                           asp-route-studentId="@student.StudentInternalId"
+                                           asp-route-courseCode="@Model.CourseCode"
+                                           asp-route-courseTitle="@Model.CourseTitle"
+                                           asp-route-year="@Model.Year"
+                                           asp-route-trimester="@Model.Trimester"
+                                           class="btn btn-sm btn-danger">
+                                            Report
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No at-risk students identified at this stage.</p>
+            }
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">Class LO Achievement Overview</h4>
+
+            @if (Model.LOSummaries.Any())
+            {
+                <div class="chart-box">
+                    <div class="y-axis-label top">100</div>
+                    <div class="chart-grid">
+                        <div class="grid-line line-80"></div>
+                        <div class="grid-line line-60"></div>
+                        <div class="grid-line line-40"></div>
+                        <div class="grid-line line-20"></div>
+
+                        <div class="bars-wrap">
+                            @foreach (var lo in Model.LOSummaries)
+                            {
+                                var barClass = lo.Status == "Achieved"
+                                ? "bar-achieved"
+                                : "bar-not-achieved";
+
+                                <div class="bar-item">
+                                    <div class="bar-percent">@lo.AveragePercentage.ToString("0.##")%</div>
+                                    <div class="bar @barClass" style="height:@lo.AveragePercentage%;"></div>
+                                    <div class="bar-label">@lo.Label</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-info-box">
+                    <div class="chart-info-status">
+                        @Model.TotalAchievedLOs of @Model.LOSummaries.Count Learning Outcomes Achieved by Class
+                    </div>
+
+                    <div class="legend-inline">
+                        <div class="legend-item">
+                            <span class="legend-box achieved-box"></span> Achieved
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-box not-box"></span> Not Achieved
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No class LO data is available yet.</p>
+            }
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">Assessment Progress</h4>
+
+            @if (Model.Assessments.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Assessment</th>
+                                <th>Weight</th>
+                                <th>Graded Students</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var assessment in Model.Assessments)
+                            {
+                                <tr>
+                                    <td>@assessment.AssessmentName</td>
+                                    <td>
+                                        @(assessment.MarksPercentage > 0
+                                                                        ? assessment.MarksPercentage + "%"
+                                                                        : "Not Set")
+                            </td>
+                            <td>@assessment.GradedStudentsCount / @Model.TotalStudentsEnrolled</td>
+                            <td>
+                                @if (assessment.StatusText == "Fully Graded")
+                                        {
+                                            <span class="badge bg-success">@assessment.StatusText</span>
+                                        }
+                                        else if (assessment.StatusText == "Partially Graded")
+                                        {
+                                            <span class="badge bg-warning text-dark">@assessment.StatusText</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@assessment.StatusText</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No assessments found for this course yet.</p>
+            }
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">Learning Outcome Analysis</h4>
+
+            @if (!Model.LOAnalyses.Any())
+            {
+                <p class="text-muted mb-0">No class LO analysis is available yet.</p>
+            }
+            else
+            {
+                @foreach (var item in Model.LOAnalyses)
+                {
+                    <div class="analysis-block">
+                        <div class="analysis-title">
+                            @item.Label - @item.AveragePercentage.ToString("0.##")% (@item.Status)
+                        </div>
+
+                        <div class="analysis-text mb-2">
+                            <strong>@item.Label</strong>: @item.LearningOutcomeText
+                        </div>
+
+                        @foreach (var line in item.AssessmentBreakdown)
+                        {
+                            <div class="analysis-text">@line</div>
+                        }
+
+                        @if (Model.LORecommendations.ContainsKey(item.Label))
+                        {
+                            <div class="recommendation-box">
+                                @Model.LORecommendations[item.Label]
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">Assessment Contribution to Course Learning Outcomes</h4>
+
+            @if (!Model.Contributions.Any())
+            {
+                <p class="text-muted mb-0">No contribution data is available yet.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>Assessment</th>
+                                <th>Status</th>
+                                <th>Total Contribution to LO(s)</th>
+                                <th>Class Achievement</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Contributions)
+                            {
+                                <tr>
+                                    <td>@item.AssessmentName</td>
+                                    <td>
+                                        @if (item.StatusText == "Fully Graded")
+                                        {
+                                            <span class="badge bg-success">@item.StatusText</span>
+                                        }
+                                        else if (item.StatusText == "Partially Graded")
+                                        {
+                                            <span class="badge bg-warning text-dark">@item.StatusText</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@item.StatusText</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @foreach (var contribution in item.Contributions)
+                                        {
+                                            <div>@contribution</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        @foreach (var achievement in item.ClassAchievements)
+                                        {
+                                            <div>@achievement</div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a asp-controller="CourseLOReport"
+                                           asp-action="AssignmentReport"
+                                           asp-route-assignmentId="@item.AssignmentId"
+                                           asp-route-courseCode="@Model.CourseCode"
+                                           asp-route-courseTitle="@Model.CourseTitle"
+                                           asp-route-assessmentName="@item.AssessmentName"
+                                           asp-route-year="@Model.Year"
+                                           asp-route-trimester="@Model.Trimester"
+                                           class="btn btn-sm btn-danger">
+                                            Report
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h4 class="fw-bold mb-3">Class LO Summary</h4>
+
+            @if (Model.LOSummaries.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>LO</th>
+                                <th>Learning Outcome</th>
+                                <th>Average Class Achievement (%)</th>
+                                <th>Students Achieved</th>
+                                <th>Students Not Achieved</th>
+                                <th>Class Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var lo in Model.LOSummaries)
+                            {
+                                <tr>
+                                    <td>@lo.Label</td>
+                                    <td>@lo.LearningOutcomeText</td>
+                                    <td>@lo.AveragePercentage.ToString("0.##")%</td>
+                                    <td>@lo.AchievedStudentsCount</td>
+                                    <td>@lo.NotAchievedStudentsCount</td>
+                                    <td>
+                                        @if (lo.Status == "Achieved")
+                                        {
+                                            <span class="badge bg-success">Achieved</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Not Achieved</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No class LO data is available yet.</p>
+            }
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-center mb-4">
+        <a asp-controller="CourseLOReport"
+           asp-action="DownloadCourseLOReportPdf"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
+           class="btn btn-danger">
+            Download PDF
+        </a>
+    </div>
+
+</div>
+
+<style>
+    .summary-lo-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+    }
+
+    .good-item {
+        background: #ecfdf5;
+        border: 1px solid #d1fae5;
+    }
+
+    .weak-item {
+        background: #fef2f2;
+        border: 1px solid #fee2e2;
+    }
+
+    .chart-box {
+        position: relative;
+        padding-left: 34px;
+        padding-top: 18px;
+    }
+
+    .y-axis-label.top {
+        position: absolute;
+        left: 0;
+        top: 0;
+        font-size: 0.95rem;
+        color: #c62828;
+        font-weight: 700;
+    }
+
+    .chart-grid {
+        position: relative;
+        height: 340px;
+        border-left: 2px solid #555;
+        border-bottom: 2px solid #555;
+        margin-top: 10px;
+    }
+
+    .grid-line {
+        position: absolute;
+        left: 0;
+        right: 0;
+        border-top: 1px solid #bbb;
+    }
+
+    .line-80 {
+        top: 20%;
+    }
+
+    .line-60 {
+        top: 40%;
+    }
+
+    .line-40 {
+        top: 60%;
+    }
+
+    .line-20 {
+        top: 80%;
+    }
+
+    .bars-wrap {
+        position: absolute;
+        left: 30px;
+        right: 30px;
+        bottom: 0;
+        top: 0;
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-end;
+        padding-bottom: 36px;
+    }
+
+    .bar-item {
+        width: 90px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .bar {
+        width: 40px;
+        min-height: 2px;
+        border: 1px solid #555;
+    }
+
+    .bar-percent {
+        font-size: 1rem;
+        color: #c62828;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .bar-label {
+        margin-top: 8px;
+        font-size: 0.95rem;
+        color: #c62828;
+        font-weight: 600;
+    }
+
+    .bar-achieved {
+        background: green;
+    }
+
+    .bar-not-achieved {
+        background: red;
+    }
+
+    .chart-info-box {
+        margin-top: 16px;
+        padding: 12px 14px;
+        background: #fafafa;
+        border: 1px solid #e1e1e1;
+        border-radius: 6px;
+        font-size: 0.92rem;
+    }
+
+    .chart-info-status {
+        font-weight: 700;
+        color: #b32017;
+        margin-bottom: 8px;
+    }
+
+    .legend-inline {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        font-size: 0.9rem;
+    }
+
+    .legend-box {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        margin-right: 8px;
+    }
+
+    .achieved-box {
+        background: green;
+    }
+
+    .not-box {
+        background: red;
+    }
+
+    .analysis-block {
+        padding: 12px 0;
+        border-bottom: 1px solid #ececec;
+    }
+
+        .analysis-block:last-child {
+            border-bottom: none;
+        }
+
+    .analysis-title {
+        font-weight: 700;
+        color: #b32017;
+        margin-bottom: 6px;
+    }
+
+    .analysis-text {
+        font-size: 0.95rem;
+        color: #333;
+    }
+
+    .recommendation-box {
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: #fff8e1;
+        border: 1px solid #ffe082;
+        border-radius: 8px;
+        font-size: 0.92rem;
+        color: #7a5f00;
+    }
+</style>

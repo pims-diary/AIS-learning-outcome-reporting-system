@@ -1,3 +1,4 @@
+using QuestPDF.Infrastructure;
 using AIS_LO_System.Data;
 using AIS_LO_System.Models;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -22,6 +23,8 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
     });
 
 builder.Services.AddAuthorization();
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 var app = builder.Build();
 

@@ -5,6 +5,9 @@ using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 
 namespace AIS_LO_System.Controllers
 {
@@ -79,7 +82,6 @@ namespace AIS_LO_System.Controllers
                 Students = students
             };
 
-            // Auto-submit report to moderator when lecturer opens it (not when moderator views it)
             int.TryParse(User.FindFirst("UserId")?.Value, out int reportUserId);
             if (!moderatorView && course.ModeratorId != null && reportUserId > 0)
             {
@@ -104,6 +106,171 @@ namespace AIS_LO_System.Controllers
             int year,
             int trimester)
         {
+            var vm = await BuildStudentCourseOverviewViewModel(
+                studentId, courseCode, courseTitle, year, trimester);
+
+            if (vm == null)
+            {
+                TempData["Error"] = "Unable to load the student course LO report.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            return View(vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DownloadStudentCourseReportPdf(
+            int studentId,
+            string courseCode,
+            string courseTitle,
+            int year,
+            int trimester)
+        {
+            var vm = await BuildStudentCourseOverviewViewModel(
+                studentId, courseCode, courseTitle, year, trimester);
+
+            if (vm == null)
+                return NotFound();
+
+            var pdfBytes = Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(30);
+                    page.DefaultTextStyle(x => x.FontSize(10));
+
+                    page.Header().Column(col =>
+                    {
+                        col.Item().Text("Student Course LO Report")
+                            .FontSize(18).Bold();
+
+                        col.Item().Text($"{vm.StudentName} ({vm.StudentId})");
+                        col.Item().Text($"{vm.CourseCode} - {vm.CourseTitle}");
+                        col.Item().Text($"{vm.TrimesterLabel}");
+                    });
+
+                    page.Content().Column(col =>
+                    {
+                        col.Spacing(12);
+
+                        col.Item().Text(
+                            $"{vm.AchievedCount} of {vm.TotalLOCount} Learning Outcomes Achieved")
+                            .Bold();
+
+                        col.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(60);
+                                columns.RelativeColumn(3);
+                                columns.ConstantColumn(80);
+                                columns.ConstantColumn(80);
+                                columns.ConstantColumn(80);
+                                columns.ConstantColumn(80);
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().Element(CellStyle).Text("LO").Bold();
+                                header.Cell().Element(CellStyle).Text("Outcome").Bold();
+                                header.Cell().Element(CellStyle).Text("Score").Bold();
+                                header.Cell().Element(CellStyle).Text("Max").Bold();
+                                header.Cell().Element(CellStyle).Text("%").Bold();
+                                header.Cell().Element(CellStyle).Text("Status").Bold();
+                            });
+
+                            foreach (var lo in vm.LOSummaries)
+                            {
+                                table.Cell().Element(CellStyle).Text(lo.Label);
+                                table.Cell().Element(CellStyle).Text(lo.LearningOutcomeText);
+                                table.Cell().Element(CellStyle).Text(lo.AchievedScore.ToString("0.00"));
+                                table.Cell().Element(CellStyle).Text(lo.MaxScore.ToString("0.00"));
+                                table.Cell().Element(CellStyle).Text(lo.Percentage.ToString("0.##") + "%");
+                                table.Cell().Element(CellStyle).Text(lo.Status);
+                            }
+                        });
+
+                        col.Item().Text("Learning Outcome Analysis")
+                            .Bold().FontSize(12);
+
+                        foreach (var item in vm.LOAnalyses)
+                        {
+                            col.Item().Text($"{item.Label} - {item.Percentage:0.##}% ({item.Status})")
+                                .Bold();
+
+                            col.Item().Text(item.LearningOutcomeText);
+
+                            foreach (var line in item.AssessmentBreakdown)
+                            {
+                                col.Item().Text("- " + line);
+                            }
+                        }
+
+                        col.Item().Text("Assessment Contribution to Course Learning Outcomes")
+                            .Bold().FontSize(12);
+
+                        col.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(2);
+                                columns.ConstantColumn(80);
+                                columns.RelativeColumn(3);
+                                columns.RelativeColumn(3);
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().Element(CellStyle).Text("Assessment").Bold();
+                                header.Cell().Element(CellStyle).Text("Status").Bold();
+                                header.Cell().Element(CellStyle).Text("Contribution").Bold();
+                                header.Cell().Element(CellStyle).Text("Achievement").Bold();
+                            });
+
+                            foreach (var item in vm.Contributions)
+                            {
+                                table.Cell().Element(CellStyle).Text(item.AssessmentName);
+                                table.Cell().Element(CellStyle).Text(item.StatusText);
+                                table.Cell().Element(CellStyle).Column(col =>
+                                {
+                                    foreach (var c in item.Contributions)
+                                        col.Item().Text(c);
+                                });
+                                table.Cell().Element(CellStyle).Column(col =>
+                                {
+                                    foreach (var a in item.Achievements)
+                                        col.Item().Text(a);
+                                });
+                            }
+                        });
+                    });
+
+                    page.Footer()
+                        .AlignCenter()
+                        .Text("Generated from AIS LO System");
+                });
+            }).GeneratePdf();
+
+            var fileName = $"{vm.StudentId}_{vm.CourseCode}_Course_LO_Report.pdf";
+            return File(pdfBytes, "application/pdf", fileName);
+
+            static IContainer CellStyle(IContainer container)
+            {
+                return container
+                    .Border(1)
+                    .BorderColor(Colors.Grey.Lighten2)
+                    .Padding(6);
+            }
+        }
+
+        private async Task<StudentCourseLOOverviewViewModel?> BuildStudentCourseOverviewViewModel(
+            int studentId,
+            string courseCode,
+            string courseTitle,
+            int year,
+            int trimester)
+        {
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>
                     c.Code == courseCode &&
@@ -111,28 +278,19 @@ namespace AIS_LO_System.Controllers
                     c.Trimester == trimester);
 
             if (course == null)
-            {
-                TempData["Error"] = "Course not found.";
-                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
-            }
+                return null;
 
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Id == studentId);
 
             if (student == null)
-            {
-                TempData["Error"] = "Student not found.";
-                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
-            }
+                return null;
 
             var isEnrolled = await _context.StudentCourseEnrolments
                 .AnyAsync(e => e.CourseId == course.Id && e.StudentId == studentId);
 
             if (!isEnrolled)
-            {
-                TempData["Error"] = "This student is not enrolled in the selected course.";
-                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
-            }
+                return null;
 
             var assignments = await _context.Assignments
                 .Where(a =>
@@ -143,7 +301,7 @@ namespace AIS_LO_System.Controllers
                 .ToListAsync();
 
             var assessmentStatuses = new List<StudentAssessmentStatusItemViewModel>();
-            var gradedAssignments = new List<AIS_LO_System.Models.Assignment>();
+            var gradedAssignments = new List<Assignment>();
 
             foreach (var assignment in assignments)
             {
@@ -178,6 +336,9 @@ namespace AIS_LO_System.Controllers
                     .ThenInclude(c => c.Rubric)
                 .Include(m => m.LearningOutcome)
                 .Where(m =>
+                    m.LearningOutcome != null &&
+                    m.RubricCriterion != null &&
+                    m.RubricCriterion.Rubric != null &&
                     m.LearningOutcome.CourseCode == courseCode &&
                     gradedAssignmentIds.Contains(m.RubricCriterion.Rubric.AssignmentId))
                 .ToListAsync();
@@ -197,8 +358,12 @@ namespace AIS_LO_System.Controllers
 
                 foreach (var mapping in loMappings)
                 {
+                    var rubricAssignmentId = mapping.RubricCriterion?.Rubric?.AssignmentId;
+                    if (rubricAssignmentId == null)
+                        continue;
+
                     var saved = savedMarks.FirstOrDefault(x =>
-                        x.AssignmentId == mapping.RubricCriterion.Rubric.AssignmentId &&
+                        x.AssignmentId == rubricAssignmentId.Value &&
                         x.RubricCriterionId == mapping.RubricCriterionId);
 
                     if (saved != null)
@@ -250,7 +415,7 @@ namespace AIS_LO_System.Controllers
                     var assignmentMappings = mappings
                         .Where(m =>
                             m.LearningOutcomeId == lo.LearningOutcomeId &&
-                            m.RubricCriterion.Rubric.AssignmentId == assignment.Id)
+                            m.RubricCriterion?.Rubric?.AssignmentId == assignment.Id)
                         .ToList();
 
                     if (!assignmentMappings.Any())
@@ -323,7 +488,7 @@ namespace AIS_LO_System.Controllers
                         var mappingsForLO = mappings
                             .Where(m =>
                                 m.LearningOutcomeId == lo.LearningOutcomeId &&
-                                m.RubricCriterion.Rubric.AssignmentId == assignment.Id)
+                                m.RubricCriterion?.Rubric?.AssignmentId == assignment.Id)
                             .ToList();
 
                         if (!mappingsForLO.Any())
@@ -386,7 +551,7 @@ namespace AIS_LO_System.Controllers
                 TotalLOCount = loSummaries.Count
             };
 
-            return View(vm);
+            return vm;
         }
     }
 }
