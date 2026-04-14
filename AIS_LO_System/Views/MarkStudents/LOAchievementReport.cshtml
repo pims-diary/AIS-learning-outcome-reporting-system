@@ -190,7 +190,18 @@
         }
 
         <div class="report-actions mt-4">
-            <button type="button" class="btn report-btn">Download PDF</button>
+            <a asp-controller="MarkStudents"
+               asp-action="DownloadLOAchievementReportPdf"
+               asp-route-studentId="@Model.StudentInternalId"
+               asp-route-assignmentId="@Model.AssignmentId"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               class="btn report-btn">
+                Download PDF
+            </a>
 
             <a asp-controller="MarkStudents"
                asp-action="MarkStudent"

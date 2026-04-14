@@ -50,6 +50,8 @@
            asp-route-trimester="@Model.Trimester"
            class="btn btn-outline-secondary">
             ← Go Back
+
+            
         </a>
     </div>
 
@@ -279,8 +281,25 @@
                 </p>
             }
         </div>
+        
     </div>
+
+    <div class="d-flex justify-content-center mb-4">
+        <a asp-controller="StudentLOReport"
+           asp-action="DownloadStudentCourseReportPdf"
+           asp-route-studentId="@Model.StudentInternalId"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
+           class="btn btn-danger">
+            Download PDF
+        </a>
+    </div>
+
 </div>
+
+
 
 <style>
     .chart-box {

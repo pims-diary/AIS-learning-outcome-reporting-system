@@ -1,10 +1,11 @@
 ﻿using AIS_LO_System.Data;
-using AIS_LO_System.Models;
 using AIS_LO_System.Models.MarkStudents;
-using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 
 namespace AIS_LO_System.Controllers
 {
@@ -12,12 +13,10 @@ namespace AIS_LO_System.Controllers
     public class MarkStudentsController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly SubmissionService _submissions;
 
-        public MarkStudentsController(ApplicationDbContext context, SubmissionService submissions)
+        public MarkStudentsController(ApplicationDbContext context)
         {
             _context = context;
-            _submissions = submissions;
         }
 
         [HttpGet]
@@ -30,7 +29,6 @@ namespace AIS_LO_System.Controllers
             int trimester,
             string? searchTerm)
         {
-            // Find the selected course first
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>
                     c.Code == courseCode &&
@@ -43,11 +41,14 @@ namespace AIS_LO_System.Controllers
                 return RedirectToAction("Index", "LecturerDashboard", new { year, trimester });
             }
 
-            // Fetch only students enrolled in this course
-            var query = _context.StudentCourseEnrolments
+            var enrolledStudentIds = await _context.StudentCourseEnrolments
                 .Where(e => e.CourseId == course.Id)
-                .Include(e => e.Student)
-                .Select(e => e.Student)
+                .Select(e => e.StudentId)
+                .Distinct()
+                .ToListAsync();
+
+            var query = _context.Students
+                .Where(s => enrolledStudentIds.Contains(s.Id))
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(searchTerm))
@@ -60,7 +61,6 @@ namespace AIS_LO_System.Controllers
             }
 
             var students = await query
-                .Distinct()
                 .Select(s => new StudentListItemViewModel
                 {
                     InternalId = s.Id,
@@ -74,6 +74,7 @@ namespace AIS_LO_System.Controllers
                              ? "Marked"
                              : "Not Marked"
                 })
+                .OrderBy(s => s.StudentId)
                 .ToListAsync();
 
             var vm = new MarkStudentsViewModel
@@ -92,8 +93,6 @@ namespace AIS_LO_System.Controllers
             ViewBag.AssessmentName = assessmentName;
             ViewBag.Year = year;
             ViewBag.Trimester = trimester;
-            ViewBag.Submission = await _submissions.GetLatestAsync(
-                courseCode, year, trimester, SubmissionItemType.StudentMarks, assignmentId);
 
             return View(vm);
         }
@@ -153,22 +152,15 @@ namespace AIS_LO_System.Controllers
                         Weight = c.LOMappings != null && c.LOMappings.Any()
                             ? c.LOMappings.First().Weight
                             : 0,
-
-                        // Show LO numbers only
                         LOs = c.LOMappings != null && c.LOMappings.Any()
                             ? string.Join(", ", c.LOMappings
                                 .Where(m => m.LearningOutcome != null)
-                                .Select(m => m.LearningOutcome.OrderNumber)
-                                .Distinct()
-                                .OrderBy(x => x))
-                            : "-",
-
+                                .Select(m => m.LearningOutcome.OrderNumber))
+                            : "Not Mapped",
                         AvailableLevels = c.Levels
                             .OrderByDescending(l => l.Score)
                             .Select(l => l.Score)
                             .ToList(),
-
-                        // Fetch full descriptions from rubric levels
                         LevelDescriptions = c.Levels
                             .OrderByDescending(l => l.Score)
                             .Select(l => new RubricLevelDisplayViewModel
@@ -178,7 +170,6 @@ namespace AIS_LO_System.Controllers
                                 Description = l.Description
                             })
                             .ToList(),
-
                         SelectedLevel = saved?.SelectedLevel,
                         CalculatedMarks = saved?.CalculatedScore ?? 0
                     };
@@ -223,28 +214,168 @@ namespace AIS_LO_System.Controllers
             int year,
             int trimester)
         {
+            var vm = await BuildLOAchievementReportViewModel(
+                studentId,
+                assignmentId,
+                courseCode,
+                courseTitle,
+                assessmentName,
+                year,
+                trimester);
+
+            if (vm == null)
+                return NotFound();
+
+            return View(vm);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DownloadLOAchievementReportPdf(
+            int studentId,
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester)
+        {
+            var vm = await BuildLOAchievementReportViewModel(
+                studentId,
+                assignmentId,
+                courseCode,
+                courseTitle,
+                assessmentName,
+                year,
+                trimester);
+
+            if (vm == null)
+                return NotFound();
+
+            var pdfBytes = Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(30);
+                    page.DefaultTextStyle(x => x.FontSize(10));
+
+                    page.Header().Column(column =>
+                    {
+                        column.Item().Text($"LO Achievement Report - {vm.StudentName}")
+                            .FontSize(18).Bold();
+                        column.Item().Text($"{vm.CourseCode} {vm.CourseTitle}");
+                        column.Item().Text($"Assessment: {vm.AssessmentName}");
+                        column.Item().Text($"Student ID: {vm.StudentId}");
+                        column.Item().Text($"Semester: {vm.Year} - Trimester {vm.Trimester}");
+                    });
+
+                    page.Content().Column(column =>
+                    {
+                        column.Spacing(14);
+
+                        column.Item().Text($"Overall Result: {vm.OverallStatusText}")
+                            .Bold().FontSize(12);
+
+                        column.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.ConstantColumn(70);
+                                columns.RelativeColumn(3);
+                                columns.ConstantColumn(70);
+                                columns.ConstantColumn(70);
+                                columns.ConstantColumn(70);
+                                columns.ConstantColumn(80);
+                            });
+
+                            table.Header(header =>
+                            {
+                                header.Cell().Element(CellStyle).Text("LO").Bold();
+                                header.Cell().Element(CellStyle).Text("Learning Outcome").Bold();
+                                header.Cell().Element(CellStyle).Text("Achieved").Bold();
+                                header.Cell().Element(CellStyle).Text("Maximum").Bold();
+                                header.Cell().Element(CellStyle).Text("%").Bold();
+                                header.Cell().Element(CellStyle).Text("Status").Bold();
+                            });
+
+                            foreach (var lo in vm.LearningOutcomes)
+                            {
+                                table.Cell().Element(CellStyle).Text(lo.Label);
+                                table.Cell().Element(CellStyle).Text(lo.LearningOutcomeText);
+                                table.Cell().Element(CellStyle).Text(lo.AchievedScore.ToString("0.00"));
+                                table.Cell().Element(CellStyle).Text(lo.MaxScore.ToString("0.00"));
+                                table.Cell().Element(CellStyle).Text(lo.Percentage.ToString("0.##") + "%");
+                                table.Cell().Element(CellStyle).Text(lo.Status);
+                            }
+                        });
+
+                        foreach (var lo in vm.LearningOutcomes)
+                        {
+                            column.Item().PaddingTop(6).Column(loColumn =>
+                            {
+                                loColumn.Item().Text($"{lo.Label} - {lo.Percentage:0.##}% Achieved")
+                                    .Bold().FontSize(12);
+
+                                loColumn.Item().Text(lo.LearningOutcomeText);
+
+                                if (lo.Insights.Any())
+                                {
+                                    foreach (var insight in lo.Insights)
+                                    {
+                                        loColumn.Item().Text(
+                                            $"- {insight.CriterionTitle}: Rubric Score {insight.RubricScore} ({insight.RubricLabel})");
+                                    }
+                                }
+                                else
+                                {
+                                    loColumn.Item().Text("No significant weaknesses identified.");
+                                }
+                            });
+                        }
+                    });
+
+                    page.Footer()
+                        .AlignCenter()
+                        .Text(text =>
+                        {
+                            text.Span("Generated from AIS LO System");
+                        });
+                });
+            }).GeneratePdf();
+
+            var fileName = $"{vm.StudentId}_{vm.AssessmentName.Replace(" ", "_")}_LO_Report.pdf";
+
+            return File(pdfBytes, "application/pdf", fileName);
+
+            static IContainer CellStyle(IContainer container)
+            {
+                return container
+                    .Border(1)
+                    .BorderColor(Colors.Grey.Lighten2)
+                    .Padding(6);
+            }
+        }
+
+        private async Task<LOAchievementReportViewModel?> BuildLOAchievementReportViewModel(
+            int studentId,
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester)
+        {
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Id == studentId);
 
             if (student == null)
-                return NotFound();
+                return null;
 
             var assignment = await _context.Assignments
                 .FirstOrDefaultAsync(a => a.Id == assignmentId);
 
-            var selectedLOIds = new List<int>();
-
-            if (!string.IsNullOrWhiteSpace(assignment?.SelectedLearningOutcomeIds))
-            {
-                selectedLOIds = assignment.SelectedLearningOutcomeIds
-                    .Split(',')
-                    .Where(x => int.TryParse(x, out _))
-                    .Select(int.Parse)
-                    .ToList();
-            }
-
             var learningOutcomes = await _context.LearningOutcomes
-                .Where(lo => lo.CourseCode == courseCode && selectedLOIds.Contains(lo.Id))
+                .Where(lo => lo.CourseCode == courseCode)
                 .OrderBy(lo => lo.OrderNumber)
                 .ToListAsync();
 
@@ -252,81 +383,98 @@ namespace AIS_LO_System.Controllers
                 .Include(m => m.RubricCriterion)
                     .ThenInclude(c => c.Levels)
                 .Include(m => m.LearningOutcome)
-                .Where(m => m.LearningOutcome.CourseCode == courseCode)
+                .Where(m =>
+                    m.LearningOutcome != null &&
+                    m.LearningOutcome.CourseCode == courseCode &&
+                    m.RubricCriterion != null &&
+                    m.RubricCriterion.RubricId != 0)
                 .ToListAsync();
+
+            var rubric = await _context.Rubrics
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.Levels)
+                .FirstOrDefaultAsync(r => r.AssignmentId == assignmentId);
+
+            if (rubric == null)
+                return null;
+
+            var rubricCriterionIds = rubric.Criteria.Select(c => c.Id).ToList();
+
+            var filteredMappings = mappings
+                .Where(m => rubricCriterionIds.Contains(m.RubricCriterionId))
+                .ToList();
 
             var savedMarks = await _context.StudentCriterionMarks
                 .Where(x => x.AssignmentId == assignmentId && x.StudentRefId == studentId)
                 .ToListAsync();
 
-            var loItems = learningOutcomes.Select(lo =>
-            {
-                var loMappings = mappings
-                    .Where(m => m.LearningOutcomeId == lo.Id)
-                    .ToList();
-
-                decimal achievedScore = 0;
-                decimal maxScore = 0;
-
-                var insights = new List<LOInsightItemViewModel>();
-
-                foreach (var mapping in loMappings)
+            var loItems = learningOutcomes
+                .Where(lo => filteredMappings.Any(m => m.LearningOutcomeId == lo.Id))
+                .Select(lo =>
                 {
-                    var saved = savedMarks.FirstOrDefault(x => x.RubricCriterionId == mapping.RubricCriterionId);
+                    var loMappings = filteredMappings
+                        .Where(m => m.LearningOutcomeId == lo.Id)
+                        .ToList();
 
-                    if (saved != null)
+                    decimal achievedScore = 0;
+                    decimal maxScore = 0;
+
+                    var insights = new List<LOInsightItemViewModel>();
+
+                    foreach (var mapping in loMappings)
                     {
-                        achievedScore += saved.CalculatedScore;
-                    }
+                        var saved = savedMarks.FirstOrDefault(x => x.RubricCriterionId == mapping.RubricCriterionId);
 
-                    var maxLevel = mapping.RubricCriterion?.Levels?
-                        .OrderByDescending(l => l.Score)
-                        .FirstOrDefault();
+                        if (saved != null)
+                            achievedScore += saved.CalculatedScore;
 
-                    if (maxLevel != null)
-                    {
-                        maxScore += maxLevel.Score * mapping.Weight;
-                    }
+                        var maxLevel = mapping.RubricCriterion?.Levels?
+                            .OrderByDescending(l => l.Score)
+                            .FirstOrDefault();
 
-                    if (saved != null && saved.SelectedLevel <= 2)
-                    {
-                        string rubricLabel = saved.SelectedLevel switch
+                        if (maxLevel != null)
+                            maxScore += maxLevel.Score * mapping.Weight;
+
+                        if (saved != null && saved.SelectedLevel <= 2)
                         {
-                            4 => "Excellent",
-                            3 => "Good",
-                            2 => "Satisfactory",
-                            1 => "Poor",
-                            0 => "Unsatisfactory",
-                            _ => "Unknown"
-                        };
+                            string rubricLabel = saved.SelectedLevel switch
+                            {
+                                4 => "Excellent",
+                                3 => "Good",
+                                2 => "Satisfactory",
+                                1 => "Limited",
+                                0 => "Unsatisfactory",
+                                _ => "Unknown"
+                            };
 
-                        insights.Add(new LOInsightItemViewModel
-                        {
-                            CriterionTitle = mapping.RubricCriterion?.CriterionName ?? "Unknown Criterion",
-                            RubricScore = saved.SelectedLevel,
-                            RubricLabel = rubricLabel
-                        });
+                            insights.Add(new LOInsightItemViewModel
+                            {
+                                CriterionTitle = mapping.RubricCriterion?.CriterionName ?? "Unknown Criterion",
+                                RubricScore = saved.SelectedLevel,
+                                RubricLabel = rubricLabel
+                            });
+                        }
                     }
-                }
 
-                var percentage = maxScore > 0
-                    ? Math.Round((achievedScore / maxScore) * 100, 2)
-                    : 0;
+                    var percentage = maxScore > 0
+                        ? Math.Round((achievedScore / maxScore) * 100, 2)
+                        : 0;
 
-                string status = percentage >= 50 ? "Achieved" : "Not Achieved";
+                    string status = percentage >= 50 ? "Achieved" : "Not Achieved";
 
-                return new LOAchievementItemViewModel
-                {
-                    LearningOutcomeId = lo.Id,
-                    Label = $"LO{lo.OrderNumber}",
-                    LearningOutcomeText = lo.LearningOutcomeText,
-                    AchievedScore = achievedScore,
-                    MaxScore = maxScore,
-                    Percentage = percentage,
-                    Status = status,
-                    Insights = insights
-                };
-            }).ToList();
+                    return new LOAchievementItemViewModel
+                    {
+                        LearningOutcomeId = lo.Id,
+                        Label = $"LO{lo.OrderNumber}",
+                        LearningOutcomeText = lo.LearningOutcomeText,
+                        AchievedScore = achievedScore,
+                        MaxScore = maxScore,
+                        Percentage = percentage,
+                        Status = status,
+                        Insights = insights
+                    };
+                })
+                .ToList();
 
             var achievedCount = loItems.Count(x => x.Status == "Achieved");
             var notAchievedCount = loItems.Count(x => x.Status == "Not Achieved");
@@ -334,7 +482,7 @@ namespace AIS_LO_System.Controllers
 
             string overallStatusText = $"{achievedCount} of {totalLOCount} Learning Outcomes Achieved";
 
-            var vm = new LOAchievementReportViewModel
+            return new LOAchievementReportViewModel
             {
                 StudentInternalId = student.Id,
                 StudentId = student.StudentId,
@@ -345,15 +493,14 @@ namespace AIS_LO_System.Controllers
                 AssessmentName = assessmentName,
                 Year = year,
                 Trimester = trimester,
-                AssessmentWeight = 30,
+                AssessmentWeight = assignment?.MarksPercentage ?? 0,
                 AchievedCount = achievedCount,
+                PartialCount = 0,
                 NotAchievedCount = notAchievedCount,
                 TotalLOCount = totalLOCount,
                 OverallStatusText = overallStatusText,
                 LearningOutcomes = loItems
             };
-
-            return View(vm);
         }
 
         [HttpPost]
@@ -467,19 +614,6 @@ namespace AIS_LO_System.Controllers
             }
 
             await _context.SaveChangesAsync();
-
-            // Auto-submit all student marks to moderator when a student is marked
-            int.TryParse(User.FindFirst("UserId")?.Value, out int marksUserId);
-            var marksCourse = await _context.Courses.FirstOrDefaultAsync(c =>
-                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
-            if (marksCourse?.ModeratorId != null && marksUserId > 0)
-            {
-                await _submissions.SubmitAsync(
-                    courseCode, year, trimester,
-                    SubmissionItemType.StudentMarks, assignmentId,
-                    $"{assessmentName} — Student Marks",
-                    marksUserId);
-            }
 
             TempData["Success"] = "Marks saved successfully.";
             return RedirectToAction("Index", new
