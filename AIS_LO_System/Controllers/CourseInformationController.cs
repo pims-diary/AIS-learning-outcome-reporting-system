@@ -203,13 +203,12 @@ namespace LOARS.Web.Controllers
             using (var stream = System.IO.File.Create(tempPath))
                 await file.CopyToAsync(stream);
 
+            string? courseCodeMismatchWarning = null;
             var detectedCode = TryDetectCourseCodeFromOutline(tempPath, ext);
             if (!string.IsNullOrWhiteSpace(detectedCode) &&
                 !detectedCode.Equals(courseCode, StringComparison.OrdinalIgnoreCase))
             {
-                System.IO.File.Delete(tempPath);
-                TempData["Error"] = $"Upload rejected: this file appears to be for {detectedCode}, not {courseCode}. The current course outline and assessment links were left unchanged.";
-                return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
+                courseCodeMismatchWarning = $"This file appears to contain {detectedCode} instead of {courseCode}. The outline was uploaded but flagged for moderator review. If this is incorrect, the moderator can deny the submission.";
             }
 
             // Delete any previous version (different extension) before saving
@@ -270,6 +269,9 @@ namespace LOARS.Web.Controllers
                     warnings.Add($"Assessment totals currently add up to {currentAssessmentTotal}%, not 100%. Please review the extracted assessments or update them from the Assessments page.");
                 }
 
+                if (courseCodeMismatchWarning != null)
+                    warnings.Add(courseCodeMismatchWarning);
+
                 if (warnings.Any())
                     TempData["Error"] = string.Join(" ", warnings);
             }
@@ -285,10 +287,14 @@ namespace LOARS.Web.Controllers
                 c.Code == courseCode && c.Year == year && c.Trimester == trimester);
             if (course?.ModeratorId != null && userId > 0)
             {
+                var label = courseCodeMismatchWarning != null
+                    ? $"Course Outline — {courseCode} {year} T{trimester} (file may contain {detectedCode})"
+                    : $"Course Outline — {courseCode} {year} T{trimester}";
+
                 await _submissions.SubmitAsync(
                     courseCode, year, trimester,
                     SubmissionItemType.CourseOutline, null,
-                    $"Course Outline — {courseCode} {year} T{trimester}",
+                    label,
                     userId);
                 TempData["Info"] = "📨 Submitted to moderator for approval.";
             }
