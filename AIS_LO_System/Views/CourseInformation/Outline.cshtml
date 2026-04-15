@@ -62,6 +62,12 @@
                 @TempData["Error"]
             </div>
         }
+        @if (ViewBag.AssessmentTotalWarning != null)
+        {
+            <div class="outline-warning">
+                @ViewBag.AssessmentTotalWarning
+            </div>
+        }
 
         @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
 

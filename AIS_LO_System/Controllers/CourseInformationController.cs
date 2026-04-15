@@ -55,6 +55,12 @@ namespace LOARS.Web.Controllers
             SetCourseContext(courseCode, year, trimester);
 
             ViewBag.CanReupload = AllowOutlineReupload(courseCode, year, trimester);
+            var currentAssessmentTotal = GetAssessmentTotalMarks(courseCode, year, trimester);
+            var currentAssessmentCount = _context.Assignments
+                .Count(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester);
+            ViewBag.AssessmentTotalWarning = currentAssessmentCount > 0 && currentAssessmentTotal != 100
+                ? $"Assessment totals currently add up to {currentAssessmentTotal}%, not 100%. Please review the extracted assessments or update them from the Assessments page."
+                : null;
 
             var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
             var baseName = GetOutlineBaseName(courseCode, year, trimester);
@@ -137,6 +143,7 @@ namespace LOARS.Web.Controllers
             {
                 var existingAssignmentCount = _context.Assignments
                     .Count(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester);
+                var warnings = new List<string>();
 
                 var extractedLOs = DocumentService.ExtractLearningOutcomes(savedPath);
                 if (extractedLOs.Any())
@@ -168,8 +175,19 @@ namespace LOARS.Web.Controllers
                 TempData["Success"] = string.Join(" ", parts);
                 if (!extractedAssessments.Any() && existingAssignmentCount > 0)
                 {
-                    TempData["Error"] = "No assessments were extracted from the uploaded outline. Previous assessment links were removed, so the Assessments section is now blank until valid assessments are extracted.";
+                    warnings.Add("No assessments were extracted from the uploaded outline. Previous assessment links were removed, so the Assessments section is now blank until valid assessments are extracted.");
                 }
+
+                var currentAssessmentTotal = GetAssessmentTotalMarks(courseCode, year, trimester);
+                var currentAssessmentCount = _context.Assignments
+                    .Count(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester);
+                if (currentAssessmentCount > 0 && currentAssessmentTotal != 100)
+                {
+                    warnings.Add($"Assessment totals currently add up to {currentAssessmentTotal}%, not 100%. Please review the extracted assessments or update them from the Assessments page.");
+                }
+
+                if (warnings.Any())
+                    TempData["Error"] = string.Join(" ", warnings);
             }
             catch (Exception ex)
             {
@@ -398,6 +416,15 @@ namespace LOARS.Web.Controllers
         // Keep for backwards compatibility with any existing .pdf files
         private static string GetOutlineFileName(string courseCode, int year, int trimester)
             => $"{courseCode}-{year}-T{trimester}.pdf";
+
+        private int GetAssessmentTotalMarks(string courseCode, int year, int trimester)
+        {
+            return _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .Select(a => a.MarksPercentage)
+                .DefaultIfEmpty(0)
+                .Sum();
+        }
 
         private string GetLosPath(string courseCode, int year, int trimester)
         {
@@ -775,15 +802,20 @@ namespace LOARS.Web.Controllers
             SetCourseContext(courseCode, year, trimester);
             ViewBag.CanEditAssignment = AllowAssignmentEdit(courseCode, year, trimester);
 
-            ViewBag.Assignments = _context.Assignments
+            var assignments = _context.Assignments
                 .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
                 .OrderBy(a => a.Id)
                 .ToList();
+            ViewBag.Assignments = assignments;
 
             ViewBag.LearningOutcomes = _context.LearningOutcomes
                 .Where(lo => lo.CourseCode == courseCode)
                 .OrderBy(lo => lo.OrderNumber)
                 .ToList();
+            var assessmentTotal = assignments.Sum(a => a.MarksPercentage);
+            ViewBag.AssessmentTotalWarning = assignments.Any() && assessmentTotal != 100
+                ? $"Assessment totals currently add up to {assessmentTotal}%, not 100%. Please review the assessments."
+                : null;
 
             ViewBag.EditMode = false;
             return View();
@@ -798,15 +830,20 @@ namespace LOARS.Web.Controllers
             SetCourseContext(courseCode, year, trimester);
             ViewBag.CanEditAssignment = AllowAssignmentEdit(courseCode, year, trimester);
 
-            ViewBag.Assignments = _context.Assignments
+            var assignments = _context.Assignments
                 .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
                 .OrderBy(a => a.Id)
                 .ToList();
+            ViewBag.Assignments = assignments;
 
             ViewBag.LearningOutcomes = _context.LearningOutcomes
                 .Where(lo => lo.CourseCode == courseCode)
                 .OrderBy(lo => lo.OrderNumber)
                 .ToList();
+            var assessmentTotal = assignments.Sum(a => a.MarksPercentage);
+            ViewBag.AssessmentTotalWarning = assignments.Any() && assessmentTotal != 100
+                ? $"Assessment totals currently add up to {assessmentTotal}%, not 100%. Please review the assessments."
+                : null;
 
             ViewBag.EditMode = true;
             return View("Assessments");
