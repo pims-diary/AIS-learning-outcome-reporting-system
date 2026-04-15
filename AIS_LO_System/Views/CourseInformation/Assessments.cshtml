@@ -176,10 +176,13 @@
                             .Select(int.Parse)
                             .ToHashSet();
 
-                        <div style="background:#f8f9fa; border:1px solid #e0e0e0; border-radius:10px; padding:18px 20px; margin-bottom:14px;">
+                        <div class="assessment-row" style="background:#f8f9fa; border:1px solid #e0e0e0; border-radius:10px; padding:18px 20px; margin-bottom:14px; position:relative;">
                             <input type="hidden" name="assignments[@i].Id" value="@a.Id" />
 
-                            <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-bottom:12px;">
+                            <button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove this assessment"
+                                    style="position:absolute; top:10px; right:12px; background:#dc3545; color:#fff; border:none; border-radius:50%; width:26px; height:26px; font-size:14px; cursor:pointer; line-height:26px; text-align:center;">X</button>
+
+                            <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-bottom:12px; padding-right:36px;">
                                 <div style="flex:1; min-width:200px;">
                                     <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Assessment Name</label>
                                     <input type="text"
@@ -264,6 +267,13 @@
                         hidden.value = checked.join(',');
                     }
 
+                    function removeRow(btn) {
+                        var row = btn.closest('.assessment-row');
+                        if (!confirm('Remove this assessment? This will take effect after moderator approval.')) return;
+                        row.remove();
+                        updateTotal();
+                    }
+
                     function addAssessmentRow() {
                         var i = rowCount++;
                         var container = document.getElementById('assessmentEditor');
@@ -281,9 +291,11 @@
                             : '';
 
                         var html =
-                            '<div style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:10px;padding:18px 20px;margin-bottom:14px;">' +
+                            '<div class="assessment-row" style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:10px;padding:18px 20px;margin-bottom:14px;position:relative;">' +
                             '<input type="hidden" name="assignments[' + i + '].Id" value="0" />' +
-                            '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;">' +
+                            '<button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove this assessment" ' +
+                            'style="position:absolute;top:10px;right:12px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;line-height:26px;text-align:center;">X</button>' +
+                            '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;padding-right:36px;">' +
                             '<div style="flex:1;min-width:200px;">' +
                             '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Assessment Name</label>' +
                             '<input type="text" name="assignments[' + i + '].AssessmentName" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />' +

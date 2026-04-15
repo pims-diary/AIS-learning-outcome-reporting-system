@@ -132,7 +132,10 @@ namespace AIS_LO_System.Controllers
                     switch (submission.ItemType)
                     {
                         case SubmissionItemType.CourseOutline:
+                            // Approving outline locks everything down
                             course.CanReuploadOutline = false;
+                            course.CanEditLO = false;
+                            course.CanEditAssignment = false;
                             break;
                         case SubmissionItemType.Assessments:
                             course.CanEditAssignment = false;
