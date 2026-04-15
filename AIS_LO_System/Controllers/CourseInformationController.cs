@@ -31,18 +31,13 @@ namespace LOARS.Web.Controllers
             _moderationDrafts = moderationDrafts;
         }
 
-        private async Task<bool> AllowOutlineReupload(string courseCode, int year, int trimester)
+        private bool AllowOutlineReupload(string courseCode, int year, int trimester)
         {
             var course = _context.Courses
                 .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
-            if (!(course?.CanReuploadOutline ?? true))
-                return false;
 
-            // Block re-upload once moderator has approved the outline
-            if (await _submissions.IsApprovedAsync(courseCode, year, trimester, SubmissionItemType.CourseOutline))
-                return false;
-
-            return true;
+            // Admin permission is the top authority
+            return course?.CanReuploadOutline ?? true;
         }
 
         private bool AllowLOEdit(string courseCode, int year, int trimester)
@@ -137,7 +132,7 @@ namespace LOARS.Web.Controllers
         {
             SetCourseContext(courseCode, year, trimester);
 
-            ViewBag.CanReupload = await AllowOutlineReupload(courseCode, year, trimester);
+            ViewBag.CanReupload = AllowOutlineReupload(courseCode, year, trimester);
             var currentAssessmentTotal = GetAssessmentTotalMarks(courseCode, year, trimester);
             var currentAssessmentCount = _context.Assignments
                 .Count(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester);
@@ -175,7 +170,7 @@ namespace LOARS.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadOutline(IFormFile file, string courseCode, int year, int trimester)
         {
-            if (!await AllowOutlineReupload(courseCode, year, trimester))
+            if (!AllowOutlineReupload(courseCode, year, trimester))
                 return Forbid();
 
             if (file == null || file.Length == 0)

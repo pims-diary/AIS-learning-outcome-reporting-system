@@ -176,18 +176,8 @@
             }
             else if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
             {
-                var sub = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission;
-                bool lockedByApproval = sub != null && sub.Status == AIS_LO_System.Models.SubmissionStatus.Approved;
-
                 <button class="btn-primary" type="button" disabled>Re-upload Course Outline</button>
-                @if (lockedByApproval)
-                {
-                    <div class="denied">Re-upload is locked because the moderator has already approved this course outline.</div>
-                }
-                else
-                {
-                    <div class="denied">Action Denied (permission required).</div>
-                }
+                <div class="denied">Action Denied (permission required).</div>
             }
             @* During impersonation: show nothing *@
         </div>

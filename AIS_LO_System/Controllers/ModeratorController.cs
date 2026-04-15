@@ -119,6 +119,31 @@ namespace AIS_LO_System.Controllers
             submission.ReviewedAt = DateTime.Now;
             submission.ReviewedByUserId = userId;
 
+            // After approval, revert admin permission back to disabled (one-time allowance)
+            if (isApproval)
+            {
+                var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                    c.Code == submission.CourseCode &&
+                    c.Year == submission.Year &&
+                    c.Trimester == submission.Trimester);
+
+                if (course != null)
+                {
+                    switch (submission.ItemType)
+                    {
+                        case SubmissionItemType.CourseOutline:
+                            course.CanReuploadOutline = false;
+                            break;
+                        case SubmissionItemType.Assessments:
+                            course.CanEditAssignment = false;
+                            break;
+                        case SubmissionItemType.LearningOutcomes:
+                            course.CanEditLO = false;
+                            break;
+                    }
+                }
+            }
+
             await _context.SaveChangesAsync();
 
             if (isApproval)
