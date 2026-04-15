@@ -124,12 +124,12 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
             {
                 TempData["Error"] = "No rubric found for this assignment.";
-                return RedirectToAction("Index", new
+                return RedirectToAction("Index", "Rubric", new
                 {
                     assignmentId,
+                    assessmentName,
                     courseCode,
                     courseTitle,
-                    assessmentName,
                     year,
                     trimester
                 });
@@ -527,12 +527,12 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
             {
                 TempData["Error"] = "Rubric not found.";
-                return RedirectToAction("Index", new
+                return RedirectToAction("Index", "Rubric", new
                 {
                     assignmentId,
+                    assessmentName,
                     courseCode,
                     courseTitle,
-                    assessmentName,
                     year,
                     trimester
                 });
@@ -672,6 +672,7 @@ namespace AIS_LO_System.Controllers
                 trimester
             });
         }
+
     }
 
     public class CriterionSelectionInput

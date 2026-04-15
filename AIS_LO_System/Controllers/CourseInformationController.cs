@@ -39,6 +39,13 @@ namespace LOARS.Web.Controllers
             return course?.CanEditLO ?? true;
         }
 
+        private bool AllowAssignmentEdit(string courseCode, int year, int trimester)
+        {
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            return course?.CanEditAssignment ?? true;
+        }
+
         // -------------------------
         // COURSE OUTLINE (VIEW)
         // -------------------------
@@ -101,6 +108,19 @@ namespace LOARS.Web.Controllers
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
             var baseName = GetOutlineBaseName(courseCode, year, trimester);
             var savedPath = Path.Combine(dir, baseName + ext);
+            var tempPath = Path.Combine(dir, $"{Guid.NewGuid()}{ext}");
+
+            using (var stream = System.IO.File.Create(tempPath))
+                await file.CopyToAsync(stream);
+
+            var detectedCode = TryDetectCourseCodeFromOutline(tempPath, ext);
+            if (!string.IsNullOrWhiteSpace(detectedCode) &&
+                !detectedCode.Equals(courseCode, StringComparison.OrdinalIgnoreCase))
+            {
+                System.IO.File.Delete(tempPath);
+                TempData["Error"] = $"Upload rejected: this file appears to be for {detectedCode}, not {courseCode}. The current course outline and assessment links were left unchanged.";
+                return RedirectToAction(nameof(Outline), new { courseCode, year, trimester });
+            }
 
             // Delete any previous version (different extension) before saving
             foreach (var old in new[] { ".pdf", ".docx" })
@@ -110,48 +130,14 @@ namespace LOARS.Web.Controllers
                     System.IO.File.Delete(oldPath);
             }
 
-            using (var stream = System.IO.File.Create(savedPath))
-                await file.CopyToAsync(stream);
-
-            // Check if the uploaded file's course code matches this course
-            string mismatchWarning = null;
-            try
-            {
-                var fileText = ext == ".docx"
-                    ? DocumentService.ExtractTextFromDocx(savedPath)
-                    : "";
-
-                if (ext == ".pdf")
-                {
-                    // Use reflection-free approach — just read first bit of text
-                    using var pdfReader = new iText.Kernel.Pdf.PdfReader(savedPath);
-                    using var pdfDoc = new iText.Kernel.Pdf.PdfDocument(pdfReader);
-                    if (pdfDoc.GetNumberOfPages() > 0)
-                        fileText = iText.Kernel.Pdf.Canvas.Parser.PdfTextExtractor
-                            .GetTextFromPage(pdfDoc.GetPage(1));
-                }
-
-                if (!string.IsNullOrWhiteSpace(fileText))
-                {
-                    // Look for course codes like COMP720, SOFT708, INFO712 in the first chunk of text
-                    var codeMatch = Regex.Match(fileText.Substring(0, Math.Min(fileText.Length, 2000)),
-                        @"\b([A-Z]{3,4}\d{3})\b");
-
-                    if (codeMatch.Success)
-                    {
-                        var detectedCode = codeMatch.Groups[1].Value;
-                        if (!detectedCode.Equals(courseCode, StringComparison.OrdinalIgnoreCase))
-                        {
-                            mismatchWarning = $"⚠️ Warning: This file appears to be for {detectedCode}, but you uploaded it to {courseCode}. Please check you uploaded the correct file.";
-                        }
-                    }
-                }
-            }
-            catch { }
+            System.IO.File.Move(tempPath, savedPath);
 
             // Extract Learning Outcomes from the uploaded file
             try
             {
+                var existingAssignmentCount = _context.Assignments
+                    .Count(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester);
+
                 var extractedLOs = DocumentService.ExtractLearningOutcomes(savedPath);
                 if (extractedLOs.Any())
                 {
@@ -165,6 +151,10 @@ namespace LOARS.Web.Controllers
                 {
                     SyncAssessmentsToDatabase(courseCode, year, trimester, extractedAssessments);
                 }
+                else if (existingAssignmentCount > 0)
+                {
+                    ClearAssignmentsForCourseOffering(courseCode, year, trimester);
+                }
 
                 // Build success message
                 var parts = new List<string> { "Course outline uploaded!" };
@@ -176,9 +166,10 @@ namespace LOARS.Web.Controllers
                     parts.Add("(No Learning Outcomes or Assessments found — add them manually)");
 
                 TempData["Success"] = string.Join(" ", parts);
-
-                if (mismatchWarning != null)
-                    TempData["Error"] = mismatchWarning;
+                if (!extractedAssessments.Any() && existingAssignmentCount > 0)
+                {
+                    TempData["Error"] = "No assessments were extracted from the uploaded outline. Previous assessment links were removed, so the Assessments section is now blank until valid assessments are extracted.";
+                }
             }
             catch (Exception ex)
             {
@@ -232,6 +223,37 @@ namespace LOARS.Web.Controllers
             }
 
             return learningOutcomes;
+        }
+
+        private string? TryDetectCourseCodeFromOutline(string filePath, string ext)
+        {
+            try
+            {
+                var fileText = ext == ".docx"
+                    ? DocumentService.ExtractTextFromDocx(filePath)
+                    : string.Empty;
+
+                if (ext == ".pdf")
+                {
+                    using var pdfReader = new PdfReader(filePath);
+                    using var pdfDoc = new PdfDocument(pdfReader);
+                    if (pdfDoc.GetNumberOfPages() > 0)
+                        fileText = PdfTextExtractor.GetTextFromPage(pdfDoc.GetPage(1));
+                }
+
+                if (string.IsNullOrWhiteSpace(fileText))
+                    return null;
+
+                var codeMatch = Regex.Match(
+                    fileText.Substring(0, Math.Min(fileText.Length, 2000)),
+                    @"\b([A-Z]{3,4}\d{3})\b");
+
+                return codeMatch.Success ? codeMatch.Groups[1].Value : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         // ✅ NEW: Parse text to extract numbered Learning Outcomes
@@ -466,43 +488,16 @@ namespace LOARS.Web.Controllers
             var existingAssignments = _context.Assignments
                 .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
                 .ToList();
-
-            RemoveDuplicateAssignments(courseCode, existingAssignments);
-            _context.SaveChanges();
+            var originalAssignmentIds = existingAssignments
+                .Select(a => a.Id)
+                .ToHashSet();
 
             // Get existing LOs to map order numbers to IDs
             var courseLOs = _context.LearningOutcomes
                 .Where(lo => lo.CourseCode == courseCode)
                 .ToList();
 
-            var extractedNames = assessments
-                .Select(a => NormalizeAssessmentTitle(a.Title))
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .ToHashSet();
-
-            // Remove old assignments that are NOT in the new outline
-            // BUT only if they have no rubric or marks (safe to delete)
-            foreach (var old in existingAssignments)
-            {
-                var normalizedOldName = NormalizeAssessmentTitle(old.AssessmentName);
-                if (!extractedNames.Contains(normalizedOldName))
-                {
-                    bool hasRubric = _context.Rubrics.Any(r => r.AssignmentId == old.Id);
-                    bool hasMarks = _context.StudentAssessmentMarks
-                        .Any(m => m.CourseCode == courseCode && m.AssessmentName == old.AssessmentName);
-
-                    if (!hasRubric && !hasMarks)
-                    {
-                        _context.Assignments.Remove(old);
-                    }
-                }
-            }
-            _context.SaveChanges();
-
-            // Refresh existing list after cleanup
-            existingAssignments = _context.Assignments
-                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
-                .ToList();
+            var matchedAssignmentIds = new HashSet<int>();
 
             foreach (var assess in assessments)
             {
@@ -521,11 +516,16 @@ namespace LOARS.Web.Controllers
                 var selectedLOIds = loIds.Any() ? string.Join(",", loIds) : null;
 
                 // Check if this assessment already exists
-                var existing = existingAssignments.FirstOrDefault(a =>
-                    NormalizeAssessmentTitle(a.AssessmentName) == normalizedAssessmentTitle);
+                var existing = FindBestExistingAssignmentMatch(
+                    courseCode,
+                    existingAssignments,
+                    matchedAssignmentIds,
+                    normalizedAssessmentTitle,
+                    assess.MarksPercentage);
 
                 if (existing != null)
                 {
+                    matchedAssignmentIds.Add(existing.Id);
                     RenameAssessmentMarksIfNeeded(courseCode, existing.AssessmentName, assess.Title);
 
                     // Update existing — safe, doesn't delete rubric or marks
@@ -537,7 +537,7 @@ namespace LOARS.Web.Controllers
                 else
                 {
                     // Create new
-                    _context.Assignments.Add(new Assignment
+                    var created = new Assignment
                     {
                         AssessmentName = assess.Title,
                         CourseCode = courseCode,
@@ -547,11 +547,27 @@ namespace LOARS.Web.Controllers
                         MarksPercentage = assess.MarksPercentage,
                         SelectedLearningOutcomeIds = selectedLOIds,
                         LOsLockedByOutline = true
-                    });
+                    };
+
+                    _context.Assignments.Add(created);
                 }
             }
 
             _context.SaveChanges();
+
+            if (assessments.Any())
+            {
+                var assignmentsToRemove = existingAssignments
+                    .Where(a => originalAssignmentIds.Contains(a.Id) && !matchedAssignmentIds.Contains(a.Id))
+                    .ToList();
+
+                foreach (var assignment in assignmentsToRemove)
+                {
+                    RemoveAssignmentAndRelatedData(courseCode, year, trimester, assignment);
+                }
+
+                _context.SaveChanges();
+            }
         }
 
         private void RemoveDuplicateAssignments(string courseCode, List<Assignment> assignments)
@@ -564,6 +580,7 @@ namespace LOARS.Web.Controllers
             {
                 var ordered = group
                     .OrderByDescending(AssignmentHasRubric)
+                    .ThenByDescending(AssignmentHasFiles)
                     .ThenByDescending(a => AssignmentHasMarks(courseCode, a.AssessmentName))
                     .ThenBy(a => a.Id)
                     .ToList();
@@ -572,7 +589,9 @@ namespace LOARS.Web.Controllers
 
                 foreach (var duplicate in ordered.Skip(1))
                 {
-                    if (AssignmentHasRubric(duplicate) || AssignmentHasMarks(courseCode, duplicate.AssessmentName))
+                    if (AssignmentHasRubric(duplicate) ||
+                        AssignmentHasFiles(duplicate) ||
+                        AssignmentHasMarks(courseCode, duplicate.AssessmentName))
                         continue;
 
                     _context.Assignments.Remove(duplicate);
@@ -583,9 +602,72 @@ namespace LOARS.Web.Controllers
         private bool AssignmentHasRubric(Assignment assignment)
             => _context.Rubrics.Any(r => r.AssignmentId == assignment.Id);
 
+        private bool AssignmentHasFiles(Assignment assignment)
+            => _context.AssignmentFiles.Any(f => f.AssignmentId == assignment.Id);
+
         private bool AssignmentHasMarks(string courseCode, string assessmentName)
             => _context.StudentAssessmentMarks.Any(m =>
                 m.CourseCode == courseCode && m.AssessmentName == assessmentName);
+
+        private void RemoveAssignmentAndRelatedData(string courseCode, int year, int trimester, Assignment assignment)
+        {
+            var assignmentFiles = _context.AssignmentFiles
+                .Where(f => f.AssignmentId == assignment.Id)
+                .ToList();
+
+            foreach (var file in assignmentFiles)
+            {
+                if (string.IsNullOrWhiteSpace(file.FilePath))
+                    continue;
+
+                var relativePath = file.FilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var fullPath = Path.Combine(_env.WebRootPath, relativePath);
+                if (System.IO.File.Exists(fullPath))
+                {
+                    try
+                    {
+                        System.IO.File.Delete(fullPath);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            var relatedSubmissions = _context.CourseSubmissions
+                .Where(s =>
+                    s.CourseCode == courseCode &&
+                    s.Year == year &&
+                    s.Trimester == trimester &&
+                    s.ItemRefId == assignment.Id)
+                .ToList();
+
+            if (relatedSubmissions.Any())
+                _context.CourseSubmissions.RemoveRange(relatedSubmissions);
+
+            var relatedAssessmentMarks = _context.StudentAssessmentMarks
+                .Where(m => m.CourseCode == courseCode && m.AssessmentName == assignment.AssessmentName)
+                .ToList();
+
+            if (relatedAssessmentMarks.Any())
+                _context.StudentAssessmentMarks.RemoveRange(relatedAssessmentMarks);
+
+            _context.Assignments.Remove(assignment);
+        }
+
+        private void ClearAssignmentsForCourseOffering(string courseCode, int year, int trimester)
+        {
+            var assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .ToList();
+
+            foreach (var assignment in assignments)
+            {
+                RemoveAssignmentAndRelatedData(courseCode, year, trimester, assignment);
+            }
+
+            _context.SaveChanges();
+        }
 
         private void RenameAssessmentMarksIfNeeded(string courseCode, string? oldName, string? newName)
         {
@@ -612,10 +694,233 @@ namespace LOARS.Web.Controllers
                 return string.Empty;
 
             var normalized = title.ToLowerInvariant();
-            normalized = Regex.Replace(normalized, @"\bassign\b", "assignment");
+            normalized = Regex.Replace(normalized, @"\bassign(?:ment)?\b", "assignment");
+            normalized = Regex.Replace(normalized, @"\bassessment\b", "assignment");
+            normalized = Regex.Replace(normalized, @"\bmid\s+term\b", "midterm");
             normalized = Regex.Replace(normalized, @"[^a-z0-9]+", " ");
             normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
             return normalized;
         }
+
+        private Assignment? FindBestExistingAssignmentMatch(
+            string courseCode,
+            List<Assignment> existingAssignments,
+            HashSet<int> matchedAssignmentIds,
+            string normalizedAssessmentTitle,
+            int marksPercentage)
+        {
+            var unmatchedAssignments = existingAssignments
+                .Where(a => !matchedAssignmentIds.Contains(a.Id))
+                .ToList();
+
+            var exactMatch = unmatchedAssignments.FirstOrDefault(a =>
+                NormalizeAssessmentTitle(a.AssessmentName) == normalizedAssessmentTitle);
+
+            if (exactMatch != null)
+                return exactMatch;
+
+            var bestCandidate = unmatchedAssignments
+                .Select(a => new
+                {
+                    Assignment = a,
+                    Similarity = GetAssessmentTitleSimilarity(
+                        normalizedAssessmentTitle,
+                        NormalizeAssessmentTitle(a.AssessmentName)),
+                    SameMarks = a.MarksPercentage == marksPercentage,
+                    HasRubric = AssignmentHasRubric(a),
+                    HasFiles = AssignmentHasFiles(a),
+                    HasMarks = AssignmentHasMarks(courseCode, a.AssessmentName)
+                })
+                .Where(x => x.Similarity >= 0.55m || (x.SameMarks && x.Similarity >= 0.40m))
+                .OrderByDescending(x => x.Similarity)
+                .ThenByDescending(x => x.SameMarks)
+                .ThenByDescending(x => x.HasRubric)
+                .ThenByDescending(x => x.HasFiles)
+                .ThenByDescending(x => x.HasMarks)
+                .ThenBy(x => x.Assignment.Id)
+                .FirstOrDefault();
+
+            return bestCandidate?.Assignment;
+        }
+
+        private static decimal GetAssessmentTitleSimilarity(string left, string right)
+        {
+            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+                return 0m;
+
+            if (left == right)
+                return 1m;
+
+            if (left.Contains(right, StringComparison.Ordinal) || right.Contains(left, StringComparison.Ordinal))
+                return 0.9m;
+
+            var leftTokens = left.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            var rightTokens = right.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+
+            if (!leftTokens.Any() || !rightTokens.Any())
+                return 0m;
+
+            var overlap = leftTokens.Intersect(rightTokens).Count();
+            var union = leftTokens.Union(rightTokens).Count();
+
+            return union == 0 ? 0m : (decimal)overlap / union;
+        }
+
+        // -------------------------
+        // ASSESSMENTS (VIEW)
+        // -------------------------
+        [HttpGet]
+        public IActionResult Assessments(string courseCode, int year, int trimester)
+        {
+            SetCourseContext(courseCode, year, trimester);
+            ViewBag.CanEditAssignment = AllowAssignmentEdit(courseCode, year, trimester);
+
+            ViewBag.Assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .OrderBy(a => a.Id)
+                .ToList();
+
+            ViewBag.LearningOutcomes = _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode)
+                .OrderBy(lo => lo.OrderNumber)
+                .ToList();
+
+            ViewBag.EditMode = false;
+            return View();
+        }
+
+        // -------------------------
+        // ASSESSMENTS (EDIT)
+        // -------------------------
+        [HttpGet]
+        public IActionResult EditAssessments(string courseCode, int year, int trimester)
+        {
+            SetCourseContext(courseCode, year, trimester);
+            ViewBag.CanEditAssignment = AllowAssignmentEdit(courseCode, year, trimester);
+
+            ViewBag.Assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .OrderBy(a => a.Id)
+                .ToList();
+
+            ViewBag.LearningOutcomes = _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode)
+                .OrderBy(lo => lo.OrderNumber)
+                .ToList();
+
+            ViewBag.EditMode = true;
+            return View("Assessments");
+        }
+
+        // -------------------------
+        // ASSESSMENTS (SAVE)
+        // -------------------------
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public IActionResult SaveAssessments(string courseCode, int year, int trimester, List<AssignmentEditInput> assignments)
+        {
+            if (!AllowAssignmentEdit(courseCode, year, trimester))
+                return Forbid();
+
+            var existing = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .ToList();
+
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+            var validLearningOutcomeIds = _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode)
+                .Select(lo => lo.Id)
+                .ToHashSet();
+
+            var errors = new List<string>();
+
+            foreach (var input in assignments ?? new List<AssignmentEditInput>())
+            {
+                if (string.IsNullOrWhiteSpace(input.AssessmentName)) continue;
+
+                var normalizedName = input.AssessmentName.Trim();
+                if (input.MarksPercentage < 0 || input.MarksPercentage > 100)
+                {
+                    errors.Add($"\"{normalizedName}\" has an invalid marks percentage.");
+                    continue;
+                }
+
+                var selectedLOIds = ParseAssignmentLearningOutcomeIds(input.SelectedLOIdsStr);
+                var invalidLOIds = selectedLOIds
+                    .Where(id => !validLearningOutcomeIds.Contains(id))
+                    .Distinct()
+                    .ToList();
+
+                if (invalidLOIds.Any())
+                {
+                    errors.Add($"\"{normalizedName}\" contains invalid Learning Outcome selections.");
+                    continue;
+                }
+
+                var selectedLOIdsStr = selectedLOIds.Any()
+                    ? string.Join(",", selectedLOIds.Distinct())
+                    : null;
+
+                if (input.Id == 0)
+                {
+                    _context.Assignments.Add(new Assignment
+                    {
+                        AssessmentName = normalizedName,
+                        CourseCode = courseCode,
+                        CourseTitle = course?.Title ?? "",
+                        Year = year,
+                        Trimester = trimester,
+                        MarksPercentage = input.MarksPercentage,
+                        SelectedLearningOutcomeIds = selectedLOIdsStr,
+                        LOsLockedByOutline = false
+                    });
+                    continue;
+                }
+
+                var record = existing.FirstOrDefault(a => a.Id == input.Id);
+                if (record == null) continue;
+
+                RenameAssessmentMarksIfNeeded(courseCode, record.AssessmentName, normalizedName);
+
+                record.AssessmentName = normalizedName;
+                record.MarksPercentage = input.MarksPercentage;
+                record.SelectedLearningOutcomeIds = selectedLOIdsStr;
+                record.LOsLockedByOutline = false;
+            }
+
+            if (errors.Any())
+            {
+                TempData["Error"] = string.Join(" ", errors);
+                return RedirectToAction(nameof(EditAssessments), new { courseCode, year, trimester });
+            }
+
+            _context.SaveChanges();
+
+            TempData["Success"] = "Assessments saved successfully!";
+            return RedirectToAction(nameof(Assessments), new { courseCode, year, trimester });
+        }
+
+        private static List<int> ParseAssignmentLearningOutcomeIds(string? ids)
+        {
+            if (string.IsNullOrWhiteSpace(ids))
+                return new List<int>();
+
+            return ids.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(value => value.Trim())
+                .Where(value => int.TryParse(value, out _))
+                .Select(int.Parse)
+                .Distinct()
+                .ToList();
+        }
+    }
+
+    public class AssignmentEditInput
+    {
+        public int Id { get; set; }
+        public string AssessmentName { get; set; } = string.Empty;
+        public int MarksPercentage { get; set; }
+        public string SelectedLOIdsStr { get; set; } = string.Empty;
     }
 }

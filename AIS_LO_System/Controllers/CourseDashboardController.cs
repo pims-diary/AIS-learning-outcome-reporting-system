@@ -39,6 +39,12 @@ namespace LOARS.Web.Controllers
                 .Select(r => r.AssignmentId)
                 .ToListAsync();
 
+            var assignmentIdsWithFiles = await _context.AssignmentFiles
+                .Where(f => assignments.Select(a => a.Id).Contains(f.AssignmentId))
+                .Select(f => f.AssignmentId)
+                .Distinct()
+                .ToListAsync();
+
             var markedAssessmentNames = await _context.StudentAssessmentMarks
                 .Where(m => m.CourseCode == courseCode)
                 .Select(m => m.AssessmentName)
@@ -49,12 +55,18 @@ namespace LOARS.Web.Controllers
                 .GroupBy(a => NormalizeAssessmentTitle(a.AssessmentName))
                 .Select(group => group
                     .OrderByDescending(a => rubricAssignmentIds.Contains(a.Id))
+                    .ThenByDescending(a => assignmentIdsWithFiles.Contains(a.Id))
                     .ThenByDescending(a => markedAssessmentNames.Contains(a.AssessmentName))
                     .ThenByDescending(a => a.AssessmentName?.Length ?? 0)
                     .ThenBy(a => a.Id)
                     .First())
                 .OrderBy(a => a.Id)
                 .ToList();
+
+            var assessmentTotal = assessments.Sum(a => a.MarksPercentage);
+            ViewBag.AssessmentTotalWarning = assessments.Any() && assessmentTotal != 100
+                ? $"Assessment totals currently add up to {assessmentTotal}%, not 100%. Please review the extracted assessments."
+                : null;
 
             ViewBag.Assessments = assessments;
 
@@ -67,7 +79,9 @@ namespace LOARS.Web.Controllers
                 return string.Empty;
 
             var normalized = title.ToLowerInvariant();
-            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\bassign\b", "assignment");
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\bassign(?:ment)?\b", "assignment");
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\bassessment\b", "assignment");
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\bmid\s+term\b", "midterm");
             normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"[^a-z0-9]+", " ");
             normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ").Trim();
             return normalized;

@@ -29,6 +29,13 @@
         </a>
     </div>
 
+    @if (ViewBag.AssessmentTotalWarning != null)
+    {
+        <div style="background:#fff3cd; border:1px solid #ffc107; color:#856404; padding:12px 16px; border-radius:8px; margin-bottom:20px;">
+            @ViewBag.AssessmentTotalWarning
+        </div>
+    }
+
     <!-- Expand / Collapse -->
     <div class="expand-toggle">
         <button id="toggleAll">Expand all</button>
@@ -58,6 +65,13 @@
                asp-route-year="@ViewBag.Year"
                asp-route-trimester="@ViewBag.Trimester">
                 Learning Outcomes
+            </a>
+
+            <a asp-controller="CourseInformation" asp-action="Assessments"
+               asp-route-courseCode="@ViewBag.CourseCode"
+               asp-route-year="@ViewBag.Year"
+               asp-route-trimester="@ViewBag.Trimester">
+                Assessments
             </a>
 
         </div>

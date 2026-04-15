@@ -196,12 +196,15 @@
                         var color = item.Status == "Aligned" ? "#155724" : "#856404";
                         var bg = item.Status == "Aligned" ? "#d4edda" : "#fff3cd";
                         var icon = item.Status == "Aligned" ? "✅" : "⚠️";
+                        var similarityLabel = item.Status == "Aligned"
+                            ? $"{(int)(item.Similarity * 100)}% wording match"
+                            : $"{(int)(item.Similarity * 100)}% wording overlap";
 
                         <div style="background:@bg; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid rgba(0,0,0,0.08);">
                             <div style="font-weight:600; color:@color; margin-bottom:4px;">
                                 @icon LO @item.LONumber — @item.Status
                                 <span style="font-weight:400; font-size:13px; color:#888;">
-                                    (@((int)(item.Similarity * 100))% match)
+                                    (@similarityLabel)
                                 </span>
                             </div>
                             <div style="font-size:13px; color:#333; margin-bottom:4px;">
@@ -216,15 +219,18 @@
 
                 @if (crossCheck.Missing.Any())
                 {
-                    <h3 style="font-size:16px; margin:16px 0 8px;">Missing from Assignment</h3>
+                    <h3 style="font-size:16px; margin:16px 0 8px;">Needs Review</h3>
                     @foreach (var item in crossCheck.Missing)
                     {
-                        <div style="background:#f8d7da; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid #f5c6cb;">
-                            <div style="font-weight:600; color:#721c24; margin-bottom:4px;">
-                                ❌ LO @item.LONumber — Expected but not found in assignment document
+                        <div style="background:#fff3cd; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid #ffc107;">
+                            <div style="font-weight:600; color:#856404; margin-bottom:4px;">
+                                ⚠️ LO @item.LONumber — No clear wording match found in the assignment document
                             </div>
-                            <div style="font-size:13px; color:#333;">
+                            <div style="font-size:13px; color:#333; margin-bottom:4px;">
                                 <strong>Course Outline:</strong> @item.OutlineText
+                            </div>
+                            <div style="font-size:13px; color:#666;">
+                                This may mean the LO is missing, phrased very differently, or not detected clearly by the parser.
                             </div>
                         </div>
                     }

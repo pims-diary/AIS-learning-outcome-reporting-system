@@ -575,16 +575,17 @@ namespace AIS_LO_System.Services
             // Strategy 1: Match "Learning Outcome 1: text" or "LO 1: text"
             var matches = System.Text.RegularExpressions.Regex.Matches(
                 text,
-                @"(?:Learning\s+Outcome|LO)\s*(\d+)\s*[:\-–]\s*(.+?)(?=(?:Learning\s+Outcome|LO)\s*\d+\s*[:\-–]|General\s+Instruction|Tasks?\s*\(|Note:|$)",
+                @"(?:Learning\s+Outcome|LO)\s*(\d+)\s*[:\-–]\s*(.+?)(?=(?:Learning\s+Outcome|LO)\s*\d+\s*[:\-–]|General\s+Instruction|Instructions?\b|Tasks?\s*\(|Note:|\n\s*\n|$)",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
 
             foreach (System.Text.RegularExpressions.Match m in matches)
             {
                 if (int.TryParse(m.Groups[1].Value, out int loNum))
                 {
-                    var loText = System.Text.RegularExpressions.Regex
-                        .Replace(m.Groups[2].Value.Trim(), @"\s+", " ")
-                        .TrimEnd('.', ' ');
+                    var loText = NormalizeAssignmentOutcomeText(m.Groups[2].Value);
+
+                    if (!IsPlausibleAssignmentLOText(loText))
+                        continue;
 
                     results.Add(new AssignmentLO
                     {
@@ -612,7 +613,7 @@ namespace AIS_LO_System.Services
 
                     var sectionEnd = System.Text.RegularExpressions.Regex.Match(
                         afterLOHeader,
-                        @"\n\s*\n\s*\n|General\s+Instruction|TASK\s|Task\s+\d|Marking|MARKING|Submission|SUBMISSION|The\s+assessment\s+has|Final\s+Product\s*:|Final\s+Presentation\s*:|Assessment\s+Criteria|Scope\s+of\s+Work",
+                        @"\n\s*\n\s*\n|General\s+Instruction|Instructions?\b|TASK\s|Task\s+\d|Marking|MARKING|Submission|SUBMISSION|The\s+assessment\s+has|Final\s+Product\s*:|Final\s+Presentation\s*:|Assessment\s+Criteria|Scope\s+of\s+Work",
                         System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
                     var loSection = sectionEnd.Success
@@ -628,11 +629,9 @@ namespace AIS_LO_System.Services
                     {
                         if (int.TryParse(m.Groups[1].Value, out int loNum) && loNum <= 20)
                         {
-                            var loText = System.Text.RegularExpressions.Regex
-                                .Replace(m.Groups[2].Value.Trim(), @"\s+", " ")
-                                .TrimEnd('.', ' ');
+                            var loText = NormalizeAssignmentOutcomeText(m.Groups[2].Value);
 
-                            if (loText.Length > 15)
+                            if (IsPlausibleAssignmentLOText(loText))
                             {
                                 results.Add(new AssignmentLO
                                 {
@@ -649,7 +648,7 @@ namespace AIS_LO_System.Services
                     {
                         var plainItems = loSection
                             .Split('\n')
-                            .Select(line => System.Text.RegularExpressions.Regex.Replace(line.Trim(), @"^\p{P}+", "").Trim())
+                            .Select(NormalizeAssignmentOutcomeText)
                             .Where(IsPlausibleAssignmentLOText)
                             .Distinct(System.StringComparer.OrdinalIgnoreCase);
 
@@ -752,10 +751,14 @@ namespace AIS_LO_System.Services
             if (normalized.Length < 25)
                 return false;
 
+            if (normalized.Length > 320)
+                return false;
+
             var lower = normalized.ToLowerInvariant();
 
             if (lower.StartsWith("due:") ||
                 lower.StartsWith("where:") ||
+                lower.StartsWith("instructions") ||
                 lower.StartsWith("this assessment is worth") ||
                 lower.StartsWith("the assessment has") ||
                 lower.StartsWith("final product") ||
@@ -765,10 +768,46 @@ namespace AIS_LO_System.Services
                 lower.StartsWith("submission"))
                 return false;
 
+            if (ContainsInstructionNoise(lower))
+                return false;
+
             if (System.Text.RegularExpressions.Regex.IsMatch(lower, @"^\d+\s*%"))
                 return false;
 
             return lower.Any(char.IsLetter);
+        }
+
+        private static string NormalizeAssignmentOutcomeText(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return string.Empty;
+
+            var normalized = System.Text.RegularExpressions.Regex.Replace(text.Trim(), @"^\p{P}+", "");
+            normalized = System.Text.RegularExpressions.Regex.Replace(normalized, @"\s+", " ").Trim();
+            return normalized.TrimEnd('.', ' ', ';', ':');
+        }
+
+        private static bool ContainsInstructionNoise(string lower)
+        {
+            var noiseMarkers = new[]
+            {
+                "open-book",
+                "invigilator",
+                "moodle",
+                "teams",
+                "ais-issued laptop",
+                "monitoring software",
+                "channel ",
+                "disciplinary committee",
+                "special permission",
+                "files submitted",
+                "debugging purposes",
+                "sql server",
+                "visual studio",
+                "asp.net core mvc"
+            };
+
+            return noiseMarkers.Any(lower.Contains);
         }
 
         private static int FindBestAssignmentMatchIndex(

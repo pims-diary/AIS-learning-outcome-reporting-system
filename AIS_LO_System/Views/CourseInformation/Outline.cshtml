@@ -129,6 +129,13 @@
         <div class="actions-center" style="margin-top:24px;">
             @if (canReupload)
             {
+                @if (hasFile)
+                {
+                    <div class="outline-warning">
+                        Re-uploading will replace the current course outline file for this course offering and refresh the extracted assessment data from the new outline. Check the updated assessments after upload before continuing.
+                    </div>
+                }
+
                 <form asp-controller="CourseInformation"
                       asp-action="UploadOutline"
                       method="post"
@@ -150,8 +157,8 @@
                     <script>
                         document.getElementById('outlineUploadForm').addEventListener('submit', function(e) {
                         var confirmed = confirm(
-                        "⚠️ Re-uploading the course outline will reset all assessments, rubrics, LO mappings, and weights for this course.\n\n" +
-                        "Any marking progress may also be affected.\n\n" +
+                        "Re-uploading will replace the current course outline file for this course offering.\n\n" +
+                        "The extracted assessments will be refreshed from the new outline. Please review the updated assessments after upload.\n\n" +
                         "Are you sure you want to continue?"
                         );
                         if (!confirmed) {
@@ -180,6 +187,17 @@
     padding: 12px 16px;
     border-radius: 6px;
     margin-bottom: 16px;
+    }
+
+    .outline-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    max-width: 760px;
+    text-align: left;
     }
 
     .crumb a {
