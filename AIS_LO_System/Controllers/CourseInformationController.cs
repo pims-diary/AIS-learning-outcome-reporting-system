@@ -56,8 +56,7 @@ namespace LOARS.Web.Controllers
         {
             var course = _context.Courses
                 .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
-            var canEditAssignment = course?.CanEditAssignment ?? true;
-            return canEditAssignment && HasAssessmentFallbackIssue(courseCode, year, trimester);
+            return course?.CanEditAssignment ?? true;
         }
 
         private bool HasOutlineFile(string courseCode, int year, int trimester)
@@ -923,9 +922,12 @@ namespace LOARS.Web.Controllers
             SetCourseContext(courseCode, year, trimester);
             var canEditAssignment = AllowAssignmentEdit(courseCode, year, trimester);
             ViewBag.CanEditAssignment = canEditAssignment;
-            ViewBag.AssessmentEditMessage = canEditAssignment
-                ? "Manual assessment editing is enabled as a fallback because the current course outline assessment data needs review."
-                : GetAssessmentFallbackMessage(courseCode, year, trimester);
+            if (canEditAssignment && HasAssessmentFallbackIssue(courseCode, year, trimester))
+                ViewBag.AssessmentEditMessage = "Manual assessment editing is enabled because the current course outline assessment data needs review. Changes require moderator approval.";
+            else if (canEditAssignment)
+                ViewBag.AssessmentEditMessage = "Manual assessment editing is enabled by admin. Changes require moderator approval before going live.";
+            else
+                ViewBag.AssessmentEditMessage = null;
 
             var assignments = _context.Assignments
                 .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
