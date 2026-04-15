@@ -103,16 +103,6 @@ namespace AIS_LO_System.Controllers
                             await _moderationDrafts.ApplyLearningOutcomeDraftAsync(submission.Id);
                             break;
                         case SubmissionItemType.Assessments:
-                            var draft = await _moderationDrafts.LoadAssessmentDraftAsync(submission.Id);
-                            if (draft != null)
-                            {
-                                var total = draft.Assessments?.Sum(a => a.MarksPercentage) ?? 0;
-                                if (total != 100)
-                                {
-                                    TempData["Error"] = $"Cannot approve: assessment totals add up to {total}%, not 100%.";
-                                    return RedirectToAction(nameof(Inbox));
-                                }
-                            }
                             await _moderationDrafts.ApplyAssessmentDraftAsync(submission.Id);
                             break;
                     }
