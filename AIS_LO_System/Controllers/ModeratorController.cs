@@ -12,12 +12,18 @@ namespace AIS_LO_System.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly SubmissionService _submissions;
+        private readonly ModerationDraftService _moderationDrafts;
         private readonly IWebHostEnvironment _env;
 
-        public ModeratorController(ApplicationDbContext context, SubmissionService submissions, IWebHostEnvironment env)
+        public ModeratorController(
+            ApplicationDbContext context,
+            SubmissionService submissions,
+            ModerationDraftService moderationDrafts,
+            IWebHostEnvironment env)
         {
             _context = context;
             _submissions = submissions;
+            _moderationDrafts = moderationDrafts;
             _env = env;
         }
 
@@ -85,18 +91,94 @@ namespace AIS_LO_System.Controllers
                 return Forbid();
 
             var userId = GetUserId();
-            submission.Status = decision == "approve" ? SubmissionStatus.Approved : SubmissionStatus.Denied;
+            var isApproval = decision == "approve";
+
+            if (isApproval)
+            {
+                try
+                {
+                    switch (submission.ItemType)
+                    {
+                        case SubmissionItemType.LearningOutcomes:
+                            await _moderationDrafts.ApplyLearningOutcomeDraftAsync(submission.Id);
+                            break;
+                        case SubmissionItemType.Assessments:
+                            var draft = await _moderationDrafts.LoadAssessmentDraftAsync(submission.Id);
+                            if (draft != null)
+                            {
+                                var total = draft.Assessments?.Sum(a => a.MarksPercentage) ?? 0;
+                                if (total != 100)
+                                {
+                                    TempData["Error"] = $"Cannot approve: assessment totals add up to {total}%, not 100%.";
+                                    return RedirectToAction(nameof(Inbox));
+                                }
+                            }
+                            await _moderationDrafts.ApplyAssessmentDraftAsync(submission.Id);
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    TempData["Error"] = $"Could not approve {submission.ItemLabel}: {ex.Message}";
+                    return RedirectToAction(nameof(Inbox));
+                }
+            }
+
+            submission.Status = isApproval ? SubmissionStatus.Approved : SubmissionStatus.Denied;
             submission.ModeratorComment = comment?.Trim();
             submission.ReviewedAt = DateTime.Now;
             submission.ReviewedByUserId = userId;
 
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = decision == "approve"
+            if (isApproval)
+                await _moderationDrafts.DeleteDraftAsync(submission.Id);
+
+            TempData["Success"] = isApproval
                 ? $"✅ Approved: {submission.ItemLabel}"
                 : $"❌ Denied: {submission.ItemLabel}";
 
             return RedirectToAction(nameof(Inbox));
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ViewLearningOutcomes(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null) return NotFound();
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
+
+            var draft = await _moderationDrafts.LoadLearningOutcomeDraftAsync(submissionId);
+            if (draft == null) return NotFound();
+
+            ViewBag.Submission = submission;
+            return View(draft);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ViewAssessments(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null) return NotFound();
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
+
+            var draft = await _moderationDrafts.LoadAssessmentDraftAsync(submissionId);
+            if (draft == null) return NotFound();
+
+            var learningOutcomes = await _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == submission.CourseCode)
+                .OrderBy(lo => lo.OrderNumber)
+                .ToListAsync();
+
+            ViewBag.Submission = submission;
+            ViewBag.LearningOutcomes = learningOutcomes;
+            return View(draft);
         }
 
         // ─────────────────────────────────────────────────

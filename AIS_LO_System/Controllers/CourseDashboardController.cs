@@ -1,5 +1,6 @@
 ﻿using AIS_LO_System.Data;
 using AIS_LO_System.Models;
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,10 +11,12 @@ namespace LOARS.Web.Controllers
     public class CourseDashboardController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;
 
-        public CourseDashboardController(ApplicationDbContext context)
+        public CourseDashboardController(ApplicationDbContext context, SubmissionService submissions)
         {
             _context = context;
+            _submissions = submissions;
         }
 
         [HttpGet]
@@ -66,6 +69,15 @@ namespace LOARS.Web.Controllers
             var assessmentTotal = assessments.Sum(a => a.MarksPercentage);
             ViewBag.AssessmentTotalWarning = assessments.Any() && assessmentTotal != 100
                 ? $"Assessment totals currently add up to {assessmentTotal}%, not 100%. Please review the extracted assessments."
+                : null;
+            var latestAssessmentSubmission = await _submissions.GetLatestAsync(
+                courseCode,
+                year,
+                trimester,
+                SubmissionItemType.Assessments);
+            ViewBag.PendingAssessmentDraft = latestAssessmentSubmission?.Status == SubmissionStatus.Pending;
+            ViewBag.PendingAssessmentDraftWarning = latestAssessmentSubmission?.Status == SubmissionStatus.Pending
+                ? "Assessment changes are waiting for moderator approval. The live assessment links below are temporarily locked until that review is complete."
                 : null;
 
             ViewBag.Assessments = assessments;

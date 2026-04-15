@@ -1,5 +1,7 @@
 ﻿using AIS_LO_System.Data;
+using AIS_LO_System.Models;
 using AIS_LO_System.Models.MarkStudents;
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +15,12 @@ namespace AIS_LO_System.Controllers
     public class MarkStudentsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;
 
-        public MarkStudentsController(ApplicationDbContext context)
+        public MarkStudentsController(ApplicationDbContext context, SubmissionService submissions)
         {
             _context = context;
+            _submissions = submissions;
         }
 
         [HttpGet]
@@ -29,6 +33,10 @@ namespace AIS_LO_System.Controllers
             int trimester,
             string? searchTerm)
         {
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>
                     c.Code == courseCode &&
@@ -516,6 +524,10 @@ namespace AIS_LO_System.Controllers
             string? comment,
             string selectedLevelsJson)
         {
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
             if (student == null)
                 return NotFound();
@@ -638,6 +650,10 @@ namespace AIS_LO_System.Controllers
             int year,
             int trimester)
         {
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             var existingMarks = await _context.StudentCriterionMarks
                 .Where(x => x.AssignmentId == assignmentId && x.StudentRefId == studentId)
                 .ToListAsync();
@@ -671,6 +687,16 @@ namespace AIS_LO_System.Controllers
                 year,
                 trimester
             });
+        }
+
+        private async Task<IActionResult?> BlockIfAssessmentDraftPendingAsync(string courseCode, int year, int trimester)
+        {
+            var sub = await _submissions.GetLatestAsync(courseCode, year, trimester, SubmissionItemType.Assessments);
+            if (sub?.Status != SubmissionStatus.Pending)
+                return null;
+
+            TempData["Error"] = "Assessment changes are waiting for moderator approval. Marking is temporarily locked until the approved assessment setup goes live.";
+            return RedirectToAction("Assessments", "CourseInformation", new { courseCode, year, trimester });
         }
 
     }

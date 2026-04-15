@@ -19,7 +19,7 @@ namespace AIS_LO_System.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(
+        public async Task<IActionResult> Index(
             string assessmentName,
             string courseCode,
             string courseTitle,
@@ -31,6 +31,10 @@ namespace AIS_LO_System.Controllers
                 TempData["Error"] = "Assessment name is required.";
                 return RedirectToAction("Index", "CourseDashboard", new { courseCode, year, trimester });
             }
+
+            var assessmentDraftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (assessmentDraftLock != null)
+                return assessmentDraftLock;
 
             var normalizedAssessmentName = NormalizeAssessmentTitle(assessmentName);
 
@@ -82,6 +86,13 @@ namespace AIS_LO_System.Controllers
                 .FirstOrDefault(a => a.Id == id);
 
             if (assignment == null) return NotFound();
+
+            var assessmentDraftLock = await BlockIfAssessmentDraftPendingAsync(
+                assignment.CourseCode,
+                assignment.Year,
+                assignment.Trimester);
+            if (assessmentDraftLock != null)
+                return assessmentDraftLock;
 
             ViewBag.CourseCode = assignment.CourseCode;
             ViewBag.CourseTitle = assignment.CourseTitle;
@@ -141,6 +152,13 @@ namespace AIS_LO_System.Controllers
 
             var assignment = _context.Assignments.FirstOrDefault(a => a.Id == assignmentId);
             if (assignment == null) return NotFound();
+
+            var assessmentDraftLock = await BlockIfAssessmentDraftPendingAsync(
+                assignment.CourseCode,
+                assignment.Year,
+                assignment.Trimester);
+            if (assessmentDraftLock != null)
+                return assessmentDraftLock;
 
             var latestVersion = _context.AssignmentFiles
                 .Where(f => f.AssignmentId == assignment.Id)
@@ -299,6 +317,21 @@ namespace AIS_LO_System.Controllers
             normalized = Regex.Replace(normalized, @"[^a-z0-9]+", " ");
             normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
             return normalized;
+        }
+
+        private async Task<IActionResult?> BlockIfAssessmentDraftPendingAsync(string courseCode, int year, int trimester)
+        {
+            var latestAssessmentSubmission = await _submissions.GetLatestAsync(
+                courseCode,
+                year,
+                trimester,
+                SubmissionItemType.Assessments);
+
+            if (latestAssessmentSubmission?.Status != SubmissionStatus.Pending)
+                return null;
+
+            TempData["Error"] = "Assessment changes are waiting for moderator approval. Assignment pages are temporarily locked until the approved assessment setup goes live.";
+            return RedirectToAction("Assessments", "CourseInformation", new { courseCode, year, trimester });
         }
     }
 }

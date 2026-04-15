@@ -10,7 +10,9 @@ namespace AIS_LO_System.Models
         StudentMarks,
         StudentLOReport,
         CourseLOReport,
-        LOMapping          // FIX #2: manually-assigned LO mapping sent for moderator review
+        LOMapping,         // FIX #2: manually-assigned LO mapping sent for moderator review
+        LearningOutcomes,
+        Assessments
     }
 
     public enum SubmissionStatus

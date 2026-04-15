@@ -1,0 +1,48 @@
+@model AIS_LO_System.Services.LearningOutcomeDraft
+@using AIS_LO_System.Models
+
+@{
+    ViewData["Title"] = "Review Learning Outcomes";
+    Layout = User.IsInRole("Admin") ? "_AdminLayout" : "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<div class="mod-page">
+    <div class="mod-header">
+        <div>
+            <h1 class="mod-title">Review Learning Outcomes</h1>
+            <p class="mod-subtitle">
+                @Model.CourseCode @Model.Year T@(Model.Trimester)
+            </p>
+        </div>
+        <a class="mod-btn-view" asp-action="Inbox">Back to Inbox</a>
+    </div>
+
+    <div class="mod-card" style="background:#fff; border:1px solid #eee;">
+        <div class="mod-card-label">@(submission?.ItemLabel ?? "Pending Learning Outcomes")</div>
+        <div class="mod-card-meta" style="margin-bottom:18px;">
+            Submitted by <strong>@(submission?.SubmittedBy?.FullName ?? "—")</strong>
+            on @(submission?.SubmittedAt.ToString("dd MMM yyyy, h:mm tt") ?? "—")
+        </div>
+
+        @if (!Model.Outcomes.Any())
+        {
+            <div class="mod-empty-section">No learning outcomes were included in this draft.</div>
+        }
+        else
+        {
+            <ol style="margin:0; padding-left:22px; display:grid; gap:12px;">
+                @foreach (var outcome in Model.Outcomes)
+                {
+                    <li style="line-height:1.55;">@outcome</li>
+                }
+            </ol>
+        }
+
+        <div class="mod-alert" style="margin-top:20px; background:#fff3cd; color:#856404; border:1px solid #ffe69c;">
+            Approving this submission will replace the live learning outcomes for this course offering with the draft shown above.
+        </div>
+    </div>
+</div>

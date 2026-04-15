@@ -17,19 +17,32 @@ namespace LOARS.Web.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ApplicationDbContext _context;
         private readonly SubmissionService _submissions;
+        private readonly ModerationDraftService _moderationDrafts;
 
-        public CourseInformationController(IWebHostEnvironment env, ApplicationDbContext context, SubmissionService submissions)
+        public CourseInformationController(
+            IWebHostEnvironment env,
+            ApplicationDbContext context,
+            SubmissionService submissions,
+            ModerationDraftService moderationDrafts)
         {
             _env = env;
             _context = context;
             _submissions = submissions;
+            _moderationDrafts = moderationDrafts;
         }
 
-        private bool AllowOutlineReupload(string courseCode, int year, int trimester)
+        private async Task<bool> AllowOutlineReupload(string courseCode, int year, int trimester)
         {
             var course = _context.Courses
                 .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
-            return course?.CanReuploadOutline ?? true;
+            if (!(course?.CanReuploadOutline ?? true))
+                return false;
+
+            // Block re-upload once moderator has approved the outline
+            if (await _submissions.IsApprovedAsync(courseCode, year, trimester, SubmissionItemType.CourseOutline))
+                return false;
+
+            return true;
         }
 
         private bool AllowLOEdit(string courseCode, int year, int trimester)
@@ -43,7 +56,78 @@ namespace LOARS.Web.Controllers
         {
             var course = _context.Courses
                 .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
-            return course?.CanEditAssignment ?? true;
+            var canEditAssignment = course?.CanEditAssignment ?? true;
+            return canEditAssignment && HasAssessmentFallbackIssue(courseCode, year, trimester);
+        }
+
+        private bool HasOutlineFile(string courseCode, int year, int trimester)
+        {
+            var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
+            var baseName = GetOutlineBaseName(courseCode, year, trimester);
+
+            return new[] { ".pdf", ".docx" }
+                .Any(ext => System.IO.File.Exists(Path.Combine(dir, baseName + ext)));
+        }
+
+        private CourseSubmission? GetLatestAssessmentSubmission(string courseCode, int year, int trimester)
+        {
+            return _context.CourseSubmissions
+                .Where(s => s.CourseCode == courseCode
+                         && s.Year == year
+                         && s.Trimester == trimester
+                         && s.ItemType == SubmissionItemType.Assessments)
+                .OrderByDescending(s => s.SubmittedAt)
+                .FirstOrDefault();
+        }
+
+        private bool HasAssessmentFallbackIssue(string courseCode, int year, int trimester)
+        {
+            var latestAssessmentSubmission = GetLatestAssessmentSubmission(courseCode, year, trimester);
+            if (latestAssessmentSubmission != null && latestAssessmentSubmission.Status != SubmissionStatus.Approved)
+                return true;
+
+            if (!HasOutlineFile(courseCode, year, trimester))
+                return false;
+
+            var assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .ToList();
+
+            if (!assignments.Any())
+                return true;
+
+            return assignments.Sum(a => a.MarksPercentage) != 100;
+        }
+
+        private string GetAssessmentFallbackMessage(string courseCode, int year, int trimester)
+        {
+            var latestAssessmentSubmission = GetLatestAssessmentSubmission(courseCode, year, trimester);
+            if (latestAssessmentSubmission?.Status == SubmissionStatus.Pending)
+            {
+                return "Assessment changes are currently waiting for moderator approval. The live assessment setup stays locked until that review is finished.";
+            }
+
+            if (!HasOutlineFile(courseCode, year, trimester))
+            {
+                return "Manual assessment editing is only available after a course outline is uploaded and the extracted assessment data needs review.";
+            }
+
+            var assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .ToList();
+
+            if (!assignments.Any())
+            {
+                return "No assessments were extracted from the current course outline. You can use the Assessments page as a fallback and submit the correction for moderator approval.";
+            }
+
+            var assessmentTotal = assignments.Sum(a => a.MarksPercentage);
+            if (assessmentTotal != 100)
+            {
+                return $"Assessment totals currently add up to {assessmentTotal}%, not 100%. You can use the Assessments page as a fallback and submit the correction for moderator approval.";
+            }
+
+            return "Manual assessment editing is only available when the uploaded course outline needs assessment correction.";
         }
 
         // -------------------------
@@ -54,7 +138,7 @@ namespace LOARS.Web.Controllers
         {
             SetCourseContext(courseCode, year, trimester);
 
-            ViewBag.CanReupload = AllowOutlineReupload(courseCode, year, trimester);
+            ViewBag.CanReupload = await AllowOutlineReupload(courseCode, year, trimester);
             var currentAssessmentTotal = GetAssessmentTotalMarks(courseCode, year, trimester);
             var currentAssessmentCount = _context.Assignments
                 .Count(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester);
@@ -92,7 +176,7 @@ namespace LOARS.Web.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadOutline(IFormFile file, string courseCode, int year, int trimester)
         {
-            if (!AllowOutlineReupload(courseCode, year, trimester))
+            if (!await AllowOutlineReupload(courseCode, year, trimester))
                 return Forbid();
 
             if (file == null || file.Length == 0)
@@ -340,32 +424,48 @@ namespace LOARS.Web.Controllers
         // LEARNING OUTCOMES (VIEW)
         // -------------------------
         [HttpGet]
-        public IActionResult LearningOutcomes(string courseCode, int year, int trimester)
+        public async Task<IActionResult> LearningOutcomes(string courseCode, int year, int trimester)
         {
             SetCourseContext(courseCode, year, trimester);
 
             ViewBag.CanEditLO = AllowLOEdit(courseCode, year, trimester);
 
             var los = LoadLos(courseCode, year, trimester);
+            var submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.LearningOutcomes);
 
             ViewBag.LearningOutcomes = los;
             ViewBag.LOs = los;
-
+            ViewBag.Submission = submission;
+            ViewBag.PendingApprovalNote = submission?.Status == SubmissionStatus.Pending
+                ? "Pending learning outcome changes are waiting for moderator approval. The current live learning outcomes stay unchanged until approval."
+                : null;
             ViewBag.EditMode = false;
             return View();
         }
 
         [HttpGet]
-        public IActionResult EditLearningOutcomes(string courseCode, int year, int trimester)
+        public async Task<IActionResult> EditLearningOutcomes(string courseCode, int year, int trimester)
         {
             SetCourseContext(courseCode, year, trimester);
 
             ViewBag.CanEditLO = AllowLOEdit(courseCode, year, trimester);
 
             var los = LoadLos(courseCode, year, trimester);
+            var submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.LearningOutcomes);
+            if (submission != null && submission.Status != SubmissionStatus.Approved)
+            {
+                var draft = await _moderationDrafts.LoadLearningOutcomeDraftAsync(submission.Id);
+                if (draft?.Outcomes?.Any() == true)
+                    los = draft.Outcomes;
+            }
             ViewBag.LearningOutcomes = los;
             ViewBag.LOs = los;
-
+            ViewBag.Submission = submission;
+            ViewBag.PendingApprovalNote = submission?.Status == SubmissionStatus.Pending
+                ? "You are editing a pending learning outcome draft. These changes are not live until the moderator approves them."
+                : null;
             ViewBag.EditMode = true;
             return View("LearningOutcomes");
         }
@@ -375,7 +475,7 @@ namespace LOARS.Web.Controllers
         // -------------------------
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult SaveLearningOutcomes(string courseCode, int year, int trimester, List<string> outcomes)
+        public async Task<IActionResult> SaveLearningOutcomes(string courseCode, int year, int trimester, List<string> outcomes)
         {
             if (!AllowLOEdit(courseCode, year, trimester))
                 return Forbid();
@@ -385,13 +485,30 @@ namespace LOARS.Web.Controllers
                 .Select(x => x.Trim())
                 .ToList();
 
-            // Save to JSON (existing functionality)
-            SaveLos(courseCode, year, trimester, cleaned);
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
 
-            // Sync to database so Epic 8 can use them
-            SyncLosToDatabase(courseCode, cleaned);
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            if (course?.ModeratorId == null || userId <= 0)
+            {
+                TempData["Error"] = "No moderator is assigned to this course yet, so learning outcome changes cannot be submitted for approval.";
+                return RedirectToAction(nameof(EditLearningOutcomes), new { courseCode, year, trimester });
+            }
 
-            TempData["Success"] = "Learning outcomes saved successfully!";
+            var submission = await _submissions.SubmitAsync(
+                courseCode, year, trimester,
+                SubmissionItemType.LearningOutcomes, null,
+                $"Learning Outcomes - {courseCode} {year} T{trimester}",
+                userId);
+
+            await _moderationDrafts.SaveLearningOutcomeDraftAsync(
+                submission.Id,
+                courseCode,
+                year,
+                trimester,
+                cleaned);
+
+            TempData["Success"] = "Learning outcome changes were submitted to the moderator for approval. They are not live yet.";
             return RedirectToAction(nameof(LearningOutcomes), new { courseCode, year, trimester });
         }
 
@@ -421,9 +538,7 @@ namespace LOARS.Web.Controllers
         {
             return _context.Assignments
                 .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
-                .Select(a => a.MarksPercentage)
-                .DefaultIfEmpty(0)
-                .Sum();
+                .Sum(a => (int?)a.MarksPercentage) ?? 0;
         }
 
         private string GetLosPath(string courseCode, int year, int trimester)
@@ -797,15 +912,21 @@ namespace LOARS.Web.Controllers
         // ASSESSMENTS (VIEW)
         // -------------------------
         [HttpGet]
-        public IActionResult Assessments(string courseCode, int year, int trimester)
+        public async Task<IActionResult> Assessments(string courseCode, int year, int trimester)
         {
             SetCourseContext(courseCode, year, trimester);
-            ViewBag.CanEditAssignment = AllowAssignmentEdit(courseCode, year, trimester);
+            var canEditAssignment = AllowAssignmentEdit(courseCode, year, trimester);
+            ViewBag.CanEditAssignment = canEditAssignment;
+            ViewBag.AssessmentEditMessage = canEditAssignment
+                ? "Manual assessment editing is enabled as a fallback because the current course outline assessment data needs review."
+                : GetAssessmentFallbackMessage(courseCode, year, trimester);
 
             var assignments = _context.Assignments
                 .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
                 .OrderBy(a => a.Id)
                 .ToList();
+            var submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.Assessments);
             ViewBag.Assignments = assignments;
 
             ViewBag.LearningOutcomes = _context.LearningOutcomes
@@ -816,7 +937,10 @@ namespace LOARS.Web.Controllers
             ViewBag.AssessmentTotalWarning = assignments.Any() && assessmentTotal != 100
                 ? $"Assessment totals currently add up to {assessmentTotal}%, not 100%. Please review the assessments."
                 : null;
-
+            ViewBag.Submission = submission;
+            ViewBag.PendingApprovalNote = submission?.Status == SubmissionStatus.Pending
+                ? "Pending assessment changes are waiting for moderator approval. The current live assessments stay unchanged until approval."
+                : null;
             ViewBag.EditMode = false;
             return View();
         }
@@ -825,15 +949,34 @@ namespace LOARS.Web.Controllers
         // ASSESSMENTS (EDIT)
         // -------------------------
         [HttpGet]
-        public IActionResult EditAssessments(string courseCode, int year, int trimester)
+        public async Task<IActionResult> EditAssessments(string courseCode, int year, int trimester)
         {
+            if (!AllowAssignmentEdit(courseCode, year, trimester))
+            {
+                TempData["Error"] = GetAssessmentFallbackMessage(courseCode, year, trimester);
+                return RedirectToAction(nameof(Assessments), new { courseCode, year, trimester });
+            }
+
             SetCourseContext(courseCode, year, trimester);
-            ViewBag.CanEditAssignment = AllowAssignmentEdit(courseCode, year, trimester);
+            ViewBag.CanEditAssignment = true;
+            ViewBag.AssessmentEditMessage = "Manual assessment editing is enabled as a fallback because the current course outline assessment data needs review.";
+
+            var submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.Assessments);
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
 
             var assignments = _context.Assignments
                 .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
                 .OrderBy(a => a.Id)
                 .ToList();
+
+            if (submission != null && submission.Status != SubmissionStatus.Approved)
+            {
+                var draft = await _moderationDrafts.LoadAssessmentDraftAsync(submission.Id);
+                if (draft != null)
+                    assignments = BuildAssignmentsFromDraft(draft, course?.Title ?? string.Empty);
+            }
             ViewBag.Assignments = assignments;
 
             ViewBag.LearningOutcomes = _context.LearningOutcomes
@@ -844,7 +987,10 @@ namespace LOARS.Web.Controllers
             ViewBag.AssessmentTotalWarning = assignments.Any() && assessmentTotal != 100
                 ? $"Assessment totals currently add up to {assessmentTotal}%, not 100%. Please review the assessments."
                 : null;
-
+            ViewBag.Submission = submission;
+            ViewBag.PendingApprovalNote = submission?.Status == SubmissionStatus.Pending
+                ? "You are editing a pending assessment draft. These changes are not live until the moderator approves them."
+                : null;
             ViewBag.EditMode = true;
             return View("Assessments");
         }
@@ -854,14 +1000,13 @@ namespace LOARS.Web.Controllers
         // -------------------------
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult SaveAssessments(string courseCode, int year, int trimester, List<AssignmentEditInput> assignments)
+        public async Task<IActionResult> SaveAssessments(string courseCode, int year, int trimester, List<AssignmentEditInput> assignments)
         {
             if (!AllowAssignmentEdit(courseCode, year, trimester))
-                return Forbid();
-
-            var existing = _context.Assignments
-                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
-                .ToList();
+            {
+                TempData["Error"] = GetAssessmentFallbackMessage(courseCode, year, trimester);
+                return RedirectToAction(nameof(Assessments), new { courseCode, year, trimester });
+            }
 
             var course = _context.Courses
                 .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
@@ -872,12 +1017,21 @@ namespace LOARS.Web.Controllers
                 .ToHashSet();
 
             var errors = new List<string>();
+            var seenNames = new HashSet<string>();
+            var draftItems = new List<AssessmentDraftItem>();
 
             foreach (var input in assignments ?? new List<AssignmentEditInput>())
             {
                 if (string.IsNullOrWhiteSpace(input.AssessmentName)) continue;
 
                 var normalizedName = input.AssessmentName.Trim();
+                var normalizedKey = NormalizeAssessmentTitle(normalizedName);
+                if (!seenNames.Add(normalizedKey))
+                {
+                    errors.Add($"\"{normalizedName}\" duplicates another assessment name in this draft.");
+                    continue;
+                }
+
                 if (input.MarksPercentage < 0 || input.MarksPercentage > 100)
                 {
                     errors.Add($"\"{normalizedName}\" has an invalid marks percentage.");
@@ -896,35 +1050,19 @@ namespace LOARS.Web.Controllers
                     continue;
                 }
 
-                var selectedLOIdsStr = selectedLOIds.Any()
-                    ? string.Join(",", selectedLOIds.Distinct())
-                    : null;
-
-                if (input.Id == 0)
+                draftItems.Add(new AssessmentDraftItem
                 {
-                    _context.Assignments.Add(new Assignment
-                    {
-                        AssessmentName = normalizedName,
-                        CourseCode = courseCode,
-                        CourseTitle = course?.Title ?? "",
-                        Year = year,
-                        Trimester = trimester,
-                        MarksPercentage = input.MarksPercentage,
-                        SelectedLearningOutcomeIds = selectedLOIdsStr,
-                        LOsLockedByOutline = false
-                    });
-                    continue;
-                }
+                    Id = input.Id,
+                    AssessmentName = normalizedName,
+                    MarksPercentage = input.MarksPercentage,
+                    SelectedLOIds = selectedLOIds
+                });
+            }
 
-                var record = existing.FirstOrDefault(a => a.Id == input.Id);
-                if (record == null) continue;
-
-                RenameAssessmentMarksIfNeeded(courseCode, record.AssessmentName, normalizedName);
-
-                record.AssessmentName = normalizedName;
-                record.MarksPercentage = input.MarksPercentage;
-                record.SelectedLearningOutcomeIds = selectedLOIdsStr;
-                record.LOsLockedByOutline = false;
+            var total = draftItems.Sum(d => d.MarksPercentage);
+            if (total != 100)
+            {
+                errors.Add($"Assessment totals add up to {total}%, not 100%. Please adjust the marks so they total exactly 100%.");
             }
 
             if (errors.Any())
@@ -933,9 +1071,27 @@ namespace LOARS.Web.Controllers
                 return RedirectToAction(nameof(EditAssessments), new { courseCode, year, trimester });
             }
 
-            _context.SaveChanges();
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            if (course?.ModeratorId == null || userId <= 0)
+            {
+                TempData["Error"] = "No moderator is assigned to this course yet, so assessment changes cannot be submitted for approval.";
+                return RedirectToAction(nameof(EditAssessments), new { courseCode, year, trimester });
+            }
 
-            TempData["Success"] = "Assessments saved successfully!";
+            var submission = await _submissions.SubmitAsync(
+                courseCode, year, trimester,
+                SubmissionItemType.Assessments, null,
+                $"Assessments - {courseCode} {year} T{trimester}",
+                userId);
+
+            await _moderationDrafts.SaveAssessmentDraftAsync(
+                submission.Id,
+                courseCode,
+                year,
+                trimester,
+                draftItems);
+
+            TempData["Success"] = "Assessment changes were submitted to the moderator for approval. They are not live yet.";
             return RedirectToAction(nameof(Assessments), new { courseCode, year, trimester });
         }
 
@@ -949,6 +1105,26 @@ namespace LOARS.Web.Controllers
                 .Where(value => int.TryParse(value, out _))
                 .Select(int.Parse)
                 .Distinct()
+                .ToList();
+        }
+
+        private static List<Assignment> BuildAssignmentsFromDraft(AssessmentDraft draft, string courseTitle)
+        {
+            return (draft.Assessments ?? new List<AssessmentDraftItem>())
+                .Select(item => new Assignment
+                {
+                    Id = item.Id,
+                    AssessmentName = item.AssessmentName,
+                    CourseCode = draft.CourseCode,
+                    CourseTitle = courseTitle,
+                    Year = draft.Year,
+                    Trimester = draft.Trimester,
+                    MarksPercentage = item.MarksPercentage,
+                    SelectedLearningOutcomeIds = item.SelectedLOIds.Any()
+                        ? string.Join(",", item.SelectedLOIds.Distinct())
+                        : null,
+                    LOsLockedByOutline = false
+                })
                 .ToList();
         }
     }

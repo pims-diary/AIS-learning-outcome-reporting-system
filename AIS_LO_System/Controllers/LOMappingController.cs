@@ -32,6 +32,10 @@ namespace AIS_LO_System.Controllers
             if (assignmentId == 0)
                 return BadRequest("Assignment ID is required.");
 
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             ViewBag.AssignmentId = assignmentId;
             ViewBag.AssessmentName = assessmentName;
             ViewBag.CourseCode = courseCode;
@@ -190,6 +194,10 @@ namespace AIS_LO_System.Controllers
             List<MappingInput> mappings,
             List<int> selectedLOIds)
         {
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             try
             {
                 var assignment = await _context.Assignments
@@ -320,6 +328,16 @@ namespace AIS_LO_System.Controllers
                     trimester
                 });
             }
+        }
+
+        private async Task<IActionResult?> BlockIfAssessmentDraftPendingAsync(string courseCode, int year, int trimester)
+        {
+            var sub = await _submissions.GetLatestAsync(courseCode, year, trimester, SubmissionItemType.Assessments);
+            if (sub?.Status != SubmissionStatus.Pending)
+                return null;
+
+            TempData["Error"] = "Assessment changes are waiting for moderator approval. LO Mapping pages are temporarily locked until the approved assessment setup goes live.";
+            return RedirectToAction("Assessments", "CourseInformation", new { courseCode, year, trimester });
         }
     }
 

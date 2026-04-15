@@ -116,12 +116,16 @@
 }
 else if (Model != null && Model.Status == SubmissionStatus.Pending)
 {
+    var pendingMessage = (Model.ItemType == SubmissionItemType.LearningOutcomes || Model.ItemType == SubmissionItemType.Assessments)
+        ? "Changes are waiting for moderator approval. Live course data stays unchanged until approval."
+        : $"Submitted {Model.SubmittedAt:dd MMM yyyy, h:mm tt}";
+
     <!-- Pending just shows a quiet inline banner, no popup needed -->
     <div class="sub-status-banner sub-status-pending">
         <span class="sub-status-icon">⏳</span>
         <div class="sub-status-body">
             <strong>Pending</strong>
-            <span class="sub-status-date">Submitted @Model.SubmittedAt.ToString("dd MMM yyyy, h:mm tt")</span>
+            <span class="sub-status-date">@pendingMessage</span>
         </div>
     </div>
 }

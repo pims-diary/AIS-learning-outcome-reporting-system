@@ -48,6 +48,8 @@
     <div class="content-card">
         <h2 class="page-title">Assessments</h2>
 
+        @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
+
         @if (TempData["Success"] != null)
         {
             <div class="success-msg">@TempData["Success"]</div>
@@ -59,6 +61,14 @@
         @if (ViewBag.AssessmentTotalWarning != null)
         {
             <div class="warning-msg">@ViewBag.AssessmentTotalWarning</div>
+        }
+        @if (ViewBag.PendingApprovalNote != null)
+        {
+            <div class="warning-msg">@ViewBag.PendingApprovalNote</div>
+        }
+        @if (ViewBag.AssessmentEditMessage != null)
+        {
+            <div class="warning-msg">@ViewBag.AssessmentEditMessage</div>
         }
 
         @* ---------------------------
@@ -123,7 +133,7 @@
                 else if (!canEdit && string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
                 {
                     <button class="btn-primary" type="button" disabled>Edit Assessments</button>
-                    <div class="denied">Action Denied (permission required).</div>
+                    <div class="denied">Manual assessment editing is currently unavailable.</div>
                 }
             </div>
         }
@@ -215,6 +225,8 @@
                     }
                     </div>
 
+                    <div id="totalIndicator" style="margin-top:10px; padding:10px 14px; border-radius:6px; font-size:14px; font-weight:500;"></div>
+
                     <div class="edit-actions">
                         <button type="button" class="btn-secondary" onclick="addAssessmentRow()">+ Add Assessment</button>
                         <div class="right">
@@ -226,7 +238,7 @@
                                asp-route-trimester="@ViewBag.Trimester">
                                 Cancel
                             </a>
-                            <button type="submit" class="btn-primary">Save</button>
+                            <button type="submit" class="btn-primary" id="saveBtn">Save</button>
                         </div>
                     </div>
                 </form>
@@ -285,7 +297,42 @@
                             '</div>';
 
                         container.insertAdjacentHTML('beforeend', html);
+                        updateTotal();
                     }
+
+                    function updateTotal() {
+                        var inputs = document.querySelectorAll('input[name$=".MarksPercentage"]');
+                        var total = 0;
+                        inputs.forEach(function (inp) { total += parseInt(inp.value) || 0; });
+                        var el = document.getElementById('totalIndicator');
+                        if (total === 100) {
+                            el.style.background = '#d4edda';
+                            el.style.border = '1px solid #c3e6cb';
+                            el.style.color = '#155724';
+                            el.textContent = 'Total: 100%';
+                        } else {
+                            el.style.background = '#f8d7da';
+                            el.style.border = '1px solid #f5c6cb';
+                            el.style.color = '#721c24';
+                            el.textContent = 'Total: ' + total + '% (must be exactly 100%)';
+                        }
+                    }
+
+                    document.getElementById('assessmentEditor').addEventListener('input', function (e) {
+                        if (e.target.name && e.target.name.endsWith('.MarksPercentage')) updateTotal();
+                    });
+
+                    document.querySelector('form').addEventListener('submit', function (e) {
+                        var inputs = document.querySelectorAll('input[name$=".MarksPercentage"]');
+                        var total = 0;
+                        inputs.forEach(function (inp) { total += parseInt(inp.value) || 0; });
+                        if (total !== 100) {
+                            e.preventDefault();
+                            alert('Assessment totals add up to ' + total + '%, not 100%. Please adjust the marks so they total exactly 100%.');
+                        }
+                    });
+
+                    updateTotal();
                 </script>
             }
         }

@@ -33,6 +33,10 @@ namespace AIS_LO_System.Controllers
             if (assignmentId == null)
                 return BadRequest("AssignmentId is required.");
 
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             ViewBag.AssignmentId = assignmentId;
             ViewBag.AssessmentName = assessmentName;
             ViewBag.CourseCode = courseCode;
@@ -75,6 +79,10 @@ namespace AIS_LO_System.Controllers
     int year,
     int trimester)
         {
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             if (file == null || file.Length == 0)
             {
                 TempData["Error"] = "Please select a file to upload.";
@@ -465,6 +473,16 @@ namespace AIS_LO_System.Controllers
                 year = assignment.Year,
                 trimester = assignment.Trimester
             });
+        }
+
+        private async Task<IActionResult?> BlockIfAssessmentDraftPendingAsync(string courseCode, int year, int trimester)
+        {
+            var sub = await _submissions.GetLatestAsync(courseCode, year, trimester, SubmissionItemType.Assessments);
+            if (sub?.Status != SubmissionStatus.Pending)
+                return null;
+
+            TempData["Error"] = "Assessment changes are waiting for moderator approval. Rubric pages are temporarily locked until the approved assessment setup goes live.";
+            return RedirectToAction("Assessments", "CourseInformation", new { courseCode, year, trimester });
         }
     }
 }

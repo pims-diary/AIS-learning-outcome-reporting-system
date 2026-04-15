@@ -176,9 +176,18 @@
             }
             else if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
             {
-                @* Admin locked re-upload — show disabled state but only when not impersonating *@
+                var sub = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission;
+                bool lockedByApproval = sub != null && sub.Status == AIS_LO_System.Models.SubmissionStatus.Approved;
+
                 <button class="btn-primary" type="button" disabled>Re-upload Course Outline</button>
-                <div class="denied">Action Denied (permission required).</div>
+                @if (lockedByApproval)
+                {
+                    <div class="denied">Re-upload is locked because the moderator has already approved this course outline.</div>
+                }
+                else
+                {
+                    <div class="denied">Action Denied (permission required).</div>
+                }
             }
             @* During impersonation: show nothing *@
         </div>
