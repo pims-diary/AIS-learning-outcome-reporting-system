@@ -132,7 +132,35 @@
             <div class="empty">No course outline uploaded yet.</div>
         }
 
-        <div class="actions-center" style="margin-top:24px;">
+        <!-- Format Guide -->
+        <details style="margin-top:24px; background:#f0f4ff; border:1px solid #b6d4fe; border-radius:8px; padding:4px 16px;">
+            <summary style="cursor:pointer; font-weight:600; color:#084298; padding:10px 0; font-size:14px;">
+                Format Guide: How the system reads your course outline
+            </summary>
+            <div style="font-size:13px; color:#333; line-height:1.7; padding-bottom:12px;">
+                <p style="margin:8px 0;"><strong>Supported formats:</strong> PDF or DOCX (Word recommended for best results)</p>
+
+                <p style="margin:12px 0 4px; font-weight:600;">Learning Outcomes extraction:</p>
+                <ul style="margin:4px 0 8px 20px; padding:0;">
+                    <li>For DOCX: the system looks for a <strong>Heading 2</strong> section containing "Learning Outcomes"</li>
+                    <li>All content under that heading (until the next Heading 2) is parsed as LOs</li>
+                    <li>Supports numbered format (<code>1. text</code>) or plain paragraphs</li>
+                    <li>For PDF: text-based parsing searches for "LEARNING OUTCOMES" header</li>
+                </ul>
+
+                <p style="margin:12px 0 4px; font-weight:600;">Assessment table extraction:</p>
+                <ul style="margin:4px 0 8px 20px; padding:0;">
+                    <li>For DOCX: the system looks for a <strong>Heading 2</strong> section containing "Assessment"</li>
+                    <li>The first <strong>table</strong> after that heading is parsed as the assessment table</li>
+                    <li>The table header row must contain columns with <strong>"Title"</strong> and <strong>"Marks"</strong> (or "Marks %")</li>
+                    <li>Optionally include a <strong>"Learning Outcomes"</strong> column for LO mapping (e.g., "1, 2, 3")</li>
+                </ul>
+
+                <p style="margin:8px 0; color:#555;"><em>Tip: Use the standard AIS course outline template with Heading 2 styles for section headers. This ensures reliable extraction even if the template layout changes.</em></p>
+            </div>
+        </details>
+
+        <div class="actions-center" style="margin-top:16px;">
             @if (canReupload)
             {
                 @if (hasFile)
