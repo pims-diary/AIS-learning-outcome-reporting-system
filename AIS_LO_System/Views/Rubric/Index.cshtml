@@ -75,6 +75,43 @@
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
 
+    <!-- Format Guide -->
+    <details style="margin-bottom:20px; background:#f0f4ff; border:1px solid #b6d4fe; border-radius:8px; padding:4px 16px;">
+        <summary style="cursor:pointer; font-weight:600; color:#084298; padding:10px 0; font-size:14px;">
+            Format Guide: How the system reads your rubric
+        </summary>
+        <div style="font-size:13px; color:#333; line-height:1.7; padding-bottom:12px;">
+            <p style="margin:8px 0;"><strong>Supported format:</strong> Excel rubric file</p>
+
+            <p style="margin:12px 0 4px; font-weight:600;">Expected worksheet layout:</p>
+            <ul style="margin:4px 0 8px 20px; padding:0;">
+                <li>The system reads the <strong>first worksheet only</strong></li>
+                <li><strong>Row 2, columns B-F</strong> are used as the scale names</li>
+                <li><strong>Row 3 onward</strong> is read as rubric criteria</li>
+                <li><strong>Column A</strong> = Criterion name</li>
+                <li><strong>Columns B-F</strong> = Level descriptions for scores <strong>4, 3, 2, 1, 0</strong></li>
+                <li><strong>Column G</strong> = Learning Outcomes (optional), for example <code>1,2,5</code> or <code>LO1, LO2, LO5</code></li>
+                <li><strong>Column H</strong> = Weight percentage (optional), for example <code>10</code>, <code>10.5</code>, or <code>10%</code></li>
+            </ul>
+
+            <p style="margin:12px 0 4px; font-weight:600;">LO mapping rules:</p>
+            <ul style="margin:4px 0 8px 20px; padding:0;">
+                <li>LO numbers are matched against the course Learning Outcomes by their <strong>LO order number</strong></li>
+                <li>If the assessment already has selected LOs from the course outline, only those LOs are allowed</li>
+                <li>Any rubric LO that is not allowed for this assessment is <strong>skipped</strong> and shown as a warning</li>
+            </ul>
+
+            <p style="margin:12px 0 4px; font-weight:600;">Important notes:</p>
+            <ul style="margin:4px 0 8px 20px; padding:0;">
+                <li>The first worksheet must contain at least one valid criterion row</li>
+                <li>If a rubric already exists for this assessment, uploading a new rubric will <strong>replace</strong> the old one</li>
+                <li>After upload, the rubric is submitted to the moderator for approval</li>
+            </ul>
+
+            <p style="margin:8px 0; color:#555;"><em>Tip: Keep one criterion per row and use clear LO numbers in column G for the most reliable auto-mapping.</em></p>
+        </div>
+    </details>
+
     <!-- Action Buttons -->
     @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
     {
