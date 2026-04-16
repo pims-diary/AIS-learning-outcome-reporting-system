@@ -53,15 +53,144 @@ namespace AIS_LO_System.Services
         }
 
         // -------------------------------------------------------
+        // Extract structured sections from DOCX using Heading2 styles
+        // Returns a dictionary of section name (lowercase) → list of paragraph texts
+        // -------------------------------------------------------
+        private static Dictionary<string, List<string>> ExtractSectionsFromDocx(string filePath)
+        {
+            var sections = new Dictionary<string, List<string>>(System.StringComparer.OrdinalIgnoreCase);
+
+            try
+            {
+                using var doc = WordprocessingDocument.Open(filePath, false);
+                var body = doc.MainDocumentPart?.Document?.Body;
+                if (body == null) return sections;
+
+                string? currentSection = null;
+
+                foreach (var para in body.Descendants<WParagraph>())
+                {
+                    if (ContainsOnlyDrawings(para)) continue;
+
+                    var text = para.InnerText?.Trim();
+                    if (string.IsNullOrEmpty(text)) continue;
+
+                    var style = para.ParagraphProperties?.ParagraphStyleId?.Val?.Value ?? "";
+
+                    // Heading2 marks a new section boundary
+                    if (style.Equals("Heading2", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        currentSection = text.Trim();
+                        if (!sections.ContainsKey(currentSection))
+                            sections[currentSection] = new List<string>();
+                        continue;
+                    }
+
+                    // Collect content under current section
+                    if (currentSection != null && sections.ContainsKey(currentSection))
+                    {
+                        sections[currentSection].Add(text);
+                    }
+                }
+            }
+            catch { }
+
+            return sections;
+        }
+
+        // -------------------------------------------------------
+        // Find the section key that matches a keyword (case-insensitive, partial match)
+        // -------------------------------------------------------
+        private static string? FindSectionKey(Dictionary<string, List<string>> sections, string keyword)
+        {
+            return sections.Keys.FirstOrDefault(k =>
+                k.IndexOf(keyword, System.StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        // -------------------------------------------------------
+        // Extract LOs from a heading-based section
+        // -------------------------------------------------------
+        private static List<string> ParseLOsFromSectionLines(List<string> lines)
+        {
+            var results = new List<string>();
+            var loLines = new List<string>();
+
+            foreach (var raw in lines)
+            {
+                var line = raw.Trim();
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                var lineLower = line.ToLower();
+
+                // Skip the intro line
+                if (lineLower.Contains("learners will be able to") ||
+                    lineLower.Contains("students will be able to"))
+                    continue;
+
+                loLines.Add(line);
+            }
+
+            var section = string.Join("\n", loLines);
+
+            // Try numbered format: "1. text" or "1) text"
+            var numbered = System.Text.RegularExpressions.Regex.Matches(
+                section,
+                @"(?:^|\n)\s*\d+[\.\)]\s+(.+?)(?=\n\s*\d+[\.\)]|\Z)",
+                System.Text.RegularExpressions.RegexOptions.Singleline);
+
+            foreach (System.Text.RegularExpressions.Match m in numbered)
+            {
+                var lo = System.Text.RegularExpressions.Regex
+                    .Replace(m.Groups[1].Value.Trim(), @"\s+", " ")
+                    .Replace("\n", " ");
+                if (lo.Length > 20) results.Add(lo);
+            }
+
+            // If no numbered LOs, each non-empty line is a separate LO
+            if (!results.Any())
+            {
+                foreach (var line in loLines)
+                {
+                    var lo = System.Text.RegularExpressions.Regex
+                        .Replace(line, @"\s+", " ").Trim();
+
+                    if (lo.Length < 20) continue;
+                    if (lo.EndsWith(":")) continue;
+                    if (lo == lo.ToUpper()) continue;
+
+                    results.Add(lo);
+                }
+            }
+
+            return results;
+        }
+
+        // -------------------------------------------------------
         // Extract Learning Outcomes from PDF or DOCX
         // -------------------------------------------------------
         public static List<string> ExtractLearningOutcomes(string filePath)
         {
             var ext = Path.GetExtension(filePath).ToLowerInvariant();
-            var text = ext == ".docx"
-                ? ExtractTextFromDocx(filePath)
-                : ExtractTextFromPdf(filePath);
-            return ParseLearningOutcomes(text);
+
+            // For DOCX: try heading-based extraction first
+            if (ext == ".docx")
+            {
+                var sections = ExtractSectionsFromDocx(filePath);
+                var loKey = FindSectionKey(sections, "learning outcome");
+
+                if (loKey != null && sections[loKey].Any())
+                {
+                    var headingResult = ParseLOsFromSectionLines(sections[loKey]);
+                    if (headingResult.Any())
+                        return headingResult;
+                }
+
+                // Fallback to text-based parsing
+                return ParseLearningOutcomes(ExtractTextFromDocx(filePath));
+            }
+
+            // PDF: text-based parsing only
+            return ParseLearningOutcomes(ExtractTextFromPdf(filePath));
         }
 
         private static string ExtractTextFromPdf(string pdfPath)
@@ -201,82 +330,58 @@ namespace AIS_LO_System.Services
                 var body = doc.MainDocumentPart?.Document?.Body;
                 if (body == null) return results;
 
-                foreach (var table in body.Elements<WTable>())
+                // Strategy 1: Find the assessment table by Heading2 anchor
+                // Walk body elements in document order, find the Heading2 that
+                // contains "assessment", then parse the next table after it.
+                WTable? targetTable = null;
+                bool foundHeading = false;
+
+                foreach (var element in body.ChildElements)
                 {
-                    var rows = table.Elements<WTableRow>().ToList();
-                    if (rows.Count < 2) continue;
-
-                    var headerCells = rows[0].Elements<WTableCell>()
-                        .Select(c => c.InnerText.Trim().ToLower()).ToList();
-
-                    bool hasTitle = headerCells.Any(h => h.Contains("title"));
-                    bool hasMarks = headerCells.Any(h => h.Contains("mark"));
-
-                    if (!hasTitle || !hasMarks) continue;
-
-                    int titleCol = headerCells.FindIndex(h => h.Contains("title"));
-                    int marksCol = headerCells.FindIndex(h => h.Contains("mark"));
-                    int loCol = headerCells.FindIndex(h => h.Contains("learning") || h.Contains("outcome"));
-
-                    for (int r = 1; r < rows.Count; r++)
+                    if (element is WParagraph para)
                     {
-                        var cells = rows[r].Elements<WTableCell>()
-                            .Select(c => (c.InnerText ?? string.Empty).Trim())
-                            .ToList();
-
-                        if (cells.Count < 2) continue;
-
-                        int detectedMarksCol = marksCol >= 0 && marksCol < cells.Count && TryParseMarks(cells[marksCol], out _)
-                            ? marksCol
-                            : cells.FindIndex(c => TryParseMarks(c, out _));
-
-                        if (detectedMarksCol < 0) continue;
-
-                        var title = titleCol >= 0 && titleCol < cells.Count
-                            ? cells[titleCol]
-                            : string.Empty;
-
-                        if (string.IsNullOrWhiteSpace(title))
+                        var style = para.ParagraphProperties?.ParagraphStyleId?.Val?.Value ?? "";
+                        if (style.Equals("Heading2", System.StringComparison.OrdinalIgnoreCase))
                         {
-                            title = cells
-                                .Take(detectedMarksCol)
-                                .FirstOrDefault(c => !string.IsNullOrWhiteSpace(c)) ?? string.Empty;
+                            var text = para.InnerText?.Trim() ?? "";
+                            if (text.IndexOf("assessment", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                            {
+                                foundHeading = true;
+                                continue;
+                            }
                         }
-
-                        title = System.Text.RegularExpressions.Regex.Replace(title, @"\s+", " ").Trim();
-
-                        if (string.IsNullOrWhiteSpace(title) ||
-                            title.Equals("Total", System.StringComparison.OrdinalIgnoreCase) ||
-                            IsSuspiciousAssessmentTitle(title))
-                            continue;
-
-                        TryParseMarks(cells[detectedMarksCol], out int marks);
-
-                        var loNumbers = new List<int>();
-                        string loText = string.Empty;
-
-                        if (loCol >= 0 && loCol < cells.Count && LooksLikeLearningOutcomeCell(cells[loCol]))
-                        {
-                            loText = cells[loCol];
-                        }
-                        else
-                        {
-                            loText = cells
-                                .Skip(detectedMarksCol + 1)
-                                .FirstOrDefault(LooksLikeLearningOutcomeCell) ?? string.Empty;
-                        }
-
-                        loNumbers = ExtractLearningOutcomeNumbers(loText);
-
-                        results.Add(new AssessmentInfo
-                        {
-                            Title = title,
-                            MarksPercentage = marks,
-                            LONumbers = loNumbers.Distinct().ToList()
-                        });
                     }
 
-                    if (results.Any()) break;
+                    if (foundHeading && element is WTable table)
+                    {
+                        targetTable = table;
+                        break;
+                    }
+
+                    // If we hit another Heading2 after the assessment heading
+                    // but before finding a table, stop searching
+                    if (foundHeading && element is WParagraph nextPara)
+                    {
+                        var nextStyle = nextPara.ParagraphProperties?.ParagraphStyleId?.Val?.Value ?? "";
+                        if (nextStyle.Equals("Heading2", System.StringComparison.OrdinalIgnoreCase))
+                            break;
+                    }
+                }
+
+                // If heading-based search found a table, parse it
+                if (targetTable != null)
+                {
+                    results = ParseAssessmentTable(targetTable);
+                }
+
+                // Strategy 2: Fallback — scan all tables for one with Title+Marks columns
+                if (!results.Any())
+                {
+                    foreach (var table in body.Elements<WTable>())
+                    {
+                        results = ParseAssessmentTable(table);
+                        if (results.Any()) break;
+                    }
                 }
             }
             catch { }
@@ -286,6 +391,89 @@ namespace AIS_LO_System.Services
 
             var fallbackResults = ParseAssessmentsFromText(ExtractTextFromDocx(filePath));
             return ChooseBetterAssessmentResults(results, fallbackResults);
+        }
+
+        /// <summary>
+        /// Parse a single DOCX table as an assessment table.
+        /// Returns empty list if the table doesn't look like an assessment table.
+        /// </summary>
+        private static List<AssessmentInfo> ParseAssessmentTable(WTable table)
+        {
+            var results = new List<AssessmentInfo>();
+            var rows = table.Elements<WTableRow>().ToList();
+            if (rows.Count < 2) return results;
+
+            var headerCells = rows[0].Elements<WTableCell>()
+                .Select(c => c.InnerText.Trim().ToLower()).ToList();
+
+            bool hasTitle = headerCells.Any(h => h.Contains("title"));
+            bool hasMarks = headerCells.Any(h => h.Contains("mark"));
+
+            if (!hasTitle || !hasMarks) return results;
+
+            int titleCol = headerCells.FindIndex(h => h.Contains("title"));
+            int marksCol = headerCells.FindIndex(h => h.Contains("mark"));
+            int loCol = headerCells.FindIndex(h => h.Contains("learning") || h.Contains("outcome"));
+
+            for (int r = 1; r < rows.Count; r++)
+            {
+                var cells = rows[r].Elements<WTableCell>()
+                    .Select(c => (c.InnerText ?? string.Empty).Trim())
+                    .ToList();
+
+                if (cells.Count < 2) continue;
+
+                int detectedMarksCol = marksCol >= 0 && marksCol < cells.Count && TryParseMarks(cells[marksCol], out _)
+                    ? marksCol
+                    : cells.FindIndex(c => TryParseMarks(c, out _));
+
+                if (detectedMarksCol < 0) continue;
+
+                var title = titleCol >= 0 && titleCol < cells.Count
+                    ? cells[titleCol]
+                    : string.Empty;
+
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    title = cells
+                        .Take(detectedMarksCol)
+                        .FirstOrDefault(c => !string.IsNullOrWhiteSpace(c)) ?? string.Empty;
+                }
+
+                title = System.Text.RegularExpressions.Regex.Replace(title, @"\s+", " ").Trim();
+
+                if (string.IsNullOrWhiteSpace(title) ||
+                    title.Equals("Total", System.StringComparison.OrdinalIgnoreCase) ||
+                    IsSuspiciousAssessmentTitle(title))
+                    continue;
+
+                TryParseMarks(cells[detectedMarksCol], out int marks);
+
+                var loNumbers = new List<int>();
+                string loText = string.Empty;
+
+                if (loCol >= 0 && loCol < cells.Count && LooksLikeLearningOutcomeCell(cells[loCol]))
+                {
+                    loText = cells[loCol];
+                }
+                else
+                {
+                    loText = cells
+                        .Skip(detectedMarksCol + 1)
+                        .FirstOrDefault(LooksLikeLearningOutcomeCell) ?? string.Empty;
+                }
+
+                loNumbers = ExtractLearningOutcomeNumbers(loText);
+
+                results.Add(new AssessmentInfo
+                {
+                    Title = title,
+                    MarksPercentage = marks,
+                    LONumbers = loNumbers.Distinct().ToList()
+                });
+            }
+
+            return results;
         }
 
         private static List<AssessmentInfo> ExtractAssessmentsFromPdfText(string filePath)
