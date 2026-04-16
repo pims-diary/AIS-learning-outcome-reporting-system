@@ -353,8 +353,16 @@
 
             // Check if criterion has at least one LO mapped
             const mappingCheckboxes = row.querySelectorAll('.lo-mapping-checkbox:checked');
-            if (mappingCheckboxes.length === 0) {
+            const hasNoMapping = mappingCheckboxes.length === 0;
+            if (hasNoMapping) {
                 allCriteriaHaveMapping = false;
+            }
+
+            // Highlight row red if unmapped or missing weight
+            if (hasNoMapping || weight <= 0) {
+                row.classList.add('row-unmapped');
+            } else {
+                row.classList.remove('row-unmapped');
             }
 
             // Check which unselected LOs are being used

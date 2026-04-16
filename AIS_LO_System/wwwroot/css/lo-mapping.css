@@ -216,6 +216,20 @@
         background-color: #f9f9f9;
     }
 
+    .mapping-table tbody tr.row-unmapped {
+        background-color: #fff0f0;
+        border-left: 3px solid #dc3545;
+    }
+
+        .mapping-table tbody tr.row-unmapped:hover {
+            background-color: #ffe5e5;
+        }
+
+        .mapping-table tbody tr.row-unmapped td.criterion-col {
+            background-color: #fff0f0;
+            color: #dc3545;
+        }
+
 .lo-mapping-checkbox {
     width: 18px;
     height: 18px;
