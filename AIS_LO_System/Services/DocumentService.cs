@@ -748,6 +748,13 @@ namespace AIS_LO_System.Services
         // -------------------------------------------------------
         // Extract LOs from an assignment document
         // Handles explicit LO numbers and plain-text LO wording after an LO header.
+        //
+        // Strategy priority:
+        //   0. Find the standardised AIS marker line:
+        //      "This [assignment/test/assessment] is worth X% ... learning outcomes"
+        //      Then parse the LOs between it and the next section boundary.
+        //   1. Regex match "Learning Outcome N:" / "Learning Outcome [N]:" / "LO N:"
+        //   2. Generic "learning outcomes" header fallback
         // -------------------------------------------------------
         public static List<AssignmentLO> ExtractLOsFromAssignmentDoc(string filePath)
         {
@@ -760,10 +767,62 @@ namespace AIS_LO_System.Services
 
             if (string.IsNullOrWhiteSpace(text)) return results;
 
-            // Strategy 1: Match "Learning Outcome 1: text" or "LO 1: text"
+            text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+
+            // ── Strategy 0: AIS standard marker line ──
+            // Every AIS assignment/test doc contains a line like:
+            //   "This assignment is worth 35% of the total marks in the course
+            //    and will cover the following learning outcomes as listed in the Course Outline:"
+            // This is the most reliable anchor — always present, always unique.
+            var markerMatch = System.Text.RegularExpressions.Regex.Match(
+                text,
+                @"This\s+(?:assignment|assessment|test)\s+is\s+worth\s+\d+%.*?learning\s+outcomes?\b[^\n]*",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+
+            if (markerMatch.Success)
+            {
+                var afterMarker = text.Substring(markerMatch.Index + markerMatch.Length);
+
+                // Find end of LO section — stops at instructions, task headers, rubric, etc.
+                var sectionEnd = System.Text.RegularExpressions.Regex.Match(
+                    afterMarker,
+                    @"\n\s*\n\s*\n|General\s+Instruction|Instructions?\s*:|^\s*\d+\.\s+Instruction|TASK\s|Task\s+\d|Marking|MARKING|Submission|SUBMISSION|The\s+assessment\s+has|Final\s+Product\s*:|Final\s+Presentation\s*:|Assessment\s+Criteria|Scope\s+of\s+Work|Summary\s+of\s+Marking|Appendix",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline);
+
+                var loSection = sectionEnd.Success
+                    ? afterMarker.Substring(0, sectionEnd.Index)
+                    : afterMarker;
+
+                // Try to extract "Learning Outcome N:" or "Learning Outcome [N]:" within this section
+                results = ParseExplicitLOsFromSection(loSection);
+
+                // If no explicit numbered LOs, each line is a plain-text LO (e.g. Project Final Product)
+                if (!results.Any())
+                {
+                    var plainItems = loSection
+                        .Split('\n')
+                        .Select(NormalizeAssignmentOutcomeText)
+                        .Where(IsPlausibleAssignmentLOText)
+                        .Distinct(System.StringComparer.OrdinalIgnoreCase);
+
+                    foreach (var item in plainItems)
+                    {
+                        results.Add(new AssignmentLO
+                        {
+                            Number = 0,
+                            Text = item
+                        });
+                    }
+                }
+
+                if (results.Any())
+                    return results;
+            }
+
+            // ── Strategy 1: Match "Learning Outcome N:" / "LO N:" / "Learning Outcome [N]:" anywhere ──
             var matches = System.Text.RegularExpressions.Regex.Matches(
                 text,
-                @"(?:Learning\s+Outcome|LO)\s*(\d+)\s*[:\-–]\s*(.+?)(?=(?:Learning\s+Outcome|LO)\s*\d+\s*[:\-–]|General\s+Instruction|Instructions?\b|Tasks?\s*\(|Note:|\n\s*\n|$)",
+                @"(?:Learning\s+Outcome|LO)\s*\[?(\d+)\]?\s*[:\-–]\s*(.+?)(?=(?:Learning\s+Outcome|LO)\s*\[?\d+\]?\s*[:\-–]|General\s+Instruction|Instructions?\b|Tasks?\s*\(|Note:|\n\s*\n|$)",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
 
             foreach (System.Text.RegularExpressions.Match m in matches)
@@ -783,13 +842,11 @@ namespace AIS_LO_System.Services
                 }
             }
 
-            // Strategy 2: If Strategy 1 found nothing, inspect the text after a
-            // learning outcomes header. This supports numbered items and plain
-            // bullet/paragraph LO wording copied from the outline.
-            if (!results.Any())
-            {
-                text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+            if (results.Any())
+                return results;
 
+            // ── Strategy 2: Generic "learning outcomes" header fallback ──
+            {
                 var headerMatch = System.Text.RegularExpressions.Regex.Match(
                     text,
                     @"(?im)^.*learning\s+outcomes?.*$",
@@ -801,37 +858,16 @@ namespace AIS_LO_System.Services
 
                     var sectionEnd = System.Text.RegularExpressions.Regex.Match(
                         afterLOHeader,
-                        @"\n\s*\n\s*\n|General\s+Instruction|Instructions?\b|TASK\s|Task\s+\d|Marking|MARKING|Submission|SUBMISSION|The\s+assessment\s+has|Final\s+Product\s*:|Final\s+Presentation\s*:|Assessment\s+Criteria|Scope\s+of\s+Work",
+                        @"\n\s*\n\s*\n|General\s+Instruction|Instructions?\s*:|TASK\s|Task\s+\d|Marking|MARKING|Submission|SUBMISSION|The\s+assessment\s+has|Final\s+Product\s*:|Final\s+Presentation\s*:|Assessment\s+Criteria|Scope\s+of\s+Work",
                         System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
                     var loSection = sectionEnd.Success
                         ? afterLOHeader.Substring(0, sectionEnd.Index)
                         : afterLOHeader;
 
-                    var numberedItems = System.Text.RegularExpressions.Regex.Matches(
-                        loSection,
-                        @"(?:^|\n)\s*(\d+)[\.\)]\s+(.+?)(?=\n\s*\d+[\.\)]\s|$)",
-                        System.Text.RegularExpressions.RegexOptions.Singleline);
+                    results = ParseExplicitLOsFromSection(loSection);
 
-                    foreach (System.Text.RegularExpressions.Match m in numberedItems)
-                    {
-                        if (int.TryParse(m.Groups[1].Value, out int loNum) && loNum <= 20)
-                        {
-                            var loText = NormalizeAssignmentOutcomeText(m.Groups[2].Value);
-
-                            if (IsPlausibleAssignmentLOText(loText))
-                            {
-                                results.Add(new AssignmentLO
-                                {
-                                    Number = loNum,
-                                    Text = loText
-                                });
-                            }
-                        }
-                    }
-
-                    // If the document lists LO wording with no explicit numbers,
-                    // keep the text and let CrossCheckLOs infer the matching LO.
+                    // Plain text LOs with no numbers
                     if (!results.Any())
                     {
                         var plainItems = loSection
@@ -846,6 +882,64 @@ namespace AIS_LO_System.Services
                             {
                                 Number = 0,
                                 Text = item
+                            });
+                        }
+                    }
+                }
+            }
+
+            return results;
+        }
+
+        /// <summary>
+        /// Parse "Learning Outcome N: text" / "Learning Outcome [N]: text" / numbered items
+        /// from a text section that's already been bounded to the LO area.
+        /// </summary>
+        private static List<AssignmentLO> ParseExplicitLOsFromSection(string loSection)
+        {
+            var results = new List<AssignmentLO>();
+
+            // Try "Learning Outcome N:" or "Learning Outcome [N]:" or "LO N:"
+            var loMatches = System.Text.RegularExpressions.Regex.Matches(
+                loSection,
+                @"(?:Learning\s+Outcome|LO)\s*\[?(\d+)\]?\s*[:\-–]\s*(.+?)(?=(?:Learning\s+Outcome|LO)\s*\[?\d+\]?\s*[:\-–]|\n\s*\n|$)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Singleline);
+
+            foreach (System.Text.RegularExpressions.Match m in loMatches)
+            {
+                if (int.TryParse(m.Groups[1].Value, out int loNum))
+                {
+                    var loText = NormalizeAssignmentOutcomeText(m.Groups[2].Value);
+                    if (IsPlausibleAssignmentLOText(loText))
+                    {
+                        results.Add(new AssignmentLO
+                        {
+                            Number = loNum,
+                            Text = loText
+                        });
+                    }
+                }
+            }
+
+            // Try numbered items "1. text" or "1) text"
+            if (!results.Any())
+            {
+                var numberedItems = System.Text.RegularExpressions.Regex.Matches(
+                    loSection,
+                    @"(?:^|\n)\s*(\d+)[\.\)]\s+(.+?)(?=\n\s*\d+[\.\)]\s|$)",
+                    System.Text.RegularExpressions.RegexOptions.Singleline);
+
+                foreach (System.Text.RegularExpressions.Match m in numberedItems)
+                {
+                    if (int.TryParse(m.Groups[1].Value, out int loNum) && loNum <= 20)
+                    {
+                        var loText = NormalizeAssignmentOutcomeText(m.Groups[2].Value);
+                        if (IsPlausibleAssignmentLOText(loText))
+                        {
+                            results.Add(new AssignmentLO
+                            {
+                                Number = loNum,
+                                Text = loText
                             });
                         }
                     }
