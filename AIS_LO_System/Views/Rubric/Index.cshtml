@@ -85,13 +85,14 @@
 
             <p style="margin:12px 0 4px; font-weight:600;">Expected worksheet layout:</p>
             <ul style="margin:4px 0 8px 20px; padding:0;">
-                <li>The system reads the <strong>first worksheet only</strong></li>
-                <li><strong>Row 2, columns B-F</strong> are used as the scale names</li>
-                <li><strong>Row 3 onward</strong> is read as rubric criteria</li>
-                <li><strong>Column A</strong> = Criterion name</li>
-                <li><strong>Columns B-F</strong> = Level descriptions for scores <strong>4, 3, 2, 1, 0</strong></li>
-                <li><strong>Column G</strong> = Learning Outcomes (optional), for example <code>1,2,5</code> or <code>LO1, LO2, LO5</code></li>
-                <li><strong>Column H</strong> = Weight percentage (optional), for example <code>10</code>, <code>10.5</code>, or <code>10%</code></li>
+                <li>The system searches workbook sheets for a rubric header row instead of relying only on fixed column letters</li>
+                <li>The header row should contain <strong>Criteria</strong>, score columns <strong>4, 3, 2, 1, 0</strong>, and optionally <strong>LO</strong> and <strong>Weight (%)</strong></li>
+                <li>The row directly under the score headers is used as the scale-name row, for example <strong>Excellent</strong>, <strong>Good</strong>, <strong>Satisfactory</strong>, <strong>Limited</strong>, <strong>Unsatisfactory</strong></li>
+                <li>The rows after that are read as the actual rubric criteria rows</li>
+                <li>The column with <strong>Criteria</strong> is used as the criterion-name column</li>
+                <li>The columns with score headers <strong>4, 3, 2, 1, 0</strong> are used for the level descriptions</li>
+                <li>The column with <strong>LO</strong> is used for Learning Outcomes (optional), for example <code>1,2,5</code> or <code>LO1, LO2, LO5</code></li>
+                <li>The column with <strong>Weight</strong> is used for the weight percentage (optional), for example <code>10</code>, <code>10.5</code>, or <code>10%</code></li>
             </ul>
 
             <p style="margin:12px 0 4px; font-weight:600;">LO mapping rules:</p>
@@ -108,7 +109,7 @@
                 <li>After upload, the rubric is submitted to the moderator for approval</li>
             </ul>
 
-            <p style="margin:8px 0; color:#555;"><em>Tip: Keep one criterion per row and use clear LO numbers in column G for the most reliable auto-mapping.</em></p>
+            <p style="margin:8px 0; color:#555;"><em>Tip: Keep one criterion per row, make sure the rubric sheet includes clear headers, and use clear LO numbers for the most reliable auto-mapping.</em></p>
         </div>
     </details>
 
