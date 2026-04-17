@@ -82,6 +82,9 @@ namespace LOARS.Web.Controllers
 
             ViewBag.Assessments = assessments;
 
+            // Check if assessment editing is allowed (admin-controlled)
+            ViewBag.CanEditAssignment = course?.CanEditAssignment ?? false;
+
             return View();
         }
 
