@@ -47,9 +47,7 @@ namespace AIS_LO_System.Controllers
 
             var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
-                    .ThenInclude(c => c.Levels)
-                .Include(r => r.Criteria)
-                    .ThenInclude(c => c.LOMappings)
+                .ThenInclude(c => c.Levels)
                 .FirstOrDefaultAsync(r => r.AssignmentId == assignmentId);
 
             // Load submission status for this rubric
@@ -65,9 +63,6 @@ namespace AIS_LO_System.Controllers
                     criterion.Levels = criterion.Levels.OrderByDescending(l => l.Score).ToList();
                 }
             }
-
-            // Warn if any LOs assigned to this assessment are not covered by any rubric criterion
-            ViewBag.UncoveredLOs = await GetUncoveredLOsAsync(assignmentId.Value, rubric);
 
             return View(rubric);
         }
@@ -481,46 +476,6 @@ namespace AIS_LO_System.Controllers
                 year = assignment.Year,
                 trimester = assignment.Trimester
             });
-        }
-
-        /// <summary>
-        /// Returns the list of LO labels (e.g. "LO2", "LO5") that are assigned to the
-        /// assessment in the course outline but not covered by any rubric criterion mapping.
-        /// </summary>
-        internal async Task<List<string>> GetUncoveredLOsAsync(int assignmentId, Rubric? rubric)
-        {
-            var assignment = await _context.Assignments
-                .FirstOrDefaultAsync(a => a.Id == assignmentId);
-
-            if (assignment == null || string.IsNullOrEmpty(assignment.SelectedLearningOutcomeIds))
-                return new List<string>();
-
-            var allowedLOIds = assignment.SelectedLearningOutcomeIds
-                .Split(',')
-                .Where(s => int.TryParse(s, out _))
-                .Select(int.Parse)
-                .ToList();
-
-            if (!allowedLOIds.Any())
-                return new List<string>();
-
-            // Which LO IDs are actually covered by at least one criterion mapping?
-            var coveredLOIds = rubric?.Criteria
-                .SelectMany(c => c.LOMappings)
-                .Select(m => m.LearningOutcomeId)
-                .Distinct()
-                .ToHashSet() ?? new HashSet<int>();
-
-            var uncoveredIds = allowedLOIds.Where(id => !coveredLOIds.Contains(id)).ToList();
-            if (!uncoveredIds.Any())
-                return new List<string>();
-
-            var los = await _context.LearningOutcomes
-                .Where(lo => uncoveredIds.Contains(lo.Id))
-                .OrderBy(lo => lo.OrderNumber)
-                .ToListAsync();
-
-            return los.Select(lo => $"LO{lo.OrderNumber}").ToList();
         }
 
         private async Task<IActionResult?> BlockIfAssessmentDraftPendingAsync(string courseCode, int year, int trimester)

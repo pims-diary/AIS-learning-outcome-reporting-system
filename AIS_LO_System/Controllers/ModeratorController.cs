@@ -238,41 +238,6 @@ namespace AIS_LO_System.Controllers
                 await _context.SaveChangesAsync();
         }
 
-        private async Task<List<string>> GetUncoveredLOsForRubricAsync(Rubric rubric)
-        {
-            var assignment = rubric.Assignment ?? await _context.Assignments
-                .FirstOrDefaultAsync(a => a.Id == rubric.AssignmentId);
-
-            if (assignment == null || string.IsNullOrEmpty(assignment.SelectedLearningOutcomeIds))
-                return new List<string>();
-
-            var allowedLOIds = assignment.SelectedLearningOutcomeIds
-                .Split(',')
-                .Where(s => int.TryParse(s, out _))
-                .Select(int.Parse)
-                .ToList();
-
-            if (!allowedLOIds.Any())
-                return new List<string>();
-
-            var coveredLOIds = rubric.Criteria
-                .SelectMany(c => c.LOMappings)
-                .Select(m => m.LearningOutcomeId)
-                .Distinct()
-                .ToHashSet();
-
-            var uncoveredIds = allowedLOIds.Where(id => !coveredLOIds.Contains(id)).ToList();
-            if (!uncoveredIds.Any())
-                return new List<string>();
-
-            var los = await _context.LearningOutcomes
-                .Where(lo => uncoveredIds.Contains(lo.Id))
-                .OrderBy(lo => lo.OrderNumber)
-                .ToListAsync();
-
-            return los.Select(lo => $"LO{lo.OrderNumber}").ToList();
-        }
-
         [HttpGet]
         public async Task<IActionResult> ViewLearningOutcomes(int submissionId)
         {
@@ -409,11 +374,6 @@ namespace AIS_LO_System.Controllers
 
             // FIX #2: Pass a flag so the view knows if LO mapping has been done yet
             ViewBag.HasLOMappings = rubric != null && rubric.Criteria.Any(c => c.LOMappings.Any());
-
-            // Warn moderator if any assessment LOs are not covered by any rubric criterion
-            ViewBag.UncoveredLOs = rubric != null
-                ? await GetUncoveredLOsForRubricAsync(rubric)
-                : new List<string>();
 
             return View(rubric);
         }
