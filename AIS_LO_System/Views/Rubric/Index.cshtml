@@ -57,8 +57,9 @@
     @{
         var hasSuccess = TempData["Success"] != null;
         var hasInfo = TempData["Info"] != null;
+        var hasWarning = TempData["Warning"] != null;
         var hasError = TempData["Error"] != null;
-        var hasAnyNotification = hasSuccess || hasInfo || hasError;
+        var hasAnyNotification = hasSuccess || hasInfo || hasWarning || hasError;
     }
 
     @if (hasAnyNotification)
@@ -74,6 +75,12 @@
             {
                 <div style="background:#cfe2ff; border:1px solid #b6d4fe; color:#084298; padding:12px 16px; border-radius:8px;">
                     @TempData["Info"]
+                </div>
+            }
+            @if (hasWarning)
+            {
+                <div style="background:#fff3cd; border:1px solid #ffc107; color:#856404; padding:12px 16px; border-radius:8px;">
+                    @TempData["Warning"]
                 </div>
             }
             @if (hasError)

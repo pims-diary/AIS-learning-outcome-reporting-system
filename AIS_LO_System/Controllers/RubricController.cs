@@ -299,6 +299,14 @@ namespace AIS_LO_System.Controllers
                     }
                 }
 
+                // Warn if any LOs assigned to this assessment are not covered by any criterion
+                var uncoveredLOs = await GetUncoveredLOsAsync(assignmentId, rubric);
+                if (uncoveredLOs.Any())
+                {
+                    var loList = string.Join(", ", uncoveredLOs);
+                    TempData["Warning"] = $"⚠️ In the course outline, this assessment is assigned {loList} — but {(uncoveredLOs.Count == 1 ? "it has" : "they have")} not been mapped to any rubric criterion. Please update the rubric or LO mapping so all required LOs are covered.";
+                }
+
                 var successMsg = $"Rubric uploaded successfully! {rubric.Criteria.Count} criteria imported.";
                 if (mappingsCreated > 0)
                     successMsg += $" {mappingsCreated} LO mapping(s) auto-applied.";
@@ -476,6 +484,41 @@ namespace AIS_LO_System.Controllers
                 year = assignment.Year,
                 trimester = assignment.Trimester
             });
+        }
+
+        private async Task<List<string>> GetUncoveredLOsAsync(int assignmentId, Rubric rubric)
+        {
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == assignmentId);
+
+            if (assignment == null || string.IsNullOrEmpty(assignment.SelectedLearningOutcomeIds))
+                return new List<string>();
+
+            var allowedLOIds = assignment.SelectedLearningOutcomeIds
+                .Split(',')
+                .Where(s => int.TryParse(s, out _))
+                .Select(int.Parse)
+                .ToList();
+
+            if (!allowedLOIds.Any())
+                return new List<string>();
+
+            var coveredLOIds = rubric.Criteria
+                .SelectMany(c => c.LOMappings)
+                .Select(m => m.LearningOutcomeId)
+                .Distinct()
+                .ToHashSet();
+
+            var uncoveredIds = allowedLOIds.Where(id => !coveredLOIds.Contains(id)).ToList();
+            if (!uncoveredIds.Any())
+                return new List<string>();
+
+            var los = await _context.LearningOutcomes
+                .Where(lo => uncoveredIds.Contains(lo.Id))
+                .OrderBy(lo => lo.OrderNumber)
+                .ToListAsync();
+
+            return los.Select(lo => $"LO{lo.OrderNumber}").ToList();
         }
 
         private async Task<IActionResult?> BlockIfAssessmentDraftPendingAsync(string courseCode, int year, int trimester)

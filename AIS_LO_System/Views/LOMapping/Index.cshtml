@@ -121,16 +121,12 @@
                 <p><strong>Rubric Scale:</strong> 4 Levels (0, 1, 2, 3, 4)</p>
             </div>
 
-            <!-- SELECT RELEVANT LOs -->
+            <!-- LOs FOR THIS ASSESSMENT (always read-only — set by course outline) -->
             <div class="lo-selection-section">
-                <h3>Select Learning Outcomes Relevant to This Assessment</h3>
-
-                @if (Model.LOsLockedByOutline)
-                {
-                    <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px 16px; margin-bottom:12px; color:#856404; font-size:14px;">
-                        🔒 Learning Outcomes are set by the course outline and cannot be changed.
-                    </div>
-                }
+                <h3>Learning Outcomes for This Assessment</h3>
+                <div style="background:#f0f4ff; border:1px solid #b6d4fe; border-radius:8px; padding:12px 16px; margin-bottom:12px; color:#084298; font-size:14px;">
+                    🔒 Learning Outcomes are set by the course outline and cannot be changed here.
+                </div>
 
                 <div class="lo-checkboxes">
                     @foreach (var lo in Model.LearningOutcomes)
@@ -142,9 +138,8 @@
                                    class="lo-select-checkbox"
                                    data-lo-id="@lo.Id"
                                    data-lo-number="@lo.OrderNumber"
-                                   onchange="toggleLOColumn(@lo.Id, this.checked)"
-                            @(isSelected ? "checked" : "")
-                            @(Model.LOsLockedByOutline ? "disabled" : "") />
+                                   @(isSelected ? "checked" : "")
+                                   disabled />
                             <label for="lo-select-@lo.Id">
                                 <strong>LO@(lo.OrderNumber)</strong> - @lo.LearningOutcomeText
                             </label>
