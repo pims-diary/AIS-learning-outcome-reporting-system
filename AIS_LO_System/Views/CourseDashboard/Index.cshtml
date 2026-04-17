@@ -85,7 +85,7 @@
                                  && string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value);
     }
     <div class="accordion">
-        <div class="accordion-header">
+        <div class="accordion-header" style="display:flex; justify-content:space-between; align-items:center;">
             <div class="header-left">
                 <div class="icon-circle">
                     <span class="icon-arrow">›</span>
@@ -111,7 +111,7 @@
                        style="font-size:12px; color:#c62828; text-decoration:none; padding:4px 10px; border:1px solid #e0b4b4; border-radius:4px;"
                        title="Edit assessments (requires moderator approval)"
                        onclick="event.stopPropagation();">
-                        Edit ✏️
+                        Edit
                     </a>
                 }
             </div>
