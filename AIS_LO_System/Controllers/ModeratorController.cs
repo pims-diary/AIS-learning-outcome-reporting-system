@@ -105,12 +105,40 @@ namespace AIS_LO_System.Controllers
                         case SubmissionItemType.Assessments:
                             await _moderationDrafts.ApplyAssessmentDraftAsync(submission.Id);
                             break;
+                        case SubmissionItemType.Rubric:
+                            // Validate LO mappings — only keep them if every criterion
+                            // is mapped to at least one LO AND total weight = 100%
+                            if (submission.ItemRefId.HasValue)
+                                await ValidateAndCleanRubricMappingsAsync(submission.ItemRefId.Value);
+                            break;
                     }
                 }
                 catch (Exception ex)
                 {
                     TempData["Error"] = $"Could not approve {submission.ItemLabel}: {ex.Message}";
                     return RedirectToAction(nameof(Inbox));
+                }
+            }
+
+            // When a rubric is denied, delete the rubric entirely so the lecturer must re-upload
+            if (!isApproval && submission.ItemType == SubmissionItemType.Rubric && submission.ItemRefId.HasValue)
+            {
+                var rubricToDelete = await _context.Rubrics
+                    .Include(r => r.Criteria)
+                        .ThenInclude(c => c.Levels)
+                    .Include(r => r.Criteria)
+                        .ThenInclude(c => c.LOMappings)
+                    .FirstOrDefaultAsync(r => r.Id == submission.ItemRefId.Value);
+
+                if (rubricToDelete != null)
+                {
+                    foreach (var criterion in rubricToDelete.Criteria)
+                    {
+                        _context.CriterionLOMappings.RemoveRange(criterion.LOMappings);
+                        _context.RubricLevels.RemoveRange(criterion.Levels);
+                    }
+                    _context.RubricCriteria.RemoveRange(rubricToDelete.Criteria);
+                    _context.Rubrics.Remove(rubricToDelete);
                 }
             }
 
@@ -152,11 +180,55 @@ namespace AIS_LO_System.Controllers
             if (isApproval)
                 await _moderationDrafts.DeleteDraftAsync(submission.Id);
 
-            TempData["Success"] = isApproval
-                ? $"✅ Approved: {submission.ItemLabel}"
-                : $"❌ Denied: {submission.ItemLabel}";
+            var baseMsg = isApproval
+                ? $"Approved: {submission.ItemLabel}"
+                : $"Denied: {submission.ItemLabel}";
+
+            if (isApproval && submission.ItemType == SubmissionItemType.Rubric && submission.ItemRefId.HasValue)
+            {
+                var rubric = await _context.Rubrics
+                    .Include(r => r.Criteria).ThenInclude(c => c.LOMappings)
+                    .FirstOrDefaultAsync(r => r.Id == submission.ItemRefId.Value);
+
+                bool hasMappings = rubric != null && rubric.Criteria.All(c => c.LOMappings.Any());
+                if (!hasMappings)
+                    baseMsg += " — LO mappings are incomplete. The lecturer must fix the mapping before marking can proceed.";
+            }
+
+            TempData["Success"] = isApproval ? $"✅ {baseMsg}" : $"❌ {baseMsg}";
 
             return RedirectToAction(nameof(Inbox));
+        }
+
+        /// <summary>
+        /// Validates rubric LO mappings on approval. If any criterion has no LO mapping
+        /// or if total weight doesn't equal 100%, clear all mappings so the lecturer
+        /// must fix them before marking.
+        /// </summary>
+        private async Task ValidateAndCleanRubricMappingsAsync(int rubricId)
+        {
+            var rubric = await _context.Rubrics
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.LOMappings)
+                .FirstOrDefaultAsync(r => r.Id == rubricId);
+
+            if (rubric == null) return;
+
+            bool allMapped = rubric.Criteria.All(c => c.LOMappings.Any());
+            decimal totalWeight = rubric.Criteria
+                .SelectMany(c => c.LOMappings)
+                .Sum(m => m.Weight);
+            bool validWeight = totalWeight >= 99m && totalWeight <= 101m; // allow small rounding
+
+            if (!allMapped || !validWeight)
+            {
+                // Clear all LO mappings — rubric data (criteria/levels) stays intact
+                foreach (var criterion in rubric.Criteria)
+                {
+                    _context.CriterionLOMappings.RemoveRange(criterion.LOMappings);
+                }
+                await _context.SaveChangesAsync();
+            }
         }
 
         [HttpGet]

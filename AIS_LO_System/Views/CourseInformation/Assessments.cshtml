@@ -130,11 +130,7 @@
                         @(assignments.Any() ? "Edit Assessments" : "Add Assessments")
                     </a>
                 }
-                else if (!canEdit && string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
-                {
-                    <button class="btn-primary" type="button" disabled>Edit Assessments</button>
-                    <div class="denied">Manual assessment editing is currently unavailable.</div>
-                }
+                @* Edit button only shown when canEdit is true *@
             </div>
         }
         else

@@ -54,64 +54,45 @@
         </a>
     </div>
 
-    @if (TempData["Success"] != null)
-    {
-        <div style="background:#d4edda; border:1px solid #c3e6cb; color:#155724; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-            ✅ @TempData["Success"]
-        </div>
+    @{
+        var hasSuccess = TempData["Success"] != null;
+        var hasInfo = TempData["Info"] != null;
+        var hasError = TempData["Error"] != null;
+        var hasAnyNotification = hasSuccess || hasInfo || hasError;
     }
-    @if (TempData["Info"] != null)
+
+    @if (hasAnyNotification)
     {
-        <div style="background:#cfe2ff; border:1px solid #b6d4fe; color:#084298; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-            @TempData["Info"]
-        </div>
-    }
-    @if (TempData["Error"] != null)
-    {
-        <div style="background:#f8d7da; border:1px solid #f5c6cb; color:#721c24; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-            ❌ @TempData["Error"]
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px;">
+            @if (hasSuccess)
+            {
+                <div style="background:#d4edda; border:1px solid #c3e6cb; color:#155724; padding:12px 16px; border-radius:8px;">
+                    @TempData["Success"]
+                </div>
+            }
+            @if (hasInfo)
+            {
+                <div style="background:#cfe2ff; border:1px solid #b6d4fe; color:#084298; padding:12px 16px; border-radius:8px;">
+                    @TempData["Info"]
+                </div>
+            }
+            @if (hasError)
+            {
+                <div style="background:#f8d7da; border:1px solid #f5c6cb; color:#721c24; padding:12px 16px; border-radius:8px;">
+                    @TempData["Error"]
+                </div>
+            }
         </div>
     }
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
 
-    <!-- Format Guide -->
-    <details style="margin-bottom:20px; background:#f0f4ff; border:1px solid #b6d4fe; border-radius:8px; padding:4px 16px;">
-        <summary style="cursor:pointer; font-weight:600; color:#084298; padding:10px 0; font-size:14px;">
-            Format Guide: How the system reads your rubric
-        </summary>
-        <div style="font-size:13px; color:#333; line-height:1.7; padding-bottom:12px;">
-            <p style="margin:8px 0;"><strong>Supported format:</strong> Excel rubric file</p>
+    @{ bool hasRubric = Model != null && Model.Criteria != null && Model.Criteria.Count > 0; }
 
-            <p style="margin:12px 0 4px; font-weight:600;">Expected worksheet layout:</p>
-            <ul style="margin:4px 0 8px 20px; padding:0;">
-                <li>The system searches workbook sheets for a rubric header row instead of relying only on fixed column letters</li>
-                <li>The header row should contain <strong>Criteria</strong>, score columns <strong>4, 3, 2, 1, 0</strong>, and optionally <strong>LO</strong> and <strong>Weight (%)</strong></li>
-                <li>The row directly under the score headers is used as the scale-name row, for example <strong>Excellent</strong>, <strong>Good</strong>, <strong>Satisfactory</strong>, <strong>Limited</strong>, <strong>Unsatisfactory</strong></li>
-                <li>The rows after that are read as the actual rubric criteria rows</li>
-                <li>The column with <strong>Criteria</strong> is used as the criterion-name column</li>
-                <li>The columns with score headers <strong>4, 3, 2, 1, 0</strong> are used for the level descriptions</li>
-                <li>The column with <strong>LO</strong> is used for Learning Outcomes (optional), for example <code>1,2,5</code> or <code>LO1, LO2, LO5</code></li>
-                <li>The column with <strong>Weight</strong> is used for the weight percentage (optional), for example <code>10</code>, <code>10.5</code>, or <code>10%</code></li>
-            </ul>
-
-            <p style="margin:12px 0 4px; font-weight:600;">LO mapping rules:</p>
-            <ul style="margin:4px 0 8px 20px; padding:0;">
-                <li>LO numbers are matched against the course Learning Outcomes by their <strong>LO order number</strong></li>
-                <li>If the assessment already has selected LOs from the course outline, only those LOs are allowed</li>
-                <li>Any rubric LO that is not allowed for this assessment is <strong>skipped</strong> and shown as a warning</li>
-            </ul>
-
-            <p style="margin:12px 0 4px; font-weight:600;">Important notes:</p>
-            <ul style="margin:4px 0 8px 20px; padding:0;">
-                <li>The first worksheet must contain at least one valid criterion row</li>
-                <li>If a rubric already exists for this assessment, uploading a new rubric will <strong>replace</strong> the old one</li>
-                <li>After upload, the rubric is submitted to the moderator for approval</li>
-            </ul>
-
-            <p style="margin:8px 0; color:#555;"><em>Tip: Keep one criterion per row, make sure the rubric sheet includes clear headers, and use clear LO numbers for the most reliable auto-mapping.</em></p>
-        </div>
-    </details>
+    @if (!hasRubric)
+    {
+        @await Html.PartialAsync("_RubricFormatGuide")
+    }
 
     <!-- Action Buttons -->
     @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
@@ -196,6 +177,11 @@
             <p style="font-size:40px; margin-bottom:12px;">📄</p>
             <p>No rubric uploaded yet. Use the <strong>Upload Rubric</strong> button above to get started.</p>
         </div>
+    }
+
+    @if (hasRubric)
+    {
+        @await Html.PartialAsync("_RubricFormatGuide")
     }
 
 </div>
