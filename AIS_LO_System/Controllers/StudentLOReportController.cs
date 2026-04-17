@@ -82,18 +82,28 @@ namespace AIS_LO_System.Controllers
                 Students = students
             };
 
+            // FIX #3: Only auto-submit if there's no existing Pending or Approved submission
+            var existingSubmission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.StudentLOReport);
+
             int.TryParse(User.FindFirst("UserId")?.Value, out int reportUserId);
-            if (!moderatorView && course.ModeratorId != null && reportUserId > 0)
+            if (!moderatorView &&
+                course.ModeratorId != null &&
+                reportUserId > 0 &&
+                (existingSubmission == null || existingSubmission.Status == SubmissionStatus.Denied))
             {
                 await _submissions.SubmitAsync(
                     courseCode, year, trimester,
                     SubmissionItemType.StudentLOReport, null,
                     $"Student LO Report — {courseCode} {year} T{trimester}",
                     reportUserId);
+
+                // Refresh submission after creating it
+                existingSubmission = await _submissions.GetLatestAsync(
+                    courseCode, year, trimester, SubmissionItemType.StudentLOReport);
             }
 
-            ViewBag.Submission = await _submissions.GetLatestAsync(
-                courseCode, year, trimester, SubmissionItemType.StudentLOReport);
+            ViewBag.Submission = existingSubmission;
 
             return View(vm);
         }

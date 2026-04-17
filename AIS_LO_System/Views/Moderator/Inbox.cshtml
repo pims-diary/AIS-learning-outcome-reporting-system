@@ -11,6 +11,51 @@
 
 <link rel="stylesheet" href="~/css/moderator.css" />
 
+<style>
+    .mod-filters {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+    }
+    .filter-form { margin: 0; }
+    .filter-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .filter-select {
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 14px;
+        background: #fff;
+        min-width: 180px;
+        cursor: pointer;
+    }
+    .filter-select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    .filter-clear {
+        padding: 8px 14px;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 13px;
+        text-decoration: none;
+        color: #64748b;
+        font-weight: 500;
+    }
+    .filter-clear:hover {
+        background: #f1f5f9;
+        color: #475569;
+    }
+</style>
+
 <div class="mod-page">
 
     <div class="mod-header">
@@ -47,6 +92,39 @@
         {
             <div class="mod-alert mod-alert-error">@TempData["Error"]</div>
         }
+
+        <!-- FIX #6: Filter controls -->
+        <div class="mod-filters">
+            <form method="get" asp-action="Inbox" class="filter-form">
+                <div class="filter-row">
+                    <select name="filterItemType" class="filter-select" onchange="this.form.submit()">
+                        <option value="">All Types</option>
+                        @foreach (var type in Enum.GetValues<SubmissionItemType>())
+                        {
+                            <option value="@type" selected="@(ViewBag.FilterItemType?.ToString() == type.ToString())">
+                                @FormatItemType(type)
+                            </option>
+                        }
+                    </select>
+
+                    <select name="filterCourse" class="filter-select" onchange="this.form.submit()">
+                        <option value="">All Courses</option>
+                        @foreach (var course in moderatedCourses)
+                        {
+                            var courseKey = $"{course.Code}-{course.Year}-T{course.Trimester}";
+                            <option value="@courseKey" selected="@(ViewBag.FilterCourse == courseKey)">
+                                @course.Code @course.Year T@(course.Trimester)
+                            </option>
+                        }
+                    </select>
+
+                    @if (ViewBag.FilterItemType != null || ViewBag.FilterCourse != null)
+                    {
+                        <a href="@Url.Action("Inbox")" class="filter-clear">Clear Filters</a>
+                    }
+                </div>
+            </form>
+        </div>
 
         <!-- PENDING -->
         <section class="mod-section">

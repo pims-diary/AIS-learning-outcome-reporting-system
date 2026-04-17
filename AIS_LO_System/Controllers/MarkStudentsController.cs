@@ -1,5 +1,7 @@
 ﻿using AIS_LO_System.Data;
+using AIS_LO_System.Models;
 using AIS_LO_System.Models.MarkStudents;
+using AIS_LO_System.Services;  // FIX #4: Added
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +15,12 @@ namespace AIS_LO_System.Controllers
     public class MarkStudentsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;  // FIX #4: Added
 
-        public MarkStudentsController(ApplicationDbContext context)
+        public MarkStudentsController(ApplicationDbContext context, SubmissionService submissions)
         {
             _context = context;
+            _submissions = submissions;  // FIX #4: Added
         }
 
         [HttpGet]
@@ -614,6 +618,20 @@ namespace AIS_LO_System.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            // FIX #4: Auto-submit student marks to moderator
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+            if (course?.ModeratorId != null && userId > 0)
+            {
+                await _submissions.SubmitAsync(
+                    courseCode, year, trimester,
+                    SubmissionItemType.StudentMarks, assignmentId,
+                    $"{assessmentName} — Student Marks",
+                    userId);
+            }
 
             TempData["Success"] = "Marks saved successfully.";
             return RedirectToAction("Index", new

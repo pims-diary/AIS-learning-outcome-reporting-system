@@ -43,9 +43,10 @@ namespace AIS_LO_System.Controllers
 
         // ─────────────────────────────────────────────────
         // INBOX — all pending submissions across all moderated courses
+        // FIX #6: Added filtering by item type and course
         // ─────────────────────────────────────────────────
         [HttpGet]
-        public async Task<IActionResult> Inbox()
+        public async Task<IActionResult> Inbox(string? filterItemType, string? filterCourse)
         {
             var userId = GetUserId();
 
@@ -65,8 +66,28 @@ namespace AIS_LO_System.Controllers
                 ? await _submissions.GetAllSubmissionsAsync()
                 : await _submissions.GetAllForModeratorAsync(userId);
 
+            // FIX #6: Apply filters
+            if (!string.IsNullOrEmpty(filterItemType) && Enum.TryParse<SubmissionItemType>(filterItemType, out var itemType))
+            {
+                pending = pending.Where(s => s.ItemType == itemType).ToList();
+                all = all.Where(s => s.ItemType == itemType).ToList();
+            }
+
+            if (!string.IsNullOrEmpty(filterCourse))
+            {
+                var parts = filterCourse.Split('-');
+                if (parts.Length == 3 && int.TryParse(parts[1], out int year) && int.TryParse(parts[2].Replace("T", ""), out int trimester))
+                {
+                    var courseCode = parts[0];
+                    pending = pending.Where(s => s.CourseCode == courseCode && s.Year == year && s.Trimester == trimester).ToList();
+                    all = all.Where(s => s.CourseCode == courseCode && s.Year == year && s.Trimester == trimester).ToList();
+                }
+            }
+
             ViewBag.PendingCount = pending.Count;
             ViewBag.AllSubmissions = all;
+            ViewBag.FilterItemType = filterItemType;
+            ViewBag.FilterCourse = filterCourse;
 
             return View(pending);
         }
