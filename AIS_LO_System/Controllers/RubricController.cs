@@ -316,7 +316,6 @@ namespace AIS_LO_System.Controllers
                         SubmissionItemType.Rubric, rubric.Id,
                         $"{assessmentName} — Rubric",
                         uploadUserId);
-                    TempData["Info"] = "📨 Rubric submitted to moderator for approval.";
                 }
                 return RedirectToAction(nameof(Index), new
                 {
@@ -463,7 +462,6 @@ namespace AIS_LO_System.Controllers
                     SubmissionItemType.Rubric, rubric.Id,
                     $"{assignment.AssessmentName} — Rubric",
                     editUserId);
-                TempData["Info"] = "📨 Updated rubric submitted to moderator for approval.";
             }
 
             if (assignment == null)
