@@ -87,7 +87,19 @@
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
 
-    @{ bool hasRubric = Model != null && Model.Criteria != null && Model.Criteria.Count > 0; }
+    @{
+        bool hasRubric = Model != null && Model.Criteria != null && Model.Criteria.Count > 0;
+        var uncoveredLOs = ViewBag.UncoveredLOs as List<string> ?? new List<string>();
+    }
+
+    @if (uncoveredLOs.Any())
+    {
+        <div style="background:#fff3cd; border:1px solid #ffc107; color:#856404; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
+            ⚠️ The following LOs are assigned to this assessment in the course outline but are not covered by any rubric criterion:
+            <strong>@string.Join(", ", uncoveredLOs)</strong>.
+            Please update the rubric so all required LOs are mapped.
+        </div>
+    }
 
     @if (!hasRubric)
     {
