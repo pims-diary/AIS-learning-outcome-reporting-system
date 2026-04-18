@@ -14,6 +14,18 @@ namespace AIS_LO_System.Controllers
     [Authorize(Roles = "Lecturer")]
     public class StudentLOReportController : Controller
     {
+        private readonly IWebHostEnvironment _env;
+
+        public StudentLOReportController(
+            ApplicationDbContext context,
+            SubmissionService submissions,
+            IWebHostEnvironment env)
+        {
+            _context = context;
+            _submissions = submissions;
+            _env = env;
+        }
+
         private readonly ApplicationDbContext _context;
         private readonly SubmissionService _submissions;
 
@@ -262,8 +274,35 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            var fileName = $"{vm.StudentId}_{vm.CourseCode}_Course_LO_Report.pdf";
-            return File(pdfBytes, "application/pdf", fileName);
+            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "student-lo");
+            Directory.CreateDirectory(directory);
+
+            var student = await _context.Students.FindAsync(studentId);
+            var filename = $"{student?.StudentId}_{courseCode}_{year}_T{trimester}_StudentLOReport.pdf";
+            var fullPath = Path.Combine(directory, filename);
+            await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
+
+            // Auto-submit to moderator
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+            var existingSubmission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.StudentLOReport, studentId);
+
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            if (course?.ModeratorId != null &&
+                userId > 0 &&
+                (existingSubmission == null || existingSubmission.Status == SubmissionStatus.Denied))
+            {
+                await _submissions.SubmitAsync(
+                    courseCode, year, trimester,
+                    SubmissionItemType.StudentLOReport,
+                    studentId, // ItemRefId = studentId
+                    $"Student LO Report — {student?.StudentId} ({student?.FullName})",
+                    userId);
+            }
+
+            return File(pdfBytes, "application/pdf", $"{student?.StudentId}_{courseCode}_{year}_T{trimester}_StudentLOReport.pdf");
 
             static IContainer CellStyle(IContainer container)
             {

@@ -1,0 +1,34 @@
+﻿@using AIS_LO_System.Models
+@{
+    ViewData["Title"] = "Review: Assessment LO Report";
+    Layout = "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
+        <h1>Assessment LO Report — @ViewBag.AssessmentName</h1>
+        <span class="mod-card-course">@ViewBag.CourseCode @ViewBag.Year T@(ViewBag.Trimester)</span>
+    </div>
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission })
+
+    @if (ViewBag.PdfUrl != null)
+    {
+        var url = (string)ViewBag.PdfUrl;
+        var cacheBust = $"?v={DateTime.Now.Ticks}";
+
+        <iframe src="@(url)@(cacheBust)" class="mod-doc-frame"></iframe>
+
+        <div class="mod-doc-download" style="margin-top: 16px;">
+            <a href="@url" download class="mod-btn-view">⬇ Download Assessment LO Report</a>
+        </div>
+    }
+    else
+    {
+        <div class="mod-empty">Assessment LO Report PDF not found.</div>
+    }
+</div>

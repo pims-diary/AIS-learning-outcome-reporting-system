@@ -580,5 +580,95 @@ namespace AIS_LO_System.Controllers
             ViewBag.SubmissionId = submissionId;
             return View(vm);
         }
+
+        // ======================================================
+        // VIEW COURSE LO REPORT (PDF)
+        // ======================================================
+        public async Task<IActionResult> ViewCourseLOReport(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null)
+                return NotFound();
+
+            // Verify moderator access
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == submission.CourseCode &&
+                c.Year == submission.Year &&
+                c.Trimester == submission.Trimester);
+
+            if (course == null)
+                return NotFound();
+
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            bool isAdmin = User.IsInRole("Admin");
+
+            if (!isAdmin && course.ModeratorId != userId)
+            {
+                TempData["Error"] = "You do not have permission to review this submission.";
+                return RedirectToAction(nameof(Inbox));
+            }
+
+            // Get the PDF file path from storage
+            var pdfPath = $"/uploads/reports/course-lo/{submission.CourseCode}_{submission.Year}_T{submission.Trimester}_CourseLOReport.pdf";
+
+            ViewBag.Submission = submission;
+            ViewBag.CourseCode = submission.CourseCode;
+            ViewBag.Year = submission.Year;
+            ViewBag.Trimester = submission.Trimester;
+            ViewBag.PdfUrl = pdfPath;
+
+            return View();
+        }
+
+        // ======================================================
+        // VIEW ASSESSMENT LO REPORT (PDF)
+        // ======================================================
+        public async Task<IActionResult> ViewAssessmentLOReport(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .Include(s => s.Assignment)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null || submission.ItemRefId == null)
+                return NotFound();
+
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == submission.ItemRefId.Value);
+
+            if (assignment == null)
+                return NotFound();
+
+            // Verify moderator access
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == submission.CourseCode &&
+                c.Year == submission.Year &&
+                c.Trimester == submission.Trimester);
+
+            if (course == null)
+                return NotFound();
+
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            bool isAdmin = User.IsInRole("Admin");
+
+            if (!isAdmin && course.ModeratorId != userId)
+            {
+                TempData["Error"] = "You do not have permission to review this submission.";
+                return RedirectToAction(nameof(Inbox));
+            }
+
+            // Get the PDF file path from storage
+            var pdfPath = $"/uploads/reports/assessment-lo/{submission.CourseCode}_{submission.Year}_T{submission.Trimester}_{assignment.AssessmentName.Replace(" ", "_")}_AssessmentLOReport.pdf";
+
+            ViewBag.Submission = submission;
+            ViewBag.CourseCode = submission.CourseCode;
+            ViewBag.Year = submission.Year;
+            ViewBag.Trimester = submission.Trimester;
+            ViewBag.AssessmentName = assignment.AssessmentName;
+            ViewBag.PdfUrl = pdfPath;
+
+            return View();
+        }
     }
 }

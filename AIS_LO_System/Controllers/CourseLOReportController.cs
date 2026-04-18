@@ -1,5 +1,7 @@
 ﻿using AIS_LO_System.Data;
+using AIS_LO_System.Models;
 using AIS_LO_System.Models.Reports;
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +15,19 @@ namespace AIS_LO_System.Controllers
     public class CourseLOReportController : Controller
     {
         private readonly ApplicationDbContext _context;
+
+        private readonly IWebHostEnvironment _env;
+        private readonly SubmissionService _submissions;
+
+        public CourseLOReportController(
+            ApplicationDbContext context,
+            IWebHostEnvironment env,
+            SubmissionService submissions)
+        {
+            _context = context;
+            _env = env;
+            _submissions = submissions;
+        }
 
         public CourseLOReportController(ApplicationDbContext context)
         {
@@ -221,8 +236,35 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            var fileName = $"{vm.CourseCode}_Course_LO_Report.pdf";
-            return File(pdfBytes, "application/pdf", fileName);
+            // NEW: Save PDF to file system for moderator review
+            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "course-lo");
+            Directory.CreateDirectory(directory);
+
+            var filename = $"{courseCode}_{year}_T{trimester}_CourseLOReport.pdf";
+            var fullPath = Path.Combine(directory, filename);
+            await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
+
+            // Auto-submit to moderator if not already submitted
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+            var existingSubmission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.CourseLOReport);
+
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            if (course?.ModeratorId != null &&
+                userId > 0 &&
+                (existingSubmission == null || existingSubmission.Status == SubmissionStatus.Denied))
+            {
+                await _submissions.SubmitAsync(
+                    courseCode, year, trimester,
+                    SubmissionItemType.CourseLOReport,
+                    null, // No ItemRefId for course-level report
+                    $"Course LO Report — {courseCode} {year} T{trimester}",
+                    userId);
+            }
+
+            return File(pdfBytes, "application/pdf", $"CourseLOReport_{courseCode}_{year}_T{trimester}.pdf");
 
             static IContainer CellStyle(IContainer container)
             {

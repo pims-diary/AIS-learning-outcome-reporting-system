@@ -1,8 +1,9 @@
-using QuestPDF.Infrastructure;
 using AIS_LO_System.Data;
 using AIS_LO_System.Models;
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +13,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 builder.Services.AddScoped<AIS_LO_System.Services.SubmissionService>();
+builder.Services.AddScoped<ReportSubmissionService>();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>

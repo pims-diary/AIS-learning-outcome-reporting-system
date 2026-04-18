@@ -8,9 +8,10 @@ namespace AIS_LO_System.Models
         AssignmentDocument,
         Rubric,
         StudentMarks,
-        StudentLOReport,
-        CourseLOReport,
-        LOMapping          // FIX #2: manually-assigned LO mapping sent for moderator review
+        StudentLOReport,        // Student LO Report for all assessments (course-level)
+        CourseLOReport,         // Course LO Report for all students
+        AssessmentLOReport,     // Assessment LO Report for all students (single assignment)
+        LOMapping               // Manually-assigned LO mapping sent for moderator review
     }
 
     public enum SubmissionStatus
@@ -38,10 +39,10 @@ namespace AIS_LO_System.Models
         public SubmissionItemType ItemType { get; set; }
 
         /// <summary>
-        /// FK to the relevant item — AssignmentId for AssignmentDocument/Rubric/LOMapping,
-        /// null for CourseOutline / CourseLOReport.
-        /// For StudentMarks: the Assignment.Id whose marks were submitted.
-        /// For StudentLOReport: null (course-level).
+        /// FK to the relevant item:
+        /// - AssignmentDocument/Rubric/LOMapping/AssessmentLOReport: AssignmentId
+        /// - StudentMarks: Assignment.Id whose marks were submitted
+        /// - CourseOutline/CourseLOReport/StudentLOReport: null (course-level)
         /// </summary>
         public int? ItemRefId { get; set; }
 
@@ -52,19 +53,18 @@ namespace AIS_LO_System.Models
         [Required]
         public SubmissionStatus Status { get; set; } = SubmissionStatus.Pending;
 
+        [Required]
         public DateTime SubmittedAt { get; set; } = DateTime.Now;
+
+        public int? SubmittedByUserId { get; set; }
+        public AppUser? SubmittedBy { get; set; }
 
         public DateTime? ReviewedAt { get; set; }
 
-        [StringLength(2000)]
-        public string? ModeratorComment { get; set; }
-
-        // Who submitted
-        public int SubmittedByUserId { get; set; }
-        public AppUser? SubmittedBy { get; set; }
-
-        // Who reviewed (moderator)
         public int? ReviewedByUserId { get; set; }
         public AppUser? ReviewedBy { get; set; }
+
+        [StringLength(1000)]
+        public string? ModeratorComment { get; set; }
     }
 }
