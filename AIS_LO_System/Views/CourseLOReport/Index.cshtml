@@ -314,9 +314,14 @@
                         <thead>
                             <tr>
                                 <th>Assessment</th>
+                                <th>Assessment Weight</th>
                                 <th>Status</th>
-                                <th>Total Contribution to LO(s)</th>
-                                <th>Class Achievement</th>
+                                <th title="Shows how much this assessment contributes to each learning outcome across the whole course.">
+                                    Contribution to Course LO(s)
+                                </th>
+                                <th title="Shows the average class performance for each learning outcome within this assessment only.">
+                                    Class Achievement
+                                </th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -326,7 +331,12 @@
                                 <tr>
                                     <td>@item.AssessmentName</td>
                                     <td>
-                                        @if (item.StatusText == "Fully Graded")
+                                        @(item.AssignmentWeight > 0
+                                                                        ? item.AssignmentWeight + "%"
+                                                                        : "Not Set")
+                            </td>
+                            <td>
+                                @if (item.StatusText == "Fully Graded")
                                         {
                                             <span class="badge bg-success">@item.StatusText</span>
                                         }
@@ -334,18 +344,22 @@
                                         {
                                             <span class="badge bg-warning text-dark">@item.StatusText</span>
                                         }
-                                        else
+                                        else if (item.StatusText == "Not Started")
                                         {
                                             <span class="badge bg-secondary">@item.StatusText</span>
                                         }
+                                        else
+                                        {
+                                            <span class="badge bg-info text-dark">@item.StatusText</span>
+                                        }
                                     </td>
-                                    <td>
+                                    <td title="@item.ContributionTooltip">
                                         @foreach (var contribution in item.Contributions)
                                         {
                                             <div>@contribution</div>
                                         }
                                     </td>
-                                    <td>
+                                    <td title="@item.ClassAchievementTooltip">
                                         @foreach (var achievement in item.ClassAchievements)
                                         {
                                             <div>@achievement</div>
@@ -385,7 +399,9 @@
                             <tr>
                                 <th>LO</th>
                                 <th>Learning Outcome</th>
-                                <th>Average Class Achievement (%)</th>
+                                <th title="Shows the overall average percentage achieved by the class for this learning outcome across graded assessments.">
+                                    Average Class Achievement (%)
+                                </th>
                                 <th>Students Achieved</th>
                                 <th>Students Not Achieved</th>
                                 <th>Class Result</th>

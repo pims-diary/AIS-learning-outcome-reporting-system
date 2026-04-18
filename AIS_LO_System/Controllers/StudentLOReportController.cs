@@ -132,6 +132,8 @@ namespace AIS_LO_System.Controllers
             if (vm == null)
                 return NotFound();
 
+            var downloadedAt = DateTime.Now;
+
             var pdfBytes = Document.Create(container =>
             {
                 container.Page(page =>
@@ -147,16 +149,20 @@ namespace AIS_LO_System.Controllers
 
                         col.Item().Text($"{vm.StudentName} ({vm.StudentId})");
                         col.Item().Text($"{vm.CourseCode} - {vm.CourseTitle}");
-                        col.Item().Text($"{vm.TrimesterLabel}");
+                        col.Item().Text($"Semester: Trimester {vm.Trimester}, {vm.Year}");
+                        col.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
                     });
 
                     page.Content().Column(col =>
                     {
-                        col.Spacing(12);
+                        col.Spacing(14);
 
                         col.Item().Text(
                             $"{vm.AchievedCount} of {vm.TotalLOCount} Learning Outcomes Achieved")
-                            .Bold();
+                            .Bold().FontSize(12);
+
+                        col.Item().Text("Learning Outcome Summary")
+                            .Bold().FontSize(12);
 
                         col.Item().Table(table =>
                         {
@@ -173,7 +179,7 @@ namespace AIS_LO_System.Controllers
                             table.Header(header =>
                             {
                                 header.Cell().Element(CellStyle).Text("LO").Bold();
-                                header.Cell().Element(CellStyle).Text("Outcome").Bold();
+                                header.Cell().Element(CellStyle).Text("Learning Outcome").Bold();
                                 header.Cell().Element(CellStyle).Text("Score").Bold();
                                 header.Cell().Element(CellStyle).Text("Max").Bold();
                                 header.Cell().Element(CellStyle).Text("%").Bold();
@@ -196,54 +202,19 @@ namespace AIS_LO_System.Controllers
 
                         foreach (var item in vm.LOAnalyses)
                         {
-                            col.Item().Text($"{item.Label} - {item.Percentage:0.##}% ({item.Status})")
-                                .Bold();
-
-                            col.Item().Text(item.LearningOutcomeText);
-
-                            foreach (var line in item.AssessmentBreakdown)
+                            col.Item().PaddingTop(6).Column(loColumn =>
                             {
-                                col.Item().Text("- " + line);
-                            }
+                                loColumn.Item().Text($"{item.Label} - {item.Percentage:0.##}% ({item.Status})")
+                                    .Bold().FontSize(11);
+
+                                loColumn.Item().Text(item.LearningOutcomeText);
+
+                                foreach (var line in item.AssessmentBreakdown)
+                                {
+                                    loColumn.Item().Text("- " + line);
+                                }
+                            });
                         }
-
-                        col.Item().Text("Assessment Contribution to Course Learning Outcomes")
-                            .Bold().FontSize(12);
-
-                        col.Item().Table(table =>
-                        {
-                            table.ColumnsDefinition(columns =>
-                            {
-                                columns.RelativeColumn(2);
-                                columns.ConstantColumn(80);
-                                columns.RelativeColumn(3);
-                                columns.RelativeColumn(3);
-                            });
-
-                            table.Header(header =>
-                            {
-                                header.Cell().Element(CellStyle).Text("Assessment").Bold();
-                                header.Cell().Element(CellStyle).Text("Status").Bold();
-                                header.Cell().Element(CellStyle).Text("Contribution").Bold();
-                                header.Cell().Element(CellStyle).Text("Achievement").Bold();
-                            });
-
-                            foreach (var item in vm.Contributions)
-                            {
-                                table.Cell().Element(CellStyle).Text(item.AssessmentName);
-                                table.Cell().Element(CellStyle).Text(item.StatusText);
-                                table.Cell().Element(CellStyle).Column(col =>
-                                {
-                                    foreach (var c in item.Contributions)
-                                        col.Item().Text(c);
-                                });
-                                table.Cell().Element(CellStyle).Column(col =>
-                                {
-                                    foreach (var a in item.Achievements)
-                                        col.Item().Text(a);
-                                });
-                            }
-                        });
                     });
 
                     page.Footer()
@@ -252,7 +223,8 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            var fileName = $"{vm.StudentId}_{vm.CourseCode}_Course_LO_Report.pdf";
+            var fileName = $"{vm.StudentId}_{vm.CourseCode}_Trimester_{vm.Trimester}_{vm.Year}.pdf";
+
             return File(pdfBytes, "application/pdf", fileName);
 
             static IContainer CellStyle(IContainer container)
@@ -473,7 +445,10 @@ namespace AIS_LO_System.Controllers
                     AssignmentId = assignment.Id,
                     AssessmentName = assignment.AssessmentName,
                     IsGraded = statusItem?.IsGraded ?? false,
-                    StatusText = (statusItem?.IsGraded ?? false) ? "Graded" : "Not Graded"
+                    StatusText = (statusItem?.IsGraded ?? false) ? "Graded" : "Not Graded",
+                    AssignmentWeight = assignment.MarksPercentage,
+                    ContributionTooltip = "Shows how much this assignment contributes to each LO across the whole course.",
+                    AchievementTooltip = "Shows how well the student performed for that LO within this assignment only."
                 };
 
                 if (!contributionItem.IsGraded)
@@ -518,12 +493,19 @@ namespace AIS_LO_System.Controllers
                                 max += maxLevel.Score * mapping.Weight;
                         }
 
-                        var percentage = max > 0
+                        var contributionPercentage = 0m;
+
+                        if (lo.MaxScore > 0 && max > 0)
+                        {
+                            contributionPercentage = Math.Round((max / lo.MaxScore) * 100, 2);
+                        }
+
+                        var achievementPercentage = max > 0
                             ? Math.Round((achieved / max) * 100, 2)
                             : 0;
 
-                        contributionItem.Contributions.Add($"{lo.Label}: {max:0.##}");
-                        contributionItem.Achievements.Add($"{lo.Label}: {percentage:0.##}%");
+                        contributionItem.Contributions.Add($"{lo.Label}: {contributionPercentage:0.##}%");
+                        contributionItem.Achievements.Add($"{lo.Label}: {achievementPercentage:0.##}%");
                     }
                 }
 

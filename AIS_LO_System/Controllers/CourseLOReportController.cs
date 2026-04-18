@@ -49,6 +49,8 @@ namespace AIS_LO_System.Controllers
             if (vm == null)
                 return NotFound();
 
+            var downloadedAt = DateTime.Now;
+
             var pdfBytes = Document.Create(container =>
             {
                 container.Page(page =>
@@ -64,8 +66,7 @@ namespace AIS_LO_System.Controllers
 
                         col.Item().Text($"{vm.CourseCode} - {vm.CourseTitle}");
                         col.Item().Text(vm.TrimesterLabel);
-                        col.Item().Text($"Students Enrolled: {vm.TotalStudentsEnrolled}");
-                        col.Item().Text($"Assessments: {vm.TotalAssessments}");
+                        col.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
                     });
 
                     page.Content().Column(col =>
@@ -75,30 +76,6 @@ namespace AIS_LO_System.Controllers
                         col.Item().Text(
                                 $"{vm.TotalAchievedLOs} of {vm.LOSummaries.Count} Learning Outcomes Achieved by Class")
                             .Bold();
-
-                        if (vm.StrongestLOs.Any() || vm.WeakestLOs.Any())
-                        {
-                            col.Item().Text("LO Highlights")
-                                .Bold().FontSize(12);
-
-                            if (vm.StrongestLOs.Any())
-                            {
-                                col.Item().Text("Top Performing LOs").Bold();
-                                foreach (var lo in vm.StrongestLOs)
-                                {
-                                    col.Item().Text($"- {lo.Label}: {lo.AveragePercentage:0.##}%");
-                                }
-                            }
-
-                            if (vm.WeakestLOs.Any())
-                            {
-                                col.Item().Text("Weakest LOs").Bold();
-                                foreach (var lo in vm.WeakestLOs)
-                                {
-                                    col.Item().Text($"- {lo.Label}: {lo.AveragePercentage:0.##}%");
-                                }
-                            }
-                        }
 
                         col.Item().Text("Class LO Summary")
                             .Bold().FontSize(12);
@@ -152,65 +129,6 @@ namespace AIS_LO_System.Controllers
                                 {
                                     col.Item().Text("- " + line);
                                 }
-
-                                if (vm.LORecommendations.ContainsKey(item.Label))
-                                {
-                                    col.Item().Text("Recommendation: " + vm.LORecommendations[item.Label]);
-                                }
-                            }
-                        }
-
-                        if (vm.AtRiskStudents.Any())
-                        {
-                            col.Item().Text("At-Risk Students")
-                                .Bold().FontSize(12);
-
-                            col.Item().Table(table =>
-                            {
-                                table.ColumnsDefinition(columns =>
-                                {
-                                    columns.ConstantColumn(80);
-                                    columns.RelativeColumn(2);
-                                    columns.ConstantColumn(70);
-                                    columns.ConstantColumn(90);
-                                });
-
-                                table.Header(header =>
-                                {
-                                    header.Cell().Element(CellStyle).Text("Student ID").Bold();
-                                    header.Cell().Element(CellStyle).Text("Student Name").Bold();
-                                    header.Cell().Element(CellStyle).Text("Achieved").Bold();
-                                    header.Cell().Element(CellStyle).Text("Not Achieved").Bold();
-                                });
-
-                                foreach (var student in vm.AtRiskStudents)
-                                {
-                                    table.Cell().Element(CellStyle).Text(student.StudentId);
-                                    table.Cell().Element(CellStyle).Text(student.StudentName);
-                                    table.Cell().Element(CellStyle).Text(student.AchievedLOCount.ToString());
-                                    table.Cell().Element(CellStyle).Text(student.NotAchievedLOCount.ToString());
-                                }
-                            });
-                        }
-
-                        if (vm.Contributions.Any())
-                        {
-                            col.Item().Text("Assessment Contribution to Course Learning Outcomes")
-                                .Bold().FontSize(12);
-
-                            foreach (var item in vm.Contributions)
-                            {
-                                col.Item().Text($"{item.AssessmentName} ({item.StatusText})").Bold();
-
-                                for (int i = 0; i < item.Contributions.Count; i++)
-                                {
-                                    var contribution = item.Contributions[i];
-                                    var achievement = i < item.ClassAchievements.Count
-                                        ? item.ClassAchievements[i]
-                                        : string.Empty;
-
-                                    col.Item().Text($"- {contribution} | {achievement}");
-                                }
                             }
                         }
                     });
@@ -221,7 +139,7 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            var fileName = $"{vm.CourseCode}_Course_LO_Report.pdf";
+            var fileName = $"{vm.CourseCode}_Trimester_{vm.Trimester}_{vm.Year}.pdf";
             return File(pdfBytes, "application/pdf", fileName);
 
             static IContainer CellStyle(IContainer container)
@@ -821,7 +739,10 @@ namespace AIS_LO_System.Controllers
                     AssignmentId = assignment.Id,
                     AssessmentName = assignment.AssessmentName,
                     HasAnyGradedStudent = assessmentVm.HasAnyGradedStudent,
-                    StatusText = assessmentVm.StatusText
+                    StatusText = assessmentVm.StatusText,
+                    AssignmentWeight = assessmentVm.MarksPercentage,
+                    ContributionTooltip = "Shows how much this assessment contributes to each learning outcome across the whole course.",
+                    ClassAchievementTooltip = "Shows the average class performance for each learning outcome within this assessment only."
                 };
 
                 if (!assessmentVm.HasAnyGradedStudent)
@@ -858,6 +779,25 @@ namespace AIS_LO_System.Controllers
                                 totalContribution += maxLevel.Score * mapping.Weight;
                         }
 
+                        decimal totalLOScore = 0;
+                        var allMappingsForLO = mappings
+                            .Where(m => m.LearningOutcomeId == lo.Id)
+                            .ToList();
+
+                        foreach (var mapping in allMappingsForLO)
+                        {
+                            var maxLevel = mapping.RubricCriterion?.Levels?
+                                .OrderByDescending(l => l.Score)
+                                .FirstOrDefault();
+
+                            if (maxLevel != null)
+                                totalLOScore += maxLevel.Score * mapping.Weight;
+                        }
+
+                        var contributionPercentage = totalLOScore > 0
+                            ? Math.Round((totalContribution / totalLOScore) * 100, 2)
+                            : 0;
+
                         var rows = studentAssessmentLOPercentages
                             .Where(x =>
                                 x.LearningOutcomeId == lo.Id &&
@@ -869,7 +809,7 @@ namespace AIS_LO_System.Controllers
                             ? Math.Round(rows.Average(x => x.Percentage), 2)
                             : 0;
 
-                        contributionItem.Contributions.Add($"LO{lo.OrderNumber}: {totalContribution:0.##}");
+                        contributionItem.Contributions.Add($"LO{lo.OrderNumber}: {contributionPercentage:0.##}%");
                         contributionItem.ClassAchievements.Add($"LO{lo.OrderNumber}: {averageAchievement:0.##}%");
                     }
                 }
