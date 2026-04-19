@@ -10,24 +10,24 @@
     <!-- Breadcrumb -->
     <div class="breadcrumb mb-3">
         <a class="crumb-link"
-               asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester">
+           asp-controller="CourseDashboard"
+           asp-action="Index"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
             @Model.CourseCode @ViewBag.CourseTitle
         </a>
 
         <span>/</span>
 
         <a class="crumb-link"
-               asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="@Model.AssessmentName"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester">
+           asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
             Assessments
         </a>
 
@@ -40,13 +40,13 @@
         <h2 class="fw-bold">Mark Students</h2>
 
         <a class="btn btn-outline-secondary"
-               asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="@Model.AssessmentName"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester">
+           asp-controller="Assignment"
+           asp-action="Index"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@ViewBag.CourseTitle"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester">
             ← Back
         </a>
     </div>
@@ -127,15 +127,15 @@
 
                                     <td class="text-center">
                                         <a asp-controller="MarkStudents"
-                                               asp-action="MarkStudent"
-                                               asp-route-studentId="@student.InternalId"
-                                               asp-route-assignmentId="@ViewBag.AssignmentId"
-                                               asp-route-courseCode="@Model.CourseCode"
-                                               asp-route-courseTitle="@ViewBag.CourseTitle"
-                                               asp-route-assessmentName="@Model.AssessmentName"
-                                               asp-route-year="@Model.Year"
-                                               asp-route-trimester="@Model.Trimester"
-                                               class="action-btn">
+                                           asp-action="MarkStudent"
+                                           asp-route-studentId="@student.InternalId"
+                                           asp-route-assignmentId="@ViewBag.AssignmentId"
+                                           asp-route-courseCode="@Model.CourseCode"
+                                           asp-route-courseTitle="@ViewBag.CourseTitle"
+                                           asp-route-assessmentName="@Model.AssessmentName"
+                                           asp-route-year="@Model.Year"
+                                           asp-route-trimester="@Model.Trimester"
+                                           class="action-btn">
                                             @(student.IsMarked ? "View" : "Mark Student")
                                         </a>
 
