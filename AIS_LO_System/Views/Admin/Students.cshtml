@@ -98,9 +98,10 @@
                             <td>
                                 @foreach (var e in s.CourseEnrolments.OrderByDescending(e => e.Course.Year).ThenBy(e => e.Course.Trimester))
                                 {
-                                    <a href="@Url.Action("Index", "CourseDashboard", new { courseCode = e.Course.Code, year = e.Course.Year, trimester = e.Course.Trimester })"
-                                           class="enrol-tag @(e.Course.Year == ViewBag.CurrentYear ? "enrol-tag-current" : "enrol-tag-past")"
-                                           title="View @s.FullName's records in @e.Course.Code">
+                                    <a href="javascript:void(0)"
+                                       class="enrol-tag @(e.Course.Year == ViewBag.CurrentYear ? "enrol-tag-current" : "enrol-tag-past")"
+                                       title="View @s.FullName's records in @e.Course.Code"
+                                       onclick="openStudentReportsModal(@s.Id, '@e.Course.Code', @e.Course.Year, @e.Course.Trimester, '@s.FullName')">
                                         @e.Course.Code <span class="enrol-tag-year">@(e.Course.Year) T@(e.Course.Trimester)</span>
                                     </a>
                                 }
@@ -312,6 +313,101 @@
     </div>
 </div>
 
+<!-- Student Reports Modal -->
+<div class="admin-modal-bg" id="studentReportsModal">
+    <div class="admin-modal" style="width:560px;">
+        <!-- Header -->
+        <div style="display:flex;flex-direction:row;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;">
+            <div>
+                <div style="font-size:20px;font-weight:700;color:#1a1a1a;margin-bottom:4px;" id="reportsModalTitle">Reports</div>
+                <div style="font-size:13px;color:#6b7280;font-weight:500;" id="reportsModalSubtitle"></div>
+            </div>
+            <button type="button"
+                    onclick="closeModal('studentReportsModal')"
+                    title="Close"
+                    style="flex-shrink:0;background:none;border:1px solid #e5e7eb;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9ca3af;font-size:15px;line-height:1;margin-top:2px;">&#x2715;</button>
+        </div>
+
+        <!-- Loading -->
+        <div id="reportsModalLoading" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:32px 0;color:#6b7280;font-size:14px;">
+            <div style="width:20px;height:20px;border:2px solid #e5e7eb;border-top-color:#c0392b;border-radius:50%;animation:reports-spin 0.7s linear infinite;flex-shrink:0;"></div>
+            <span>Loading reports...</span>
+        </div>
+
+        <!-- Content -->
+        <div id="reportsModalContent" style="display:none;">
+            <div id="assessmentReportsList"></div>
+            <div style="height:1px;background:#f3f4f6;"></div>
+            <div style="display:flex;flex-direction:row;align-items:center;justify-content:space-between;padding:13px 0;gap:16px;">
+                <span style="font-size:14px;color:#1a1a1a;">Student LO Report</span>
+                <div id="studentLOReportActions" style="display:flex;flex-direction:row;gap:8px;align-items:center;flex-shrink:0;"></div>
+            </div>
+        </div>
+
+        <div id="reportsModalError" style="display:none;" class="admin-alert admin-alert-error"></div>
+    </div>
+</div>
+
+<style>
+    @@keyframes reports-spin { to { transform: rotate(360deg); } }
+    /* Force correct enrol-tag styles in case of CSS cache */
+    a.enrol-tag {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px !important;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        margin: 2px 4px 2px 0;
+        white-space: nowrap;
+        text-decoration: none !important;
+        cursor: pointer;
+    }
+    a.enrol-tag.enrol-tag-current { background: #dbeafe !important; color: #1e40af !important; }
+    a.enrol-tag.enrol-tag-past    { background: #f3f4f6 !important; color: #6b7280 !important; }
+    a.enrol-tag:hover { filter: brightness(0.92); transform: translateY(-1px); text-decoration: none !important; }
+    .report-item-row {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 13px 0;
+        gap: 16px;
+    }
+    .report-item-divider { height: 1px; background: #f3f4f6; }
+    .btn-report-dl {
+        display: inline-flex;
+        align-items: center;
+        background: #c0392b;
+        color: #fff !important;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none !important;
+        white-space: nowrap;
+    }
+    .btn-report-dl:hover { background: #a93226; color: #fff !important; text-decoration: none !important; }
+    .btn-report-regen {
+        display: inline-flex;
+        align-items: center;
+        background: #fff;
+        color: #c0392b !important;
+        border: 1.5px solid #c0392b;
+        border-radius: 8px;
+        padding: 7px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none !important;
+        white-space: nowrap;
+    }
+    .btn-report-regen:hover { background: #fef2f2; text-decoration: none !important; }
+</style>
+
 @section Scripts {
     <script>
         function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -399,5 +495,110 @@
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') document.querySelectorAll('.admin-modal-bg.open').forEach(m => m.classList.remove('open'));
         });
+
+        async function openStudentReportsModal(studentInternalId, courseCode, year, trimester, studentName) {
+            const modal = document.getElementById('studentReportsModal');
+            const loading = document.getElementById('reportsModalLoading');
+            const content = document.getElementById('reportsModalContent');
+            const errorDiv = document.getElementById('reportsModalError');
+
+            // Reset state
+            loading.style.display = 'flex';
+            content.style.display = 'none';
+            errorDiv.style.display = 'none';
+            document.getElementById('reportsModalTitle').textContent = `${studentName} — Reports`;
+            document.getElementById('reportsModalSubtitle').textContent = `${courseCode} · ${year} T${trimester}`;
+
+            modal.classList.add('open');
+
+            try {
+                const url = `/Admin/GetStudentReports?studentId=${studentInternalId}&courseCode=${encodeURIComponent(courseCode)}&year=${year}&trimester=${trimester}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Failed to load report data.');
+                const data = await res.json();
+
+                // Render assessment reports
+                const list = document.getElementById('assessmentReportsList');
+                list.innerHTML = '';
+
+                if (data.assessmentReports && data.assessmentReports.length > 0) {
+                    data.assessmentReports.forEach(r => {
+                        const row = document.createElement('div');
+                        row.className = 'report-item-row';
+
+                        const label = document.createElement('span');
+                        label.style.cssText = 'font-size:14px;color:#1a1a1a;flex:1;';
+                        label.textContent = `${r.assessmentName} Report`;
+                        row.appendChild(label);
+
+                        const actions = document.createElement('div');
+                        actions.style.cssText = 'display:flex;flex-direction:row;gap:8px;align-items:center;flex-shrink:0;';
+
+                        if (r.exists && r.downloadUrl) {
+                            const btn = document.createElement('a');
+                            btn.href = r.downloadUrl;
+                            btn.download = r.fileName;
+                            btn.className = 'btn-report-dl';
+                            btn.textContent = 'Download PDF';
+                            actions.appendChild(btn);
+                        } else {
+                            const span = document.createElement('span');
+                            span.style.cssText = 'font-size:13px;color:#9ca3af;font-style:italic;';
+                            span.textContent = 'Not yet available';
+                            actions.appendChild(span);
+                        }
+
+                        row.appendChild(actions);
+                        list.appendChild(row);
+
+                        const divider = document.createElement('div');
+                        divider.className = 'report-item-divider';
+                        list.appendChild(divider);
+                    });
+                } else {
+                    const empty = document.createElement('div');
+                    empty.className = 'report-item-row';
+                    empty.innerHTML = '<span style="font-size:13px;color:#9ca3af;font-style:italic;">No assessments found for this course.</span>';
+                    list.appendChild(empty);
+                    const divider = document.createElement('div');
+                    divider.className = 'report-item-divider';
+                    list.appendChild(divider);
+                }
+
+                // Render Student LO Report row
+                const loActions = document.getElementById('studentLOReportActions');
+                loActions.innerHTML = '';
+
+                if (data.studentLoReport.exists && data.studentLoReport.downloadUrl) {
+                    const dlBtn = document.createElement('a');
+                    dlBtn.href = data.studentLoReport.downloadUrl;
+                    dlBtn.download = data.studentLoReport.fileName;
+                    dlBtn.className = 'btn-report-dl';
+                    dlBtn.textContent = 'Download PDF';
+                    loActions.appendChild(dlBtn);
+                }
+
+                if (data.studentLoReport.generateUrl) {
+                    const genBtn = document.createElement('a');
+                    genBtn.href = data.studentLoReport.generateUrl;
+                    genBtn.target = '_blank';
+                    genBtn.className = data.studentLoReport.exists ? 'btn-report-regen' : 'btn-report-dl';
+                    genBtn.textContent = data.studentLoReport.exists ? 'Re-generate PDF' : 'Generate PDF';
+                    loActions.appendChild(genBtn);
+                }
+
+                if (!data.studentLoReport.exists && !data.studentLoReport.generateUrl) {
+                    loActions.innerHTML = '<span style="font-size:13px;color:#9ca3af;font-style:italic;">Not yet available</span>';
+                }
+
+                loading.style.display = 'none';
+                content.style.display = 'block';
+
+            } catch (err) {
+                loading.style.display = 'none';
+                errorDiv.textContent = err.message || 'An error occurred loading reports.';
+                errorDiv.style.display = 'block';
+            }
+        }
     </script>
 }

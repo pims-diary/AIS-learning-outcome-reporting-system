@@ -13,10 +13,12 @@ namespace AIS_LO_System.Controllers
     public class AdminController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public AdminController(ApplicationDbContext context)
+        public AdminController(ApplicationDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // =============================================
@@ -778,6 +780,84 @@ namespace AIS_LO_System.Controllers
 
         private static bool ValidSchool(string school) =>
             Schools.Any(s => s.Equals(school, StringComparison.OrdinalIgnoreCase));
+
+        [HttpGet]
+        public async Task<IActionResult> GetStudentReports(int studentId, string courseCode, int year, int trimester)
+        {
+            var student = await _context.Students.FindAsync(studentId);
+            if (student == null) return NotFound();
+
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            if (course == null) return NotFound();
+
+            // Check enrolment
+            var isEnrolled = await _context.StudentCourseEnrolments
+                .AnyAsync(e => e.CourseId == course.Id && e.StudentId == studentId);
+            if (!isEnrolled) return NotFound();
+
+            // Get all assignments for this course
+            var assignments = await _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .OrderBy(a => a.AssessmentName)
+                .ToListAsync();
+
+            var reportsDir = Path.Combine(_env.WebRootPath, "uploads", "reports");
+
+            var assessmentReports = assignments.Select(a =>
+            {
+                // Look for LOAchievement report file: {studentId}_{ASSESSMENTNAME}_LOAchievementReport.pdf
+                var safeAssessment = a.AssessmentName.Replace(" ", "_").ToUpper();
+                var loFileName = $"{student.StudentId}_{safeAssessment}_LOAchievementReport.pdf";
+                var loPath = Path.Combine(reportsDir, "lo-achievement", loFileName);
+                var loExists = System.IO.File.Exists(loPath);
+
+                return new
+                {
+                    assessmentName = a.AssessmentName,
+                    reportType = "LO Achievement Report",
+                    fileName = loFileName,
+                    exists = loExists,
+                    downloadUrl = loExists
+                        ? Url.Content($"~/uploads/reports/lo-achievement/{loFileName}")
+                        : null
+                };
+            }).ToList();
+
+            // Student LO Report: {studentId}_{courseCode}_{year}_T{trimester}_StudentLOReport.pdf
+            var studentLoFileName = $"{student.StudentId}_{courseCode}_{year}_T{trimester}_StudentLOReport.pdf";
+            var studentLoPath = Path.Combine(reportsDir, "student-lo", studentLoFileName);
+            var studentLoExists = System.IO.File.Exists(studentLoPath);
+
+            var result = new
+            {
+                studentId = student.StudentId,
+                studentName = student.FullName,
+                courseCode,
+                year,
+                trimester,
+                assessmentReports,
+                studentLoReport = new
+                {
+                    exists = studentLoExists,
+                    fileName = studentLoFileName,
+                    downloadUrl = studentLoExists
+                        ? Url.Content($"~/uploads/reports/student-lo/{studentLoFileName}")
+                        : null,
+                    // Always allow generating via the existing controller
+                    generateUrl = Url.Action("DownloadStudentCourseReportPdf", "StudentLOReport", new
+                    {
+                        studentId,
+                        courseCode,
+                        courseTitle = course.Title,
+                        year,
+                        trimester
+                    })
+                }
+            };
+
+            return Json(result);
+        }
     }
 }
 

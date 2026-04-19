@@ -519,6 +519,10 @@
     margin-bottom: 24px;
 }
 
+.admin-modal-header .admin-modal-title {
+    margin-bottom: 0 !important;
+}
+
 .admin-form-row {
     display: flex;
     gap: 16px;
@@ -1124,4 +1128,156 @@ a.enrol-tag {
 .users-td-assigned {
     max-width: 260px;
     vertical-align: top;
+}
+/* ── Student Reports Modal ── */
+.student-reports-modal {
+    width: 560px;
+}
+
+/* Header: title+subtitle left, close button right */
+.admin-modal-header {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.admin-modal-header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.admin-modal-subtitle {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.btn-modal-close {
+    background: none;
+    border: 1px solid #e5e7eb;
+    font-size: 16px;
+    color: #9ca3af;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    margin-top: 2px;
+}
+
+    .btn-modal-close:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+        color: #374151;
+    }
+
+.reports-loading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 32px 0;
+    color: #6b7280;
+    font-size: 14px;
+    justify-content: center;
+}
+
+.reports-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-top-color: #c0392b;
+    border-radius: 50%;
+    animation: reports-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes reports-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.report-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 0;
+    gap: 16px;
+}
+
+.report-row-label {
+    font-size: 14px;
+    color: #1a1a1a;
+    flex: 1;
+}
+
+.report-row-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.reports-divider {
+    height: 1px;
+    background: #f3f4f6;
+    margin: 0;
+}
+
+.btn-report-download {
+    display: inline-flex;
+    align-items: center;
+    background: #c0392b;
+    color: #fff !important;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none !important;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+    .btn-report-download:hover {
+        background: #a93226;
+        color: #fff !important;
+    }
+
+.btn-report-regenerate {
+    display: inline-flex;
+    align-items: center;
+    background: #fff;
+    color: #c0392b !important;
+    border: 1.5px solid #c0392b;
+    border-radius: 8px;
+    padding: 7px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none !important;
+    transition: background 0.15s;
+    white-space: nowrap;
+}
+
+    .btn-report-regenerate:hover {
+        background: #fef2f2;
+    }
+
+.report-not-available {
+    font-size: 13px;
+    color: #9ca3af;
+    font-style: italic;
 }
