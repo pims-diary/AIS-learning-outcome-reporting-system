@@ -173,6 +173,8 @@
         SubmissionItemType.StudentLOReport => "Student LO Report",
         SubmissionItemType.CourseLOReport => "Course LO Report",
         SubmissionItemType.LOMapping => "LO Mapping",       // FIX #2
+        SubmissionItemType.LearningOutcomes => "Learning Outcomes",
+        SubmissionItemType.Assessments => "Assessments",
         _ => t.ToString()
     };
 
@@ -192,6 +194,10 @@
             Url.Action("ViewStudentLOReport", "Moderator", new { submissionId = sub.Id }),
         SubmissionItemType.LOMapping =>                              // FIX #2
             Url.Action("ViewLOMapping", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.LearningOutcomes =>
+            Url.Action("ViewLearningOutcomes", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.Assessments =>
+            Url.Action("ViewAssessments", "Moderator", new { submissionId = sub.Id }),
         _ => null
     };
 }

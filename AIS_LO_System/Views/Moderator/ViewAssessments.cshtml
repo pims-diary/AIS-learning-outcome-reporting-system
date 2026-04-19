@@ -1,0 +1,78 @@
+@model AIS_LO_System.Services.AssessmentDraft
+@using AIS_LO_System.Models
+
+@{
+    ViewData["Title"] = "Review Assessments";
+    Layout = User.IsInRole("Admin") ? "_AdminLayout" : "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+    var learningOutcomes = ViewBag.LearningOutcomes as List<LearningOutcome> ?? new();
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<div class="mod-page">
+    <div class="mod-header">
+        <div>
+            <h1 class="mod-title">Review Assessments</h1>
+            <p class="mod-subtitle">
+                @Model.CourseCode @Model.Year T@(Model.Trimester)
+            </p>
+        </div>
+        <a class="mod-btn-view" asp-action="Inbox">Back to Inbox</a>
+    </div>
+
+    <div class="mod-card" style="background:#fff; border:1px solid #eee;">
+        <div class="mod-card-label">@(submission?.ItemLabel ?? "Pending Assessments")</div>
+        <div class="mod-card-meta" style="margin-bottom:18px;">
+            Submitted by <strong>@(submission?.SubmittedBy?.FullName ?? "—")</strong>
+            on @(submission?.SubmittedAt.ToString("dd MMM yyyy, h:mm tt") ?? "—")
+        </div>
+
+        @if (!Model.Assessments.Any())
+        {
+            <div class="mod-empty-section">No assessments were included in this draft.</div>
+        }
+        else
+        {
+            <table class="mod-table">
+                <thead>
+                    <tr>
+                        <th>Assessment</th>
+                        <th>Marks %</th>
+                        <th>Assigned LOs</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var assessment in Model.Assessments)
+                    {
+                        var loLabels = learningOutcomes
+                            .Where(lo => assessment.SelectedLOIds.Contains(lo.Id))
+                            .OrderBy(lo => lo.OrderNumber)
+                            .Select(lo => $"LO{lo.OrderNumber}")
+                            .ToList();
+
+                        <tr>
+                            <td>@assessment.AssessmentName</td>
+                            <td>@assessment.MarksPercentage%</td>
+                            <td>@(loLabels.Any() ? string.Join(", ", loLabels) : "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @{
+            var total = Model.Assessments.Sum(a => a.MarksPercentage);
+        }
+        @if (Model.Assessments.Any() && total != 100)
+        {
+            <div class="mod-alert" style="margin-top:20px; background:#fff3cd; color:#856404; border:1px solid #ffe69c;">
+                Draft assessment totals add up to @total%, not 100%. Please check this before approving.
+            </div>
+        }
+
+        <div class="mod-alert" style="margin-top:20px; background:#fff3cd; color:#856404; border:1px solid #ffe69c;">
+            Approving this submission will apply the draft assessments above to the live course offering.
+        </div>
+    </div>
+</div>

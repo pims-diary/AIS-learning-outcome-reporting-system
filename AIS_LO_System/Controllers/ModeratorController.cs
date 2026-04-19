@@ -12,12 +12,18 @@ namespace AIS_LO_System.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly SubmissionService _submissions;
+        private readonly ModerationDraftService _moderationDrafts;
         private readonly IWebHostEnvironment _env;
 
-        public ModeratorController(ApplicationDbContext context, SubmissionService submissions, IWebHostEnvironment env)
+        public ModeratorController(
+            ApplicationDbContext context,
+            SubmissionService submissions,
+            ModerationDraftService moderationDrafts,
+            IWebHostEnvironment env)
         {
             _context = context;
             _submissions = submissions;
+            _moderationDrafts = moderationDrafts;
             _env = env;
         }
 
@@ -85,18 +91,226 @@ namespace AIS_LO_System.Controllers
                 return Forbid();
 
             var userId = GetUserId();
-            submission.Status = decision == "approve" ? SubmissionStatus.Approved : SubmissionStatus.Denied;
+            var isApproval = decision == "approve";
+
+            if (isApproval)
+            {
+                try
+                {
+                    switch (submission.ItemType)
+                    {
+                        case SubmissionItemType.LearningOutcomes:
+                            await _moderationDrafts.ApplyLearningOutcomeDraftAsync(submission.Id);
+                            break;
+                        case SubmissionItemType.Assessments:
+                            await _moderationDrafts.ApplyAssessmentDraftAsync(submission.Id);
+                            break;
+                        case SubmissionItemType.Rubric:
+                            // Validate LO mappings — only keep them if every criterion
+                            // is mapped to at least one LO AND total weight = 100%
+                            if (submission.ItemRefId.HasValue)
+                                await ValidateAndCleanRubricMappingsAsync(submission.ItemRefId.Value);
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    TempData["Error"] = $"Could not approve {submission.ItemLabel}: {ex.Message}";
+                    return RedirectToAction(nameof(Inbox));
+                }
+            }
+
+            // When a rubric is denied, delete the rubric entirely so the lecturer must re-upload
+            if (!isApproval && submission.ItemType == SubmissionItemType.Rubric && submission.ItemRefId.HasValue)
+            {
+                var rubricToDelete = await _context.Rubrics
+                    .Include(r => r.Criteria)
+                        .ThenInclude(c => c.Levels)
+                    .Include(r => r.Criteria)
+                        .ThenInclude(c => c.LOMappings)
+                    .FirstOrDefaultAsync(r => r.Id == submission.ItemRefId.Value);
+
+                if (rubricToDelete != null)
+                {
+                    foreach (var criterion in rubricToDelete.Criteria)
+                    {
+                        _context.CriterionLOMappings.RemoveRange(criterion.LOMappings);
+                        _context.RubricLevels.RemoveRange(criterion.Levels);
+                    }
+                    _context.RubricCriteria.RemoveRange(rubricToDelete.Criteria);
+                    _context.Rubrics.Remove(rubricToDelete);
+                }
+            }
+
+            submission.Status = isApproval ? SubmissionStatus.Approved : SubmissionStatus.Denied;
             submission.ModeratorComment = comment?.Trim();
             submission.ReviewedAt = DateTime.Now;
             submission.ReviewedByUserId = userId;
 
+            // After approval, revert admin permission back to disabled (one-time allowance)
+            if (isApproval)
+            {
+                var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                    c.Code == submission.CourseCode &&
+                    c.Year == submission.Year &&
+                    c.Trimester == submission.Trimester);
+
+                if (course != null)
+                {
+                    switch (submission.ItemType)
+                    {
+                        case SubmissionItemType.CourseOutline:
+                            // Approving outline locks everything down
+                            course.CanReuploadOutline = false;
+                            course.CanEditLO = false;
+                            course.CanEditAssignment = false;
+                            break;
+                        case SubmissionItemType.Assessments:
+                            course.CanEditAssignment = false;
+                            break;
+                        case SubmissionItemType.LearningOutcomes:
+                            course.CanEditLO = false;
+                            break;
+                    }
+                }
+            }
+
             await _context.SaveChangesAsync();
 
-            TempData["Success"] = decision == "approve"
-                ? $"✅ Approved: {submission.ItemLabel}"
-                : $"❌ Denied: {submission.ItemLabel}";
+            if (isApproval)
+                await _moderationDrafts.DeleteDraftAsync(submission.Id);
+
+            var baseMsg = isApproval
+                ? $"Approved: {submission.ItemLabel}"
+                : $"Denied: {submission.ItemLabel}";
+
+            TempData["Success"] = isApproval ? $"✅ {baseMsg}" : $"❌ {baseMsg}";
 
             return RedirectToAction(nameof(Inbox));
+        }
+
+        /// <summary>
+        /// On rubric approval, removes only the individual mappings where the LO
+        /// is not valid for this assessment. Valid mappings (LO exists + allowed) are kept.
+        /// </summary>
+        private async Task ValidateAndCleanRubricMappingsAsync(int rubricId)
+        {
+            var rubric = await _context.Rubrics
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.LOMappings)
+                        .ThenInclude(m => m.LearningOutcome)
+                .Include(r => r.Assignment)
+                .FirstOrDefaultAsync(r => r.Id == rubricId);
+
+            if (rubric == null) return;
+
+            // Get the allowed LO IDs for this assignment (from course outline selection)
+            var allowedLOIds = new List<int>();
+            if (rubric.Assignment != null && !string.IsNullOrEmpty(rubric.Assignment.SelectedLearningOutcomeIds))
+            {
+                allowedLOIds = rubric.Assignment.SelectedLearningOutcomeIds
+                    .Split(',')
+                    .Where(s => int.TryParse(s, out _))
+                    .Select(int.Parse)
+                    .ToList();
+            }
+
+            bool anyRemoved = false;
+            foreach (var criterion in rubric.Criteria)
+            {
+                // Only remove mappings where the LO is not in the allowed list
+                // If assignment has no locked LOs, all LOs are valid — keep everything
+                if (allowedLOIds.Any())
+                {
+                    var invalidMappings = criterion.LOMappings
+                        .Where(m => !allowedLOIds.Contains(m.LearningOutcomeId))
+                        .ToList();
+
+                    if (invalidMappings.Any())
+                    {
+                        _context.CriterionLOMappings.RemoveRange(invalidMappings);
+                        anyRemoved = true;
+                    }
+                }
+            }
+
+            if (anyRemoved)
+                await _context.SaveChangesAsync();
+        }
+
+        private async Task<List<string>> GetUncoveredLOsForRubricAsync(Rubric rubric)
+        {
+            var assignment = rubric.Assignment ?? await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == rubric.AssignmentId);
+
+            if (assignment == null || string.IsNullOrEmpty(assignment.SelectedLearningOutcomeIds))
+                return new List<string>();
+
+            var allowedLOIds = assignment.SelectedLearningOutcomeIds
+                .Split(',')
+                .Where(s => int.TryParse(s, out _))
+                .Select(int.Parse)
+                .ToList();
+
+            if (!allowedLOIds.Any())
+                return new List<string>();
+
+            var coveredLOIds = rubric.Criteria
+                .SelectMany(c => c.LOMappings)
+                .Select(m => m.LearningOutcomeId)
+                .Distinct()
+                .ToHashSet();
+
+            var uncoveredIds = allowedLOIds.Where(id => !coveredLOIds.Contains(id)).ToList();
+            if (!uncoveredIds.Any())
+                return new List<string>();
+
+            var los = await _context.LearningOutcomes
+                .Where(lo => uncoveredIds.Contains(lo.Id))
+                .OrderBy(lo => lo.OrderNumber)
+                .ToListAsync();
+
+            return los.Select(lo => $"LO{lo.OrderNumber}").ToList();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ViewLearningOutcomes(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null) return NotFound();
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
+
+            var draft = await _moderationDrafts.LoadLearningOutcomeDraftAsync(submissionId);
+            if (draft == null) return NotFound();
+
+            ViewBag.Submission = submission;
+            return View(draft);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ViewAssessments(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null) return NotFound();
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
+
+            var draft = await _moderationDrafts.LoadAssessmentDraftAsync(submissionId);
+            if (draft == null) return NotFound();
+
+            var learningOutcomes = await _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == submission.CourseCode)
+                .OrderBy(lo => lo.OrderNumber)
+                .ToListAsync();
+
+            ViewBag.Submission = submission;
+            ViewBag.LearningOutcomes = learningOutcomes;
+            return View(draft);
         }
 
         // ─────────────────────────────────────────────────
@@ -195,6 +409,11 @@ namespace AIS_LO_System.Controllers
 
             // FIX #2: Pass a flag so the view knows if LO mapping has been done yet
             ViewBag.HasLOMappings = rubric != null && rubric.Criteria.Any(c => c.LOMappings.Any());
+
+            // Warn moderator if any assessment LOs are not covered by any rubric criterion
+            ViewBag.UncoveredLOs = rubric != null
+                ? await GetUncoveredLOsForRubricAsync(rubric)
+                : new List<string>();
 
             return View(rubric);
         }

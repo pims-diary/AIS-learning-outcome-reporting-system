@@ -29,6 +29,19 @@
         </a>
     </div>
 
+    @if (ViewBag.AssessmentTotalWarning != null)
+    {
+        <div style="background:#fff3cd; border:1px solid #ffc107; color:#856404; padding:12px 16px; border-radius:8px; margin-bottom:20px;">
+            @ViewBag.AssessmentTotalWarning
+        </div>
+    }
+    @if (ViewBag.PendingAssessmentDraftWarning != null)
+    {
+        <div style="background:#fff3cd; border:1px solid #ffc107; color:#856404; padding:12px 16px; border-radius:8px; margin-bottom:20px;">
+            @ViewBag.PendingAssessmentDraftWarning
+        </div>
+    }
+
     <!-- Expand / Collapse -->
     <div class="expand-toggle">
         <button id="toggleAll">Expand all</button>
@@ -59,78 +72,89 @@
                asp-route-trimester="@ViewBag.Trimester">
                 Learning Outcomes
             </a>
-
         </div>
 
     </div>
 
     <!-- Assessments -->
+    @{
+        var assessments = ViewBag.Assessments as List<AIS_LO_System.Models.Assignment>
+        ?? new List<AIS_LO_System.Models.Assignment>();
+        bool pendingAssessmentDraft = (bool)(ViewBag.PendingAssessmentDraft ?? false);
+        bool canEditAssessment = (bool)(ViewBag.CanEditAssignment ?? false)
+                                 && string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value);
+    }
     <div class="accordion">
-        <div class="accordion-header">
+        <div class="accordion-header" style="display:flex; justify-content:space-between; align-items:center;">
             <div class="header-left">
                 <div class="icon-circle">
                     <span class="icon-arrow">›</span>
                 </div>
                 <span class="accordion-title">Assessments</span>
             </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <a asp-controller="CourseInformation" asp-action="Assessments"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester"
+                   style="font-size:12px; color:#666; text-decoration:none; padding:4px 10px; border:1px solid #ddd; border-radius:4px;"
+                   title="View assessment details"
+                   onclick="event.stopPropagation();">
+                    View
+                </a>
+                @if (canEditAssessment)
+                {
+                    <a asp-controller="CourseInformation" asp-action="EditAssessments"
+                       asp-route-courseCode="@ViewBag.CourseCode"
+                       asp-route-year="@ViewBag.Year"
+                       asp-route-trimester="@ViewBag.Trimester"
+                       style="font-size:12px; color:#c62828; text-decoration:none; padding:4px 10px; border:1px solid #e0b4b4; border-radius:4px;"
+                       title="Edit assessments (requires moderator approval)"
+                       onclick="event.stopPropagation();">
+                        Edit
+                    </a>
+                }
+            </div>
         </div>
 
         <div class="accordion-body">
-            @{
-                var assessments = ViewBag.Assessments as List<AIS_LO_System.Models.Assignment>
-                ?? new List<AIS_LO_System.Models.Assignment>();
-            }
-
             @if (assessments.Any())
             {
                 @foreach (var assess in assessments)
                 {
-                    <a asp-controller="Assignment"
-                       asp-action="Index"
-                       asp-route-assessmentName="@assess.AssessmentName"
-                       asp-route-courseCode="@ViewBag.CourseCode"
-                       asp-route-courseTitle="@ViewBag.CourseTitle"
-                       asp-route-year="@ViewBag.Year"
-                       asp-route-trimester="@ViewBag.Trimester">
-                        @assess.AssessmentName
-                        @if (assess.MarksPercentage > 0)
-                        {
-                            <span style="color:#888; font-size:0.85em;">(@assess.MarksPercentage%)</span>
-                        }
-                    </a>
+                    if (pendingAssessmentDraft)
+                    {
+                        <div style="padding: 12px 0; color: #555;">
+                            @assess.AssessmentName
+                            @if (assess.MarksPercentage > 0)
+                            {
+                                <span style="color:#888; font-size:0.85em;">(@assess.MarksPercentage%)</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <a asp-controller="Assignment"
+                           asp-action="Index"
+                           asp-route-assessmentName="@assess.AssessmentName"
+                           asp-route-courseCode="@ViewBag.CourseCode"
+                           asp-route-courseTitle="@ViewBag.CourseTitle"
+                           asp-route-year="@ViewBag.Year"
+                           asp-route-trimester="@ViewBag.Trimester">
+                            @assess.AssessmentName
+                            @if (assess.MarksPercentage > 0)
+                            {
+                                <span style="color:#888; font-size:0.85em;">(@assess.MarksPercentage%)</span>
+                            }
+                        </a>
+                    }
                 }
             }
             else
             {
-                <a asp-controller="Assignment"
-                   asp-action="Index"
-                   asp-route-assessmentName="Assignment 1"
-                   asp-route-courseCode="@ViewBag.CourseCode"
-                   asp-route-courseTitle="@ViewBag.CourseTitle"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
-                    Assignment 1
-                </a>
-
-                <a asp-controller="Assignment"
-                   asp-action="Index"
-                   asp-route-assessmentName="Assignment 2"
-                   asp-route-courseCode="@ViewBag.CourseCode"
-                   asp-route-courseTitle="@ViewBag.CourseTitle"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
-                    Assignment 2
-                </a>
-
-                <a asp-controller="Assignment"
-                   asp-action="Index"
-                   asp-route-assessmentName="Midterm"
-                   asp-route-courseCode="@ViewBag.CourseCode"
-                   asp-route-courseTitle="@ViewBag.CourseTitle"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
-                    Midterm
-                </a>
+                <div style="padding: 12px 0; color: #666; font-style: italic;">
+                    No assessments are available yet. Please upload a course outline to extract assessments.
+                </div>
             }
         </div>
     </div>

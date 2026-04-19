@@ -144,7 +144,8 @@ namespace AIS_LO_System.Controllers
                 LecturerId = lecturerId,
                 ModeratorId = moderatorId,
                 CanEditLO = true,
-                CanReuploadOutline = true
+                CanReuploadOutline = true,
+                CanEditAssignment = true
             };
 
             _context.Courses.Add(course);
@@ -575,9 +576,11 @@ namespace AIS_LO_System.Controllers
                 course.CanEditLO = !course.CanEditLO;
             else if (permission == "CanReuploadOutline")
                 course.CanReuploadOutline = !course.CanReuploadOutline;
+            else if (permission == "CanEditAssignment")
+                course.CanEditAssignment = !course.CanEditAssignment;
 
             await _context.SaveChangesAsync();
-            return Ok(new { canEditLO = course.CanEditLO, canReuploadOutline = course.CanReuploadOutline });
+            return Ok(new { canEditLO = course.CanEditLO, canReuploadOutline = course.CanReuploadOutline, canEditAssignment = course.CanEditAssignment });
         }
 
         // =============================================
@@ -663,7 +666,8 @@ namespace AIS_LO_System.Controllers
                         LecturerId = lecId,
                         ModeratorId = modId,
                         CanEditLO = true,
-                        CanReuploadOutline = true
+                        CanReuploadOutline = true,
+                        CanEditAssignment = true
                     });
                     added++;
                 }

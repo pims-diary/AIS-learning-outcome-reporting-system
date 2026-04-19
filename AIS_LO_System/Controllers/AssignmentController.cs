@@ -3,6 +3,7 @@ using AIS_LO_System.Data;
 using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
 namespace AIS_LO_System.Controllers
 {
@@ -18,7 +19,7 @@ namespace AIS_LO_System.Controllers
         }
 
         [HttpGet]
-        public IActionResult Index(
+        public async Task<IActionResult> Index(
             string assessmentName,
             string courseCode,
             string courseTitle,
@@ -31,6 +32,12 @@ namespace AIS_LO_System.Controllers
                 return RedirectToAction("Index", "CourseDashboard", new { courseCode, year, trimester });
             }
 
+            var assessmentDraftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (assessmentDraftLock != null)
+                return assessmentDraftLock;
+
+            var normalizedAssessmentName = NormalizeAssessmentTitle(assessmentName);
+
             var assignment = _context.Assignments.FirstOrDefault(a =>
                 a.AssessmentName == assessmentName &&
                 a.CourseCode == courseCode &&
@@ -39,16 +46,27 @@ namespace AIS_LO_System.Controllers
 
             if (assignment == null)
             {
-                assignment = new Assignment
-                {
-                    AssessmentName = assessmentName,
-                    CourseCode = courseCode,
-                    CourseTitle = courseTitle,
-                    Year = year,
-                    Trimester = trimester
-                };
-                _context.Assignments.Add(assignment);
-                _context.SaveChanges();
+                assignment = _context.Assignments
+                    .AsEnumerable()
+                    .FirstOrDefault(a =>
+                        a.CourseCode == courseCode &&
+                        a.Year == year &&
+                        a.Trimester == trimester &&
+                        NormalizeAssessmentTitle(a.AssessmentName) == normalizedAssessmentName);
+            }
+
+            if (assignment == null)
+            {
+                var hasAnyOutlineAssignments = _context.Assignments.Any(a =>
+                    a.CourseCode == courseCode &&
+                    a.Year == year &&
+                    a.Trimester == trimester);
+
+                TempData["Error"] = hasAnyOutlineAssignments
+                    ? "This assessment link no longer matches an existing assessment. Please review the Assessments list or re-upload the course outline."
+                    : "No assessments are available for this course yet. Please upload the course outline first.";
+
+                return RedirectToAction("Assessments", "CourseInformation", new { courseCode, year, trimester });
             }
 
             ViewBag.AssessmentName = assignment.AssessmentName;
@@ -68,6 +86,13 @@ namespace AIS_LO_System.Controllers
                 .FirstOrDefault(a => a.Id == id);
 
             if (assignment == null) return NotFound();
+
+            var assessmentDraftLock = await BlockIfAssessmentDraftPendingAsync(
+                assignment.CourseCode,
+                assignment.Year,
+                assignment.Trimester);
+            if (assessmentDraftLock != null)
+                return assessmentDraftLock;
 
             ViewBag.CourseCode = assignment.CourseCode;
             ViewBag.CourseTitle = assignment.CourseTitle;
@@ -127,6 +152,13 @@ namespace AIS_LO_System.Controllers
 
             var assignment = _context.Assignments.FirstOrDefault(a => a.Id == assignmentId);
             if (assignment == null) return NotFound();
+
+            var assessmentDraftLock = await BlockIfAssessmentDraftPendingAsync(
+                assignment.CourseCode,
+                assignment.Year,
+                assignment.Trimester);
+            if (assessmentDraftLock != null)
+                return assessmentDraftLock;
 
             var latestVersion = _context.AssignmentFiles
                 .Where(f => f.AssignmentId == assignment.Id)
@@ -271,6 +303,35 @@ namespace AIS_LO_System.Controllers
 
             crossCheck = DocumentService.CrossCheckLOs(assignmentLOs, outlineLOs, allowedLONumbers);
             return true;
+        }
+
+        private static string NormalizeAssessmentTitle(string? title)
+        {
+            if (string.IsNullOrWhiteSpace(title))
+                return string.Empty;
+
+            var normalized = title.ToLowerInvariant();
+            normalized = Regex.Replace(normalized, @"\bassign(?:ment)?\b", "assignment");
+            normalized = Regex.Replace(normalized, @"\bassessment\b", "assignment");
+            normalized = Regex.Replace(normalized, @"\bmid\s+term\b", "midterm");
+            normalized = Regex.Replace(normalized, @"[^a-z0-9]+", " ");
+            normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+            return normalized;
+        }
+
+        private async Task<IActionResult?> BlockIfAssessmentDraftPendingAsync(string courseCode, int year, int trimester)
+        {
+            var latestAssessmentSubmission = await _submissions.GetLatestAsync(
+                courseCode,
+                year,
+                trimester,
+                SubmissionItemType.Assessments);
+
+            if (latestAssessmentSubmission?.Status != SubmissionStatus.Pending)
+                return null;
+
+            TempData["Error"] = "Assessment changes are waiting for moderator approval. Assignment pages are temporarily locked until the approved assessment setup goes live.";
+            return RedirectToAction("Assessments", "CourseInformation", new { courseCode, year, trimester });
         }
     }
 }
