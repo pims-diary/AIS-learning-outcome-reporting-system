@@ -51,7 +51,7 @@ namespace AIS_LO_System.Controllers
         // INBOX — all pending submissions across all moderated courses
         // ─────────────────────────────────────────────────
         [HttpGet]
-        public async Task<IActionResult> Inbox()
+        public async Task<IActionResult> Inbox(string? filterItemType, string? filterCourse)
         {
             var userId = GetUserId();
 
@@ -71,106 +71,227 @@ namespace AIS_LO_System.Controllers
                 ? await _submissions.GetAllSubmissionsAsync()
                 : await _submissions.GetAllForModeratorAsync(userId);
 
-            ViewBag.PendingCount = pending.Count;
-            ViewBag.AllSubmissions = all;
+            // Apply filters
+            if (!string.IsNullOrEmpty(filterItemType) && Enum.TryParse<SubmissionItemType>(filterItemType, out var itemType))
+            {
+                pending = pending.Where(s => s.ItemType == itemType).ToList();
+                all = all.Where(s => s.ItemType == itemType).ToList();
+            }
 
-            return View(pending);
+            if (!string.IsNullOrEmpty(filterCourse))
+            {
+                var parts = filterCourse.Split('-');
+                if (parts.Length == 3 && int.TryParse(parts[1], out int year) && int.TryParse(parts[2].Replace("T", ""), out int trimester))
+                {
+                    var courseCode = parts[0];
+                    pending = pending.Where(s => s.CourseCode == courseCode && s.Year == year && s.Trimester == trimester).ToList();
+                    all = all.Where(s => s.CourseCode == courseCode && s.Year == year && s.Trimester == trimester).ToList();
+                }
+            }
+
+            var inboxItems = await BuildInboxPendingItemsAsync(pending);
+
+            ViewBag.PendingCount = inboxItems.Count;
+            ViewBag.AllSubmissions = all;
+            ViewBag.FilterItemType = filterItemType;
+            ViewBag.FilterCourse = filterCourse;
+
+            return View(inboxItems);
+        }
+
+        /// <summary>
+        /// Collapses LO Achievement report submissions to one inbox card per assignment;
+        /// other item types stay one card per submission.
+        /// </summary>
+        private async Task<List<ModeratorInboxPendingItem>> BuildInboxPendingItemsAsync(List<CourseSubmission> pending)
+        {
+            var lo = pending.Where(s => s.ItemType == SubmissionItemType.LOAchievementReport).ToList();
+            var sloPerStudent = pending.Where(s =>
+                s.ItemType == SubmissionItemType.StudentLOReport && s.ItemRefId != null).ToList();
+            var rest = pending.Where(s =>
+                s.ItemType != SubmissionItemType.LOAchievementReport
+                && !(s.ItemType == SubmissionItemType.StudentLOReport && s.ItemRefId != null)).ToList();
+
+            var items = new List<ModeratorInboxPendingItem>();
+
+            foreach (var g in lo.GroupBy(s => new { s.CourseCode, s.Year, s.Trimester, s.ItemRefId }))
+            {
+                var list = g.OrderBy(s => s.SubmittedAt).ToList();
+                var assignment = await _context.Assignments.FindAsync(g.Key.ItemRefId);
+                var assessmentName = assignment?.AssessmentName ?? "Assignment";
+
+                items.Add(new ModeratorInboxPendingItem
+                {
+                    IsGroupedLoAchievement = true,
+                    IsGroupedStudentLoReport = false,
+                    Submissions = list,
+                    DisplayLabel = $"LO Achievement Report — {assessmentName}",
+                    SortDate = list.Max(s => s.SubmittedAt)
+                });
+            }
+
+            foreach (var g in sloPerStudent.GroupBy(s => new { s.CourseCode, s.Year, s.Trimester }))
+            {
+                var list = g.OrderBy(s => s.SubmittedAt).ToList();
+                items.Add(new ModeratorInboxPendingItem
+                {
+                    IsGroupedLoAchievement = false,
+                    IsGroupedStudentLoReport = true,
+                    Submissions = list,
+                    DisplayLabel = $"Student LO Report — {g.Key.CourseCode} {g.Key.Year} T{g.Key.Trimester}",
+                    SortDate = list.Max(s => s.SubmittedAt)
+                });
+            }
+
+            foreach (var s in rest)
+            {
+                items.Add(new ModeratorInboxPendingItem
+                {
+                    IsGroupedLoAchievement = false,
+                    IsGroupedStudentLoReport = false,
+                    Submissions = new List<CourseSubmission> { s },
+                    DisplayLabel = s.ItemLabel,
+                    SortDate = s.SubmittedAt
+                });
+            }
+
+            return items.OrderBy(i => i.SortDate).ToList();
         }
 
         // ─────────────────────────────────────────────────
-        // REVIEW — approve or deny a submission
+        // REVIEW — approve or deny (single submission or LO Achievement batch)
         // ─────────────────────────────────────────────────
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Review(int submissionId, string decision, string? comment)
+        public async Task<IActionResult> Review(int? submissionId, [FromForm] int[]? submissionIds, string decision, string? comment)
         {
-            var submission = await _context.CourseSubmissions.FindAsync(submissionId);
-            if (submission == null) return NotFound();
+            var ids = submissionIds != null && submissionIds.Length > 0
+                ? submissionIds.Distinct().ToArray()
+                : submissionId.HasValue
+                    ? new[] { submissionId.Value }
+                    : Array.Empty<int>();
 
-            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester))
+            if (ids.Length == 0)
+                return BadRequest();
+
+            var subs = await _context.CourseSubmissions
+                .Where(s => ids.Contains(s.Id))
+                .ToListAsync();
+
+            if (subs.Count != ids.Length)
+                return NotFound();
+
+            if (subs.Any(s => s.Status != SubmissionStatus.Pending))
+            {
+                TempData["Error"] = "One or more submissions are no longer pending.";
+                return RedirectToAction(nameof(Inbox));
+            }
+
+            if (!await IsModerator(subs[0].CourseCode, subs[0].Year, subs[0].Trimester))
                 return Forbid();
+
+            if (ids.Length > 1)
+            {
+                var t0 = subs[0].ItemType;
+                if (t0 == SubmissionItemType.LOAchievementReport)
+                {
+                    if (subs.Any(s => s.ItemType != SubmissionItemType.LOAchievementReport))
+                        return BadRequest();
+                    var keys = subs.Select(s => new { s.CourseCode, s.Year, s.Trimester, s.ItemRefId }).Distinct().ToList();
+                    if (keys.Count != 1)
+                        return BadRequest();
+                }
+                else if (t0 == SubmissionItemType.StudentLOReport)
+                {
+                    if (subs.Any(s => s.ItemType != SubmissionItemType.StudentLOReport))
+                        return BadRequest();
+                    var keys = subs.Select(s => new { s.CourseCode, s.Year, s.Trimester }).Distinct().ToList();
+                    if (keys.Count != 1)
+                        return BadRequest();
+                }
+                else
+                    return BadRequest();
+            }
 
             var userId = GetUserId();
             var isApproval = decision == "approve";
 
-            if (isApproval)
+            foreach (var submission in subs)
             {
-                try
+                if (isApproval)
                 {
-                    switch (submission.ItemType)
+                    try
                     {
-                        case SubmissionItemType.LearningOutcomes:
-                            await _moderationDrafts.ApplyLearningOutcomeDraftAsync(submission.Id);
-                            break;
-                        case SubmissionItemType.Assessments:
-                            await _moderationDrafts.ApplyAssessmentDraftAsync(submission.Id);
-                            break;
-                        case SubmissionItemType.Rubric:
-                            // Validate LO mappings — only keep them if every criterion
-                            // is mapped to at least one LO AND total weight = 100%
-                            if (submission.ItemRefId.HasValue)
-                                await ValidateAndCleanRubricMappingsAsync(submission.ItemRefId.Value);
-                            break;
+                        switch (submission.ItemType)
+                        {
+                            case SubmissionItemType.LearningOutcomes:
+                                await _moderationDrafts.ApplyLearningOutcomeDraftAsync(submission.Id);
+                                break;
+                            case SubmissionItemType.Assessments:
+                                await _moderationDrafts.ApplyAssessmentDraftAsync(submission.Id);
+                                break;
+                            case SubmissionItemType.Rubric:
+                                if (submission.ItemRefId.HasValue)
+                                    await ValidateAndCleanRubricMappingsAsync(submission.ItemRefId.Value);
+                                break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        TempData["Error"] = $"Could not approve {submission.ItemLabel}: {ex.Message}";
+                        return RedirectToAction(nameof(Inbox));
                     }
                 }
-                catch (Exception ex)
-                {
-                    TempData["Error"] = $"Could not approve {submission.ItemLabel}: {ex.Message}";
-                    return RedirectToAction(nameof(Inbox));
-                }
-            }
 
-            // When a rubric is denied, delete the rubric entirely so the lecturer must re-upload
-            if (!isApproval && submission.ItemType == SubmissionItemType.Rubric && submission.ItemRefId.HasValue)
-            {
-                var rubricToDelete = await _context.Rubrics
-                    .Include(r => r.Criteria)
-                        .ThenInclude(c => c.Levels)
-                    .Include(r => r.Criteria)
-                        .ThenInclude(c => c.LOMappings)
-                    .FirstOrDefaultAsync(r => r.Id == submission.ItemRefId.Value);
-
-                if (rubricToDelete != null)
+                if (!isApproval && submission.ItemType == SubmissionItemType.Rubric && submission.ItemRefId.HasValue)
                 {
-                    foreach (var criterion in rubricToDelete.Criteria)
+                    var rubricToDelete = await _context.Rubrics
+                        .Include(r => r.Criteria)
+                            .ThenInclude(c => c.Levels)
+                        .Include(r => r.Criteria)
+                            .ThenInclude(c => c.LOMappings)
+                        .FirstOrDefaultAsync(r => r.Id == submission.ItemRefId.Value);
+
+                    if (rubricToDelete != null)
                     {
-                        _context.CriterionLOMappings.RemoveRange(criterion.LOMappings);
-                        _context.RubricLevels.RemoveRange(criterion.Levels);
+                        foreach (var criterion in rubricToDelete.Criteria)
+                        {
+                            _context.CriterionLOMappings.RemoveRange(criterion.LOMappings);
+                            _context.RubricLevels.RemoveRange(criterion.Levels);
+                        }
+                        _context.RubricCriteria.RemoveRange(rubricToDelete.Criteria);
+                        _context.Rubrics.Remove(rubricToDelete);
                     }
-                    _context.RubricCriteria.RemoveRange(rubricToDelete.Criteria);
-                    _context.Rubrics.Remove(rubricToDelete);
                 }
-            }
 
-            submission.Status = isApproval ? SubmissionStatus.Approved : SubmissionStatus.Denied;
-            submission.ModeratorComment = comment?.Trim();
-            submission.ReviewedAt = DateTime.Now;
-            submission.ReviewedByUserId = userId;
+                submission.Status = isApproval ? SubmissionStatus.Approved : SubmissionStatus.Denied;
+                submission.ModeratorComment = comment?.Trim();
+                submission.ReviewedAt = DateTime.Now;
+                submission.ReviewedByUserId = userId;
 
-            // After approval, revert admin permission back to disabled (one-time allowance)
-            if (isApproval)
-            {
-                var course = await _context.Courses.FirstOrDefaultAsync(c =>
-                    c.Code == submission.CourseCode &&
-                    c.Year == submission.Year &&
-                    c.Trimester == submission.Trimester);
-
-                if (course != null)
+                if (isApproval)
                 {
-                    switch (submission.ItemType)
+                    var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                        c.Code == submission.CourseCode &&
+                        c.Year == submission.Year &&
+                        c.Trimester == submission.Trimester);
+
+                    if (course != null)
                     {
-                        case SubmissionItemType.CourseOutline:
-                            // Approving outline locks everything down
-                            course.CanReuploadOutline = false;
-                            course.CanEditLO = false;
-                            course.CanEditAssignment = false;
-                            break;
-                        case SubmissionItemType.Assessments:
-                            course.CanEditAssignment = false;
-                            break;
-                        case SubmissionItemType.LearningOutcomes:
-                            course.CanEditLO = false;
-                            break;
+                        switch (submission.ItemType)
+                        {
+                            case SubmissionItemType.CourseOutline:
+                                course.CanReuploadOutline = false;
+                                course.CanEditLO = false;
+                                course.CanEditAssignment = false;
+                                break;
+                            case SubmissionItemType.Assessments:
+                                course.CanEditAssignment = false;
+                                break;
+                            case SubmissionItemType.LearningOutcomes:
+                                course.CanEditLO = false;
+                                break;
+                        }
                     }
                 }
             }
@@ -178,13 +299,29 @@ namespace AIS_LO_System.Controllers
             await _context.SaveChangesAsync();
 
             if (isApproval)
-                await _moderationDrafts.DeleteDraftAsync(submission.Id);
+            {
+                foreach (var submission in subs)
+                    await _moderationDrafts.DeleteDraftAsync(submission.Id);
+            }
 
-            var baseMsg = isApproval
-                ? $"Approved: {submission.ItemLabel}"
-                : $"Denied: {submission.ItemLabel}";
+            string successLabel;
+            if (subs.Count > 1 && subs[0].ItemType == SubmissionItemType.LOAchievementReport)
+            {
+                var assignment = await _context.Assignments.FindAsync(subs[0].ItemRefId);
+                var name = assignment?.AssessmentName ?? "assignment";
+                successLabel = $"LO Achievement Report — {name} ({subs.Count} students)";
+            }
+            else if (subs.Count > 1 && subs[0].ItemType == SubmissionItemType.StudentLOReport)
+            {
+                successLabel =
+                    $"Student LO Report — {subs[0].CourseCode} {subs[0].Year} T{subs[0].Trimester} ({subs.Count} students)";
+            }
+            else
+                successLabel = subs[0].ItemLabel;
 
-            TempData["Success"] = isApproval ? $"✅ {baseMsg}" : $"❌ {baseMsg}";
+            TempData["Success"] = isApproval
+                ? $"✅ Approved: {successLabel}"
+                : $"❌ Denied: {successLabel}";
 
             return RedirectToAction(nameof(Inbox));
         }
@@ -375,7 +512,6 @@ namespace AIS_LO_System.Controllers
 
         // ─────────────────────────────────────────────────
         // VIEW RUBRIC (read-only for moderator)
-        // FIX #1: Now also loads LO Mappings so they appear in the table
         // ─────────────────────────────────────────────────
         [HttpGet]
         public async Task<IActionResult> ViewRubric(int submissionId)
@@ -387,7 +523,6 @@ namespace AIS_LO_System.Controllers
             if (submission == null) return NotFound();
             if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
 
-            // FIX #1: Include LOMappings → LearningOutcome so the view can display them
             var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                     .ThenInclude(c => c.Levels)
@@ -406,8 +541,6 @@ namespace AIS_LO_System.Controllers
             ViewBag.Year = submission.Year;
             ViewBag.Trimester = submission.Trimester;
             ViewBag.AssessmentName = rubric?.Assignment?.AssessmentName ?? submission.ItemLabel;
-
-            // FIX #2: Pass a flag so the view knows if LO mapping has been done yet
             ViewBag.HasLOMappings = rubric != null && rubric.Criteria.Any(c => c.LOMappings.Any());
 
             // Warn moderator if any assessment LOs are not covered by any rubric criterion
@@ -419,7 +552,7 @@ namespace AIS_LO_System.Controllers
         }
 
         // ─────────────────────────────────────────────────
-        // FIX #2: VIEW LO MAPPING (read-only for moderator, approve/deny)
+        // VIEW LO MAPPING (read-only for moderator, approve/deny)
         // ─────────────────────────────────────────────────
         [HttpGet]
         public async Task<IActionResult> ViewLOMapping(int submissionId)
@@ -431,7 +564,6 @@ namespace AIS_LO_System.Controllers
             if (submission == null) return NotFound();
             if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
 
-            // submission.ItemRefId == AssignmentId for LOMapping submissions
             var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                     .ThenInclude(c => c.LOMappings)
@@ -494,8 +626,7 @@ namespace AIS_LO_System.Controllers
         }
 
         // ─────────────────────────────────────────────────
-        // FIX #3: VIEW INDIVIDUAL STUDENT DETAIL
-        // Shows one student's per-criterion scores in full
+        // VIEW INDIVIDUAL STUDENT DETAIL
         // ─────────────────────────────────────────────────
         [HttpGet]
         public async Task<IActionResult> ViewStudentDetail(int submissionId, int studentRefId)
@@ -515,7 +646,6 @@ namespace AIS_LO_System.Controllers
             var student = await _context.Students.FindAsync(studentRefId);
             if (student == null) return NotFound();
 
-            // Get the rubric with criteria + levels + LO mappings
             var rubric = await _context.Rubrics
                 .Include(r => r.Criteria)
                     .ThenInclude(c => c.Levels)
@@ -528,12 +658,10 @@ namespace AIS_LO_System.Controllers
                 foreach (var c in rubric.Criteria)
                     c.Levels = c.Levels.OrderByDescending(l => l.Score).ToList();
 
-            // Get this student's criterion marks
             var criterionMarks = await _context.StudentCriterionMarks
                 .Where(m => m.AssignmentId == assignment.Id && m.StudentRefId == studentRefId)
                 .ToListAsync();
 
-            // Overall mark row
             var overallMark = await _context.StudentAssessmentMarks
                 .FirstOrDefaultAsync(m =>
                     m.StudentRefId == studentRefId &&
@@ -561,6 +689,7 @@ namespace AIS_LO_System.Controllers
         {
             var submission = await _context.CourseSubmissions
                 .Include(s => s.SubmittedBy)
+                .Include(s => s.ReviewedBy)
                 .FirstOrDefaultAsync(s => s.Id == submissionId);
 
             if (submission == null) return NotFound();
@@ -586,13 +715,38 @@ namespace AIS_LO_System.Controllers
 
             var students = await enrolledQuery
                 .OrderBy(s => s.StudentId)
-                .Select(s => new AIS_LO_System.Models.Reports.StudentLOReportListItemViewModel
-                {
-                    InternalId = s.Id,
-                    StudentId = s.StudentId,
-                    StudentName = s.FullName
-                })
+                .Select(s => new { s.Id, s.StudentId, s.FullName })
                 .ToListAsync();
+
+            var allSloSubs = await _context.CourseSubmissions
+                .Where(s =>
+                    s.CourseCode == submission.CourseCode &&
+                    s.Year == submission.Year &&
+                    s.Trimester == submission.Trimester &&
+                    s.ItemType == SubmissionItemType.StudentLOReport &&
+                    s.ItemRefId != null)
+                .OrderByDescending(s => s.SubmittedAt)
+                .ToListAsync();
+
+            var rows = students.Select(st =>
+            {
+                var last = allSloSubs.FirstOrDefault(x => x.ItemRefId == st.Id);
+                return new StudentLoModeratorRowViewModel
+                {
+                    StudentInternalId = st.Id,
+                    StudentId = st.StudentId,
+                    StudentName = st.FullName,
+                    LatestSubmissionId = last?.Id,
+                    ModerationStatus = last?.Status
+                };
+            }).ToList();
+
+            var pendingForCourse = allSloSubs.Where(s => s.Status == SubmissionStatus.Pending).ToList();
+            ViewBag.PendingSubmissionIds = pendingForCourse.Select(s => s.Id).ToList();
+            ViewBag.PendingStudentReportCount = rows.Count(r => r.ModerationStatus == SubmissionStatus.Pending);
+            ViewBag.LatestPendingSubmittedAt = pendingForCourse.Count > 0
+                ? pendingForCourse.Max(s => s.SubmittedAt)
+                : (DateTime?)null;
 
             ViewBag.Submission = submission;
             ViewBag.CourseCode = submission.CourseCode;
@@ -602,7 +756,7 @@ namespace AIS_LO_System.Controllers
             ViewBag.TotalEnrolled = totalEnrolled;
             ViewBag.SearchTerm = searchTerm;
 
-            return View(students);
+            return View(rows);
         }
 
         // ─────────────────────────────────────────────────
@@ -778,5 +932,419 @@ namespace AIS_LO_System.Controllers
             ViewBag.SubmissionId = submissionId;
             return View(vm);
         }
+
+        // ======================================================
+        // VIEW STUDENT LO REPORT PDF (inline, for moderators)
+        // ======================================================
+        [HttpGet]
+        public async Task<IActionResult> ViewStudentLOReportPdf(int submissionId, int studentId)
+        {
+            var submission = await _context.CourseSubmissions
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null)
+                return NotFound();
+
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester))
+                return Forbid();
+
+            var student = await _context.Students.FindAsync(studentId);
+            if (student == null)
+                return NotFound();
+
+            var pdfPath = Path.Combine(_env.WebRootPath, "uploads", "reports", "student-lo",
+                $"{student.StudentId}_{submission.CourseCode}_{submission.Year}_T{submission.Trimester}_StudentLOReport.pdf");
+
+            if (System.IO.File.Exists(pdfPath))
+            {
+                var pdfBytes = await System.IO.File.ReadAllBytesAsync(pdfPath);
+                return File(pdfBytes, "application/pdf");
+            }
+
+            TempData["Error"] = "PDF report not found. The lecturer may not have generated this report yet.";
+            return RedirectToAction(nameof(ViewStudentLOReport), new { submissionId });
+        }
+
+        // ======================================================
+        // DOWNLOAD STUDENT LO REPORT PDF (force download, for moderators)
+        // ======================================================
+        [HttpGet]
+        public async Task<IActionResult> DownloadStudentLOReportPdf(int submissionId, int studentId)
+        {
+            var submission = await _context.CourseSubmissions
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null)
+                return NotFound();
+
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester))
+                return Forbid();
+
+            var student = await _context.Students.FindAsync(studentId);
+            if (student == null)
+                return NotFound();
+
+            var pdfPath = Path.Combine(_env.WebRootPath, "uploads", "reports", "student-lo",
+                $"{student.StudentId}_{submission.CourseCode}_{submission.Year}_T{submission.Trimester}_StudentLOReport.pdf");
+
+            if (System.IO.File.Exists(pdfPath))
+            {
+                var pdfBytes = await System.IO.File.ReadAllBytesAsync(pdfPath);
+                return File(pdfBytes, "application/pdf",
+                    $"{student.StudentId}_{submission.CourseCode}_{submission.Year}_T{submission.Trimester}_StudentLOReport.pdf");
+            }
+
+            TempData["Error"] = "PDF report not found. The lecturer may not have generated this report yet.";
+            return RedirectToAction(nameof(ViewStudentLOReport), new { submissionId });
+        }
+
+        // ======================================================
+        // VIEW COURSE LO REPORT (PDF)
+        // ======================================================
+        public async Task<IActionResult> ViewCourseLOReport(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null)
+                return NotFound();
+
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == submission.CourseCode &&
+                c.Year == submission.Year &&
+                c.Trimester == submission.Trimester);
+
+            if (course == null)
+                return NotFound();
+
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            bool isAdmin = User.IsInRole("Admin");
+
+            if (!isAdmin && course.ModeratorId != userId)
+            {
+                TempData["Error"] = "You do not have permission to review this submission.";
+                return RedirectToAction(nameof(Inbox));
+            }
+
+            var pdfPath = $"/uploads/reports/course-lo/{submission.CourseCode}_{submission.Year}_T{submission.Trimester}_CourseLOReport.pdf";
+
+            var assignments = await _context.Assignments
+                .Where(a => a.CourseCode == submission.CourseCode &&
+                           a.Year == submission.Year &&
+                           a.Trimester == submission.Trimester)
+                .OrderBy(a => a.AssessmentName)
+                .ToListAsync();
+
+            ViewBag.Submission = submission;
+            ViewBag.CourseCode = submission.CourseCode;
+            ViewBag.CourseTitle = course.Title;
+            ViewBag.Year = submission.Year;
+            ViewBag.Trimester = submission.Trimester;
+            ViewBag.PdfUrl = pdfPath;
+            ViewBag.Assignments = assignments;
+
+            return View();
+        }
+
+        // ======================================================
+        // VIEW ASSIGNMENT REPORT (Interactive view for moderators)
+        // ======================================================
+        [HttpGet]
+        public async Task<IActionResult> ViewAssignmentReport(
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester,
+            int submissionId)
+        {
+            if (!await IsModerator(courseCode, year, trimester))
+            {
+                TempData["Error"] = "You do not have permission to access this report.";
+                return RedirectToAction(nameof(Inbox));
+            }
+
+            TempData["ModeratorSubmissionId"] = submissionId;
+
+            return RedirectToAction("AssignmentReport", "CourseLOReport", new
+            {
+                assignmentId,
+                courseCode,
+                courseTitle,
+                assessmentName,
+                year,
+                trimester
+            });
+        }
+
+        // ======================================================
+        // VIEW ASSESSMENT LO REPORT (PDF submission for moderator review)
+        // ======================================================
+        [HttpGet]
+        public async Task<IActionResult> ViewAssessmentLOReport(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null)
+                return NotFound();
+
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester))
+            {
+                TempData["Error"] = "You do not have permission to review this submission.";
+                return RedirectToAction(nameof(Inbox));
+            }
+
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == submission.ItemRefId);
+
+            if (assignment == null)
+                return NotFound();
+
+            var pdfPath = $"/uploads/reports/assessment-lo/{submission.CourseCode}_{submission.Year}_T{submission.Trimester}_{assignment.AssessmentName.Replace(" ", "_")}_AssessmentLOReport.pdf";
+
+            ViewBag.Submission = submission;
+            ViewBag.AssessmentName = assignment.AssessmentName;
+            ViewBag.CourseCode = submission.CourseCode;
+            ViewBag.Year = submission.Year;
+            ViewBag.Trimester = submission.Trimester;
+            ViewBag.PdfUrl = pdfPath;
+
+            return View();
+        }
+
+        // ======================================================
+        // VIEW LO ACHIEVEMENT REPORT — grouped student list
+        //
+        // Loads ALL LOAchievementReport submissions for the same
+        // assignment and renders them as a student table, so the
+        // moderator sees every student in one place regardless of
+        // which inbox card they clicked "View" on.
+        // ======================================================
+        [HttpGet]
+        public async Task<IActionResult> ViewLOAchievementReport(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .Include(s => s.ReviewedBy)
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null)
+                return NotFound();
+
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester))
+            {
+                TempData["Error"] = "You do not have permission to review this submission.";
+                return RedirectToAction(nameof(Inbox));
+            }
+
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == submission.ItemRefId);
+
+            if (assignment == null)
+                return NotFound();
+
+            // Load every LOAchievementReport submission for this assignment
+            var allForAssignment = await _context.CourseSubmissions
+                .Include(s => s.SubmittedBy)
+                .Where(s =>
+                    s.CourseCode == submission.CourseCode &&
+                    s.Year == submission.Year &&
+                    s.Trimester == submission.Trimester &&
+                    s.ItemType == SubmissionItemType.LOAchievementReport &&
+                    s.ItemRefId == submission.ItemRefId)
+                .OrderBy(s => s.ItemLabel)
+                .ToListAsync();
+
+            // Resolve student for each submission, then one table row per student (merge duplicate DB rows
+            // e.g. legacy vs new ItemLabel) — prefer Pending for status; PDF links use a representative submission id.
+            // New label format: "LO Achievement Report — {StudentInternalId} — {StudentName} — {AssessmentName}"
+            // Legacy format:    "LO Achievement Report — {StudentName} — {AssessmentName}"
+            var rowCandidates = new List<(CourseSubmission Sub, Student? Student, string StudentName)>();
+
+            foreach (var sub in allForAssignment)
+            {
+                var parts = sub.ItemLabel.Split(" — ");
+                Student? student = null;
+                string studentName;
+
+                if (parts.Length >= 3 && int.TryParse(parts[1], out int studentInternalId))
+                {
+                    student = await _context.Students.FindAsync(studentInternalId);
+                    studentName = parts[2];
+                }
+                else if (parts.Length >= 2)
+                {
+                    studentName = parts[1];
+                    student = await _context.Students
+                        .FirstOrDefaultAsync(s => s.FullName == studentName);
+                }
+                else
+                {
+                    studentName = "Unknown Student";
+                }
+
+                rowCandidates.Add((sub, student, studentName));
+            }
+
+            string StudentRowKey(Student? student, string studentName) =>
+                student != null ? $"id:{student.Id}" : $"name:{studentName}";
+
+            var rows = new List<LOAchievementStudentRowViewModel>();
+            foreach (var g in rowCandidates.GroupBy(x => StudentRowKey(x.Student, x.StudentName)))
+            {
+                var ordered = g.OrderByDescending(x => x.Sub.SubmittedAt).ToList();
+                var hasPending = ordered.Any(x => x.Sub.Status == SubmissionStatus.Pending);
+                var pendingTuple = ordered.FirstOrDefault(x => x.Sub.Status == SubmissionStatus.Pending);
+                var linkPick = pendingTuple.Sub != null
+                    ? pendingTuple
+                    : ordered.OrderByDescending(x => x.Sub.SubmittedAt).First();
+                var student = linkPick.Student;
+                var studentName = linkPick.StudentName;
+
+                var status = hasPending
+                    ? SubmissionStatus.Pending
+                    : ordered.OrderByDescending(x => x.Sub.SubmittedAt).First().Sub.Status;
+
+                string? pdfUrl = student != null
+                    ? $"/uploads/reports/lo-achievement/{student.StudentId}_{assignment.AssessmentName.Replace(" ", "_")}_LOAchievementReport.pdf"
+                    : null;
+
+                rows.Add(new LOAchievementStudentRowViewModel
+                {
+                    SubmissionId = linkPick.Sub.Id,
+                    StudentInternalId = student?.Id ?? 0,
+                    StudentId = student?.StudentId ?? "—",
+                    StudentName = studentName,
+                    Status = status,
+                    PdfUrl = pdfUrl
+                });
+            }
+
+            rows = rows.OrderBy(r => r.StudentName).ToList();
+
+            ViewBag.Submission = submission;
+            ViewBag.AssessmentName = assignment.AssessmentName;
+            ViewBag.CourseCode = submission.CourseCode;
+            ViewBag.Year = submission.Year;
+            ViewBag.Trimester = submission.Trimester;
+            ViewBag.TotalStudents = rows.Count;
+
+            var pendingForAssignment = allForAssignment.Where(s => s.Status == SubmissionStatus.Pending).ToList();
+            ViewBag.PendingSubmissionIds = pendingForAssignment.Select(s => s.Id).ToList();
+            ViewBag.PendingStudentReportCount = rows.Count(r => r.Status == SubmissionStatus.Pending);
+            ViewBag.LatestPendingSubmittedAt = pendingForAssignment.Count > 0
+                ? pendingForAssignment.Max(s => s.SubmittedAt)
+                : (DateTime?)null;
+
+            return View(rows);
+        }
+
+        // ======================================================
+        // VIEW LO ACHIEVEMENT REPORT PDF — serves one student's PDF inline
+        // ======================================================
+        [HttpGet]
+        public async Task<IActionResult> ViewLOAchievementReportPdf(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null) return NotFound();
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
+
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == submission.ItemRefId);
+
+            if (assignment == null) return NotFound();
+
+            var parts = submission.ItemLabel.Split(" — ");
+            Student? student = null;
+
+            if (parts.Length >= 3 && int.TryParse(parts[1], out int studentInternalId))
+                student = await _context.Students.FindAsync(studentInternalId);
+            else if (parts.Length >= 2)
+                student = await _context.Students.FirstOrDefaultAsync(s => s.FullName == parts[1]);
+
+            if (student == null) return NotFound();
+
+            var pdfPath = Path.Combine(
+                _env.WebRootPath, "uploads", "reports", "lo-achievement",
+                $"{student.StudentId}_{assignment.AssessmentName.Replace(" ", "_")}_LOAchievementReport.pdf");
+
+            if (!System.IO.File.Exists(pdfPath))
+            {
+                TempData["Error"] = "PDF not found for this student.";
+                return RedirectToAction(nameof(ViewLOAchievementReport), new { submissionId });
+            }
+
+            var pdfBytes = await System.IO.File.ReadAllBytesAsync(pdfPath);
+            return File(pdfBytes, "application/pdf");
+        }
+
+        // ======================================================
+        // DOWNLOAD LO ACHIEVEMENT REPORT PDF — force-downloads one student's PDF
+        // ======================================================
+        [HttpGet]
+        public async Task<IActionResult> DownloadLOAchievementReportPdf(int submissionId)
+        {
+            var submission = await _context.CourseSubmissions
+                .FirstOrDefaultAsync(s => s.Id == submissionId);
+
+            if (submission == null) return NotFound();
+            if (!await IsModerator(submission.CourseCode, submission.Year, submission.Trimester)) return Forbid();
+
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == submission.ItemRefId);
+
+            if (assignment == null) return NotFound();
+
+            var parts = submission.ItemLabel.Split(" — ");
+            Student? student = null;
+
+            if (parts.Length >= 3 && int.TryParse(parts[1], out int studentInternalId))
+                student = await _context.Students.FindAsync(studentInternalId);
+            else if (parts.Length >= 2)
+                student = await _context.Students.FirstOrDefaultAsync(s => s.FullName == parts[1]);
+
+            if (student == null) return NotFound();
+
+            var filename = $"{student.StudentId}_{assignment.AssessmentName.Replace(" ", "_")}_LOAchievementReport.pdf";
+            var pdfPath = Path.Combine(_env.WebRootPath, "uploads", "reports", "lo-achievement", filename);
+
+            if (!System.IO.File.Exists(pdfPath))
+            {
+                TempData["Error"] = "PDF not found for this student.";
+                return RedirectToAction(nameof(ViewLOAchievementReport), new { submissionId });
+            }
+
+            var pdfBytes = await System.IO.File.ReadAllBytesAsync(pdfPath);
+            return File(pdfBytes, "application/pdf", filename);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // ViewModel used by the ViewLOAchievementReport grouped list view
+    // ──────────────────────────────────────────────────────────
+    public class LOAchievementStudentRowViewModel
+    {
+        public int SubmissionId { get; set; }
+        public int StudentInternalId { get; set; }
+        public string StudentId { get; set; } = string.Empty;
+        public string StudentName { get; set; } = string.Empty;
+        public SubmissionStatus Status { get; set; }
+        public string? PdfUrl { get; set; }
+    }
+
+    /// <summary>One enrolled student row on the moderator Student LO Report list.</summary>
+    public class StudentLoModeratorRowViewModel
+    {
+        public int StudentInternalId { get; set; }
+        public string StudentId { get; set; } = string.Empty;
+        public string StudentName { get; set; } = string.Empty;
+        /// <summary>Latest CourseSubmission for this student's LO report, if submitted.</summary>
+        public int? LatestSubmissionId { get; set; }
+        public SubmissionStatus? ModerationStatus { get; set; }
     }
 }

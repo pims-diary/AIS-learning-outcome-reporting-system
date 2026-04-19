@@ -1,8 +1,10 @@
 ﻿@model AIS_LO_System.Models.Reports.CourseLOReportViewModel
+@using AIS_LO_System.Models
 
 @{
     ViewData["Title"] = "Course LO Report";
     Layout = "_DashboardLayout";
+    var courseLoSubmission = ViewBag.Submission as CourseSubmission;
 }
 
 <div class="container mt-4">
@@ -35,6 +37,11 @@
             ← Go Back
         </a>
     </div>
+
+    @if (courseLoSubmission != null)
+    {
+        @await Component.InvokeAsync("SubmissionStatus", new { submission = courseLoSubmission })
+    }
 
     <div class="card shadow-sm mb-4">
         <div class="card-body">

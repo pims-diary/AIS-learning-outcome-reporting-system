@@ -43,6 +43,19 @@
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
 
+    <!-- Submit All Reports Button -->
+    <div class="d-flex justify-content-end mb-3">
+        <form asp-action="SubmitAllStudentReports" method="post">
+            <input type="hidden" name="courseCode" value="@Model.CourseCode" />
+            <input type="hidden" name="courseTitle" value="@Model.CourseTitle" />
+            <input type="hidden" name="year" value="@Model.Year" />
+            <input type="hidden" name="trimester" value="@Model.Trimester" />
+            <button type="submit" class="btn btn-primary">
+                📤 Submit All Student Reports to Moderator
+            </button>
+        </form>
+    </div>
+
     <div class="card shadow-sm">
         <div class="card-body">
 

@@ -402,7 +402,7 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
                 return NotFound();
 
-            // Update criterion names and level scores
+            // FIX #5: Update criterion names, level scores, AND descriptions
             foreach (var criterion in rubric.Criteria)
             {
                 var updatedCriterion = model.Criteria
@@ -420,6 +420,7 @@ namespace AIS_LO_System.Controllers
                         if (updatedLevel != null)
                         {
                             level.Score = updatedLevel.Score;
+                            level.Description = updatedLevel.Description ?? level.Description;  // FIX #5: Update description
                         }
                     }
                 }

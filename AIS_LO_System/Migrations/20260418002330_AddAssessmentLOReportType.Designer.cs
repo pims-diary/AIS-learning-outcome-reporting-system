@@ -4,6 +4,7 @@ using AIS_LO_System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AIS_LO_System.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260418002330_AddAssessmentLOReportType")]
+    partial class AddAssessmentLOReportType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -157,9 +160,6 @@ namespace AIS_LO_System.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("CanEditAssignment")
-                        .HasColumnType("bit");
-
                     b.Property<bool>("CanEditLO")
                         .HasColumnType("bit");
 
@@ -205,7 +205,6 @@ namespace AIS_LO_System.Migrations
                         new
                         {
                             Id = 1,
-                            CanEditAssignment = true,
                             CanEditLO = true,
                             CanReuploadOutline = true,
                             Code = "INFO712",
@@ -217,7 +216,6 @@ namespace AIS_LO_System.Migrations
                         new
                         {
                             Id = 2,
-                            CanEditAssignment = true,
                             CanEditLO = true,
                             CanReuploadOutline = true,
                             Code = "SOFT703",
@@ -229,7 +227,6 @@ namespace AIS_LO_System.Migrations
                         new
                         {
                             Id = 3,
-                            CanEditAssignment = true,
                             CanEditLO = true,
                             CanReuploadOutline = true,
                             Code = "COMP720",
@@ -241,7 +238,6 @@ namespace AIS_LO_System.Migrations
                         new
                         {
                             Id = 4,
-                            CanEditAssignment = true,
                             CanEditLO = true,
                             CanReuploadOutline = true,
                             Code = "COMP701",
@@ -253,7 +249,6 @@ namespace AIS_LO_System.Migrations
                         new
                         {
                             Id = 5,
-                            CanEditAssignment = true,
                             CanEditLO = true,
                             CanReuploadOutline = true,
                             Code = "COMP703",
@@ -265,7 +260,6 @@ namespace AIS_LO_System.Migrations
                         new
                         {
                             Id = 6,
-                            CanEditAssignment = true,
                             CanEditLO = true,
                             CanReuploadOutline = true,
                             Code = "COMP610",
@@ -277,7 +271,6 @@ namespace AIS_LO_System.Migrations
                         new
                         {
                             Id = 7,
-                            CanEditAssignment = true,
                             CanEditLO = true,
                             CanReuploadOutline = true,
                             Code = "COMP611",
@@ -289,7 +282,6 @@ namespace AIS_LO_System.Migrations
                         new
                         {
                             Id = 8,
-                            CanEditAssignment = true,
                             CanEditLO = true,
                             CanReuploadOutline = true,
                             Code = "INFO600",

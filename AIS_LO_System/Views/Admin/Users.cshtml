@@ -6,7 +6,6 @@
     var courses = ViewBag.Courses as List<AIS_LO_System.Models.Course> ?? new();
 }
 
-
 <div class="admin-content">
     <div class="admin-panel">
 
@@ -51,112 +50,115 @@
             </div>
         </div>
 
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Full Name</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Assigned to</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (!Model.Any())
-                {
+        <div style="overflow-x: auto;">
+            <table class="admin-table">
+                <thead>
                     <tr>
-                        <td colspan="7" class="admin-empty">No Users Added Yet</td>
+                        <th>Full Name</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Assigned to</th>
+                        <th></th>
                     </tr>
-                }
-                else
-                {
-                    @foreach (var u in Model)
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
                     {
-                        var roleCss = u.Role switch
+                        <tr>
+                            <td colspan="7" class="admin-empty">No Users Added Yet</td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var u in Model)
                         {
-                            AIS_LO_System.Models.UserRole.Lecturer => "role-pill-lecturer",
-                            AIS_LO_System.Models.UserRole.Admin => "role-pill-admin",
-                            _ => ""
-                        };
+                            var roleCss = u.Role switch
+                            {
+                                AIS_LO_System.Models.UserRole.Lecturer => "role-pill-lecturer",
+                                AIS_LO_System.Models.UserRole.Admin => "role-pill-admin",
+                                _ => ""
+                            };
 
-                        <tr class="@(!u.IsActive ? "row-inactive" : "")">
-                            <td>@u.FullName</td>
-                            <td class="text-muted">@u.Username</td>
-                            <td class="text-muted">@(u.Email ?? "—")</td>
-                            <td><span class="@roleCss">@u.Role</span></td>
-                            <td>
-                                <span class="status-pill @(u.IsActive ? "status-active" : "status-inactive")">
-                                    @(u.IsActive ? "Active" : "Inactive")
-                                </span>
-                            </td>
-                            <td>
-                                @{
-                                    // Courses this user is assigned to via enrolment table OR as primary lecturer/moderator
-                                    var userCourses = courses
-                                        .Where(c => c.LecturerEnrolments.Any(e => e.UserId == u.Id)
-                                                 || c.LecturerId == u.Id
-                                                 || c.ModeratorId == u.Id)
-                                        .Distinct()
-                                        .OrderByDescending(c => c.Year).ThenBy(c => c.Trimester)
-                                        .ToList();
-                                }
-                                @foreach (var c in userCourses)
-                                {
-                                    bool isMod = c.ModeratorId == u.Id;
-                                    bool isLec = c.LecturerId == u.Id || c.LecturerEnrolments.Any(e => e.UserId == u.Id);
-                                    <span class="enrol-tag @(c.Year == DateTime.Now.Year ? "enrol-tag-current" : "enrol-tag-past")">
-                                        @c.Code <span class="enrol-tag-year">@(c.Year) T@(c.Trimester)</span>@if (isMod) {
-                                        <span class="enrol-tag-mod" title="Also moderator">MOD</span>
+                            var userCourses = courses
+                                .Where(c => c.LecturerEnrolments.Any(e => e.UserId == u.Id)
+                                         || c.LecturerId == u.Id
+                                         || c.ModeratorId == u.Id)
+                                .Distinct()
+                                .OrderByDescending(c => c.Year).ThenBy(c => c.Trimester)
+                                .ToList();
+
+                            <tr class="@(!u.IsActive ? "row-inactive" : "")">
+                                <td>@u.FullName</td>
+                                <td class="text-muted">@u.Username</td>
+                                <td class="text-muted">@(u.Email ?? "—")</td>
+                                <td><span class="@roleCss">@u.Role</span></td>
+                                <td>
+                                    <span class="status-pill @(u.IsActive ? "status-active" : "status-inactive")">
+                                        @(u.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td class="users-td-assigned">
+                                    @foreach (var c in userCourses)
+                                    {
+                                        bool isMod = c.ModeratorId == u.Id;
+                                        <span class="enrol-tag @(c.Year == DateTime.Now.Year ? "enrol-tag-current" : "enrol-tag-past")">
+                                            @c.Code
+                                            <span class="enrol-tag-year">@(c.Year) T@(c.Trimester)</span>
+                                            @if (isMod)
+                                            {
+                                                <span class="enrol-tag-mod" title="Also moderator">MOD</span>
+                                            }
+                                        </span>
                                     }
-                                </span>
-                            }
-                        </td>
-                        <td class="admin-td-actions">
-                            <button class="btn-admin-edit"
-                                    data-id="@u.Id"
-                                    data-name="@u.FullName"
-                                    data-email="@u.Email"
-                                    data-role="@u.Role"
-                                    data-courses="@string.Join(",", courses.Where(c => c.LecturerEnrolments.Any(e => e.UserId == u.Id) || c.LecturerId == u.Id || c.ModeratorId == u.Id).Select(c => c.Id).Distinct())"
-                                    onclick="openEditUser(this)">
-                                Edit
-                            </button>
-                            @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
-                            {
-                                <form asp-action="LoginAs" method="post" style="display:inline"
-                                      onsubmit="return confirm('Log in as @u.FullName? You will be in view-only mode.')">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@u.Id" />
-                                    <button type="submit" class="btn-admin-loginas">View as</button>
-                                </form>
-                            }
-                            <form asp-action="ToggleUserActive" method="post" style="display:inline">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="id" value="@u.Id" />
-                                <button type="submit"
-                                        class="btn-admin-toggle @(u.IsActive ? "btn-toggle-deactivate" : "btn-toggle-activate")"
-                                        onclick="return confirm('@(u.IsActive ? $"Deactivate {u.FullName}?" : $"Activate {u.FullName}?")')">
-                                    @(u.IsActive ? "Deactivate" : "Activate")
-                                </button>
-                            </form>
-                            @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
-                            {
-                                <form asp-action="RemoveUser" method="post" style="display:inline"
-                                      onsubmit="return confirm('Remove @u.FullName?')">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@u.Id" />
-                                    <button type="submit" class="btn-admin-remove">Remove</button>
-                                </form>
-                            }
-                        </td>
-                    </tr>
-                }
-            }
-        </tbody>
-    </table>
-</div>
+                                </td>
+                                <td class="admin-td-actions">
+                                    <button class="btn-admin-edit"
+                                            data-id="@u.Id"
+                                            data-name="@u.FullName"
+                                            data-email="@u.Email"
+                                            data-role="@u.Role"
+                                            data-courses="@string.Join(",", courses.Where(c => c.LecturerEnrolments.Any(e => e.UserId == u.Id) || c.LecturerId == u.Id || c.ModeratorId == u.Id).Select(c => c.Id).Distinct())"
+                                            onclick="openEditUser(this)">
+                                        Edit
+                                    </button>
+                                    @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
+                                    {
+                                        <form asp-action="LoginAs" method="post" style="display:inline"
+                                              onsubmit="return confirm('Log in as @u.FullName? You will be in view-only mode.')">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@u.Id" />
+                                            <button type="submit" class="btn-admin-loginas">View as</button>
+                                        </form>
+                                    }
+                                    <form asp-action="ToggleUserActive" method="post" style="display:inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@u.Id" />
+                                        <button type="submit"
+                                                class="btn-admin-toggle @(u.IsActive ? "btn-toggle-deactivate" : "btn-toggle-activate")"
+                                                onclick="return confirm('@(u.IsActive ? $"Deactivate {u.FullName}?" : $"Activate {u.FullName}?")')">
+                                            @(u.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </form>
+                                    @if (u.Role != AIS_LO_System.Models.UserRole.Admin)
+                                    {
+                                        <form asp-action="RemoveUser" method="post" style="display:inline"
+                                              onsubmit="return confirm('Remove @u.FullName?')">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@u.Id" />
+                                            <button type="submit" class="btn-admin-remove">Remove</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+
+    </div>
 </div>
 
 <!-- Add User Modal -->
@@ -196,8 +198,6 @@
             </div>
             <div class="admin-form-group" id="courseAssignWrap">
                 <label>Assign to Course/s</label>
-                
-                <!-- Filter Controls -->
                 <div class="course-filter-controls">
                     <div class="course-filter-row">
                         <select id="addUserYearFilter" class="admin-input" onchange="filterAddUserCourses()">
@@ -217,8 +217,6 @@
                     </div>
                     <input type="text" id="addUserCourseSearch" class="course-search-input" placeholder="Search course code or title..." onkeyup="filterAddUserCourses()" />
                 </div>
-
-                <!-- Accordion Courses -->
                 <div class="course-accordion-wrapper">
                     @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
                     {
@@ -287,8 +285,6 @@
             </div>
             <div class="admin-form-group" id="editCourseAssignWrap">
                 <label>Assigned to Course/s</label>
-                
-                <!-- Filter Controls -->
                 <div class="course-filter-controls">
                     <div class="course-filter-row">
                         <select id="editUserYearFilter" class="admin-input" onchange="filterEditUserCourses()">
@@ -308,8 +304,6 @@
                     </div>
                     <input type="text" id="editUserCourseSearch" class="course-search-input" placeholder="Search course code or title..." onkeyup="filterEditUserCourses()" />
                 </div>
-
-                <!-- Accordion Courses -->
                 <div class="course-accordion-wrapper" id="editUserCourses">
                     @foreach (var year in courses.Select(c => c.Year).Distinct().OrderByDescending(y => y))
                     {

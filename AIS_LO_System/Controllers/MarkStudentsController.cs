@@ -16,11 +16,13 @@ namespace AIS_LO_System.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly SubmissionService _submissions;
+        private readonly IWebHostEnvironment _env;
 
-        public MarkStudentsController(ApplicationDbContext context, SubmissionService submissions)
+        public MarkStudentsController(ApplicationDbContext context, SubmissionService submissions, IWebHostEnvironment env)
         {
             _context = context;
             _submissions = submissions;
+            _env = env;
         }
 
         [HttpGet]
@@ -234,6 +236,20 @@ namespace AIS_LO_System.Controllers
             if (vm == null)
                 return NotFound();
 
+            var newLabel = $"LO Achievement Report — {vm.StudentInternalId} — {vm.StudentName} — {assessmentName}";
+            var legacyLabel = $"LO Achievement Report — {vm.StudentName} — {assessmentName}";
+            ViewBag.Submission = await _context.CourseSubmissions
+                .Include(s => s.ReviewedBy)
+                .Where(s =>
+                    s.CourseCode == courseCode &&
+                    s.Year == year &&
+                    s.Trimester == trimester &&
+                    s.ItemType == SubmissionItemType.LOAchievementReport &&
+                    s.ItemRefId == assignmentId &&
+                    (s.ItemLabel == newLabel || s.ItemLabel == legacyLabel))
+                .OrderByDescending(s => s.SubmittedAt)
+                .FirstOrDefaultAsync();
+
             return View(vm);
         }
 
@@ -259,7 +275,30 @@ namespace AIS_LO_System.Controllers
             if (vm == null)
                 return NotFound();
 
-            // ✅ NEW: capture download time
+            // Auto-submit to moderator when downloading LO Achievement report.
+            // The label embeds StudentInternalId so SubmissionService can treat each
+            // student as a distinct submission even when they share the same assignmentId.
+            // Format: "LO Achievement Report — {StudentInternalId} — {StudentName} — {AssessmentName}"
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c =>
+                    c.Code == courseCode &&
+                    c.Year == year &&
+                    c.Trimester == trimester);
+
+            if (course?.ModeratorId != null)
+            {
+                int.TryParse(User.FindFirst("UserId")?.Value, out int currentUserId);
+                if (currentUserId > 0)
+                {
+                    await _submissions.SubmitAsync(
+                        courseCode, year, trimester,
+                        SubmissionItemType.LOAchievementReport,
+                        assignmentId,
+                        $"LO Achievement Report — {vm.StudentInternalId} — {vm.StudentName} — {assessmentName}",
+                        currentUserId);
+                }
+            }
+
             var downloadedAt = DateTime.Now;
 
             var pdfBytes = Document.Create(container =>
@@ -360,13 +399,17 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            // ✅ FIXED FILE NAME FORMAT
+            // Save PDF to file system for moderator review
+            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "lo-achievement");
+            Directory.CreateDirectory(directory);
+
             var safeAssessmentName = vm.AssessmentName.Replace(" ", "_");
-
-            var fileName =
+            var filename =
                 $"{vm.StudentId}_{vm.CourseCode}_{safeAssessmentName}_Trimester_{vm.Trimester}_{vm.Year}.pdf";
+            var fullPath = Path.Combine(directory, filename);
+            await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
 
-            return File(pdfBytes, "application/pdf", fileName);
+            return File(pdfBytes, "application/pdf", filename);
 
             static IContainer CellStyle(IContainer container)
             {
@@ -639,6 +682,20 @@ namespace AIS_LO_System.Controllers
             }
 
             await _context.SaveChangesAsync();
+
+            // Auto-submit student marks to moderator
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+            if (course?.ModeratorId != null && userId > 0)
+            {
+                await _submissions.SubmitAsync(
+                    courseCode, year, trimester,
+                    SubmissionItemType.StudentMarks, assignmentId,
+                    $"{assessmentName} — Student Marks",
+                    userId);
+            }
 
             TempData["Success"] = "Marks saved successfully.";
             return RedirectToAction("Index", new

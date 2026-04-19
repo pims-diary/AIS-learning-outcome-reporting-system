@@ -8,6 +8,164 @@
 
 <link rel="stylesheet" href="~/css/edit-rubric.css" />
 
+<style>
+    .criterion-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        margin-bottom: 16px;
+        overflow: hidden;
+    }
+
+    .criterion-header {
+        display: flex;
+        align-items: center;
+        padding: 16px 20px;
+        background: #f8fafc;
+        cursor: pointer;
+        user-select: none;
+    }
+
+        .criterion-header:hover {
+            background: #f1f5f9;
+        }
+
+    .criterion-num {
+        font-weight: 700;
+        color: #64748b;
+        margin-right: 12px;
+        min-width: 40px;
+    }
+
+    .criterion-name-input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .criterion-toggle {
+        margin-left: 12px;
+        font-size: 18px;
+        color: #64748b;
+        transition: transform 0.2s;
+    }
+
+        .criterion-toggle.open {
+            transform: rotate(180deg);
+        }
+
+    .criterion-body {
+        display: none;
+        padding: 20px;
+        border-top: 1px solid #e2e8f0;
+    }
+
+        .criterion-body.open {
+            display: block;
+        }
+
+    .levels-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .level-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px;
+        background: #fafafa;
+    }
+
+    .level-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .level-score-display {
+        width: 60px;
+        padding: 6px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 16px;
+        text-align: center;
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .level-scale-label {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 600;
+        color: #475569;
+    }
+
+    .level-desc-textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 8px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 13px;
+        resize: vertical;
+        font-family: inherit;
+    }
+
+    .criterion-delete-btn {
+        padding: 8px 14px;
+        background: #fff;
+        border: 1px solid #f87171;
+        border-radius: 6px;
+        color: #dc2626;
+        font-size: 13px;
+        cursor: pointer;
+        font-weight: 600;
+    }
+
+        .criterion-delete-btn:hover {
+            background: #fef2f2;
+        }
+
+    .add-criterion-btn {
+        width: 100%;
+        padding: 14px;
+        background: #fff;
+        border: 2px dashed #cbd5e1;
+        border-radius: 10px;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-bottom: 24px;
+    }
+
+        .add-criterion-btn:hover {
+            border-color: #3b82f6;
+            color: #3b82f6;
+            background: #f0f9ff;
+        }
+
+    .perf-score-input-wrapper {
+        width: 70px;
+    }
+
+    .perf-score-input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 16px;
+        text-align: center;
+    }
+</style>
+
 <div class="edit-rubric-container">
 
     <!-- Breadcrumb -->
@@ -17,7 +175,7 @@
                asp-route-courseCode="@ViewBag.CourseCode"
                asp-route-year="@ViewBag.Year"
                asp-route-trimester="@ViewBag.Trimester">
-            @ViewBag.CourseCode @ViewBag.Year-S@ViewBag.Trimester
+            @ViewBag.CourseCode @($"{ViewBag.Year}-T{ViewBag.Trimester}")
         </a>
         <span>/</span>
         <a asp-controller="Assignment"
@@ -32,10 +190,10 @@
         <span>/</span>
         <span>@ViewBag.AssessmentName</span>
         <span>/</span>
-        <span>Rubric Management</span>
+        <span>Edit Rubric</span>
     </div>
 
-    <!-- Title + Go Back on same row -->
+    <!-- Title + Go Back -->
     <div class="edit-header">
         <h1>Edit Rubric</h1>
         <a asp-action="Index"
@@ -48,7 +206,7 @@
            class="edit-go-back">← Go Back</a>
     </div>
 
-    <!-- Save and Cancel Buttons -->
+    <!-- Save/Cancel Actions -->
     <div class="edit-actions">
         @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
         {
@@ -71,59 +229,98 @@
         <input type="hidden" asp-for="Id" />
         <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
 
-        <!-- Hidden container for deleted criterion IDs -->
-        <div id="deletedCriteria"></div>
+        <!-- Performance Levels (Shown first so lecturers can set the scale names AND scores) -->
+        <div class="edit-performance-section" style="margin-bottom:24px;">
+            <h2>Performance Scale</h2>
+            <p style="color:#64748b; font-size:14px; margin-bottom:16px;">
+                Set the scores and names for each performance level. These will apply to all criteria.
+            </p>
+
+            @{
+                var performanceLevels = Model.Criteria.FirstOrDefault()?.Levels
+                    .OrderByDescending(l => l.Score).ToList();
+            }
+
+            @if (performanceLevels != null)
+            {
+                @for (int i = 0; i < performanceLevels.Count; i++)
+                {
+                    <div class="performance-row">
+                        <div class="perf-score-input-wrapper">
+                            <input type="number"
+                                   id="globalScore@(i)"
+                                   name="performanceLevels[@i].Score"
+                                   value="@performanceLevels[i].Score"
+                                   class="perf-score-input"
+                                   onchange="updateAllScores(@i, this.value)"
+                                   min="0"
+                                   max="10" />
+                        </div>
+                        <div class="perf-name">
+                            <input type="text"
+                                   name="performanceLevels[@i].ScaleName"
+                                   value="@performanceLevels[i].ScaleName"
+                                   placeholder="e.g., Excellent, Good, etc." />
+                        </div>
+                    </div>
+                }
+            }
+        </div>
 
         <!-- Criteria Section -->
         <div class="edit-criteria-section">
-            <h2>Criteria</h2>
+            <h2>Criteria & Descriptions</h2>
+            <p style="color:#64748b; font-size:14px; margin-bottom:16px;">
+                Click on each criterion to expand and edit its descriptions for each performance level.
+            </p>
 
-            <!-- Header Row -->
-            <div class="criteria-header-row">
-                <div></div>
-                <div>Criterion Name</div>
-                <div>4</div>
-                <div>3</div>
-                <div>2</div>
-                <div>1</div>
-                <div>0</div>
-                <div></div>
-            </div>
-
-            <!-- Criteria Rows -->
             <div id="criteriaList">
                 @for (int i = 0; i < Model.Criteria.Count; i++)
                 {
-                    var orderedLevels = Model.Criteria[i].Levels.OrderByDescending(l => l.Score).ToList();
+                    var criterion = Model.Criteria[i];
+                    var orderedLevels = criterion.Levels.OrderByDescending(l => l.Score).ToList();
 
-                    <div class="criteria-data-row" data-index="@i">
-                        <input type="hidden" name="Criteria[@i].Id" value="@Model.Criteria[i].Id" />
+                    <div class="criterion-card" data-index="@i">
+                        <input type="hidden" name="Criteria[@i].Id" value="@criterion.Id" />
 
-                        <div class="row-label">C@(i + 1):</div>
-
-                        <div class="name-cell">
+                        <div class="criterion-header" onclick="toggleCriterion(@i)">
+                            <span class="criterion-num">C@(i + 1)</span>
                             <input type="text"
                                    name="Criteria[@i].CriterionName"
-                                   value="@Model.Criteria[i].CriterionName" />
+                                   value="@criterion.CriterionName"
+                                   class="criterion-name-input"
+                                   onclick="event.stopPropagation();"
+                                   placeholder="Enter criterion name" />
+                            <span class="criterion-toggle" id="toggle-@i">▼</span>
                         </div>
 
-                        @for (int j = 0; j < orderedLevels.Count; j++)
-                        {
-                            <input type="hidden" name="Criteria[@i].Levels[@j].Id" value="@orderedLevels[j].Id" />
-                            <input type="hidden" name="Criteria[@i].Levels[@j].Description" value="@orderedLevels[j].Description" />
-                            <input type="hidden" name="Criteria[@i].Levels[@j].ScaleName" value="@orderedLevels[j].ScaleName" />
+                        <div class="criterion-body" id="body-@i">
+                            <div class="levels-grid">
+                                @for (int j = 0; j < orderedLevels.Count; j++)
+                                {
+                                    var level = orderedLevels[j];
+                                    <div class="level-card">
+                                        <input type="hidden" name="Criteria[@i].Levels[@j].Id" value="@level.Id" />
+                                        <input type="hidden" name="Criteria[@i].Levels[@j].ScaleName" value="@level.ScaleName" />
+                                        <input type="hidden" name="Criteria[@i].Levels[@j].Score" value="@level.Score" class="criterion-score" data-level-index="@j" />
 
-                            <div class="score-cell">
-                                <input type="number"
-                                       name="Criteria[@i].Levels[@j].Score"
-                                       value="@orderedLevels[j].Score" />
+                                        <div class="level-header">
+                                            <div class="level-score-display criterion-score-display" data-level-index="@j">@level.Score</div>
+                                            <span class="level-scale-label">@level.ScaleName</span>
+                                        </div>
+
+                                        <textarea name="Criteria[@i].Levels[@j].Description"
+                                                  class="level-desc-textarea"
+                                                  placeholder="Describe what this level looks like for this criterion...">@level.Description</textarea>
+                                    </div>
+                                }
                             </div>
-                        }
 
-                        <div class="delete-cell">
                             @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
                             {
-                                <button type="button" class="btn-delete" onclick="deleteCriterion(@i)">🗑️</button>
+                                <button type="button" class="criterion-delete-btn" onclick="deleteCriterion(@i, event)">
+                                    🗑️ Delete Criterion
+                                </button>
                             }
                         </div>
                     </div>
@@ -132,32 +329,9 @@
 
             @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
             {
-                <button type="button" class="btn-add-criterion" onclick="addCriterion()">+ Add New Criterion</button>
-            }
-        </div>
-
-        <!-- Performance Levels Section -->
-        <div class="edit-performance-section">
-            <h2>Performance Levels</h2>
-
-            @{
-                var performanceLevels = Model.Criteria.FirstOrDefault()?.Levels
-                .OrderByDescending(l => l.Score).ToList();
-            }
-
-            @if (performanceLevels != null)
-            {
-                @for (int i = 0; i < performanceLevels.Count; i++)
-                {
-                    <div class="performance-row">
-                        <div class="perf-score">@performanceLevels[i].Score</div>
-                        <div class="perf-name">
-                            <input type="text"
-                                   name="performanceLevels[@i].ScaleName"
-                                   value="@performanceLevels[i].ScaleName" />
-                        </div>
-                    </div>
-                }
+                <button type="button" class="add-criterion-btn" onclick="addCriterion()">
+                    + Add New Criterion
+                </button>
             }
         </div>
     </form>
@@ -165,84 +339,97 @@
 
 <script>
     let criterionCount = @Model.Criteria.Count;
-    let deletedIds = [];
+
+    // Update all criterion scores when global score changes
+    function updateAllScores(levelIndex, newScore) {
+        // Update all hidden inputs and displays for this level across all criteria
+        const scoreInputs = document.querySelectorAll(`input.criterion-score[data-level-index="${levelIndex}"]`);
+        const scoreDisplays = document.querySelectorAll(`.criterion-score-display[data-level-index="${levelIndex}"]`);
+        
+        scoreInputs.forEach(input => {
+            input.value = newScore;
+        });
+        
+        scoreDisplays.forEach(display => {
+            display.textContent = newScore;
+        });
+    }
+
+    function toggleCriterion(index) {
+        const body = document.getElementById('body-' + index);
+        const toggle = document.getElementById('toggle-' + index);
+        
+        if (body.classList.contains('open')) {
+            body.classList.remove('open');
+            toggle.classList.remove('open');
+        } else {
+            body.classList.add('open');
+            toggle.classList.add('open');
+        }
+    }
 
     function addCriterion() {
         const index = criterionCount;
         const criteriaList = document.getElementById('criteriaList');
 
-        const newRow = document.createElement('div');
-        newRow.className = 'criteria-data-row';
-        newRow.dataset.index = index;
+        // Get current global scores
+        const globalScores = [
+            document.getElementById('globalScore0').value,
+            document.getElementById('globalScore1').value,
+            document.getElementById('globalScore2').value,
+            document.getElementById('globalScore3').value,
+            document.getElementById('globalScore4').value
+        ];
 
-        newRow.innerHTML = `
-                <div class="row-label">C${index + 1}:</div>
-                <div class="name-cell">
-                    <input type="text" name="Criteria[${index}].CriterionName" placeholder="Enter criterion name" />
-                </div>
-                <div class="score-cell">
-                    <input type="number" name="Criteria[${index}].Levels[0].Score" value="4" />
-                    <input type="hidden" name="Criteria[${index}].Levels[0].ScaleName" value="Excellent" />
-                    <input type="hidden" name="Criteria[${index}].Levels[0].Description" value="" />
-                </div>
-                <div class="score-cell">
-                    <input type="number" name="Criteria[${index}].Levels[1].Score" value="3" />
-                    <input type="hidden" name="Criteria[${index}].Levels[1].ScaleName" value="Good" />
-                    <input type="hidden" name="Criteria[${index}].Levels[1].Description" value="" />
-                </div>
-                <div class="score-cell">
-                    <input type="number" name="Criteria[${index}].Levels[2].Score" value="2" />
-                    <input type="hidden" name="Criteria[${index}].Levels[2].ScaleName" value="Satisfactory" />
-                    <input type="hidden" name="Criteria[${index}].Levels[2].Description" value="" />
-                </div>
-                <div class="score-cell">
-                    <input type="number" name="Criteria[${index}].Levels[3].Score" value="1" />
-                    <input type="hidden" name="Criteria[${index}].Levels[3].ScaleName" value="Limited" />
-                    <input type="hidden" name="Criteria[${index}].Levels[3].Description" value="" />
-                </div>
-                <div class="score-cell">
-                    <input type="number" name="Criteria[${index}].Levels[4].Score" value="0" />
-                    <input type="hidden" name="Criteria[${index}].Levels[4].ScaleName" value="Unsatisfactory" />
-                    <input type="hidden" name="Criteria[${index}].Levels[4].Description" value="" />
-                </div>
-                <div class="delete-cell">
-                    <button type="button" class="btn-delete" onclick="deleteCriterion(${index})">🗑️</button>
-                </div>
-            `;
+        const newCard = document.createElement('div');
+        newCard.className = 'criterion-card';
+        newCard.dataset.index = index;
 
-        criteriaList.appendChild(newRow);
+        const scaleNames = ['Excellent', 'Good', 'Satisfactory', 'Limited', 'Unsatisfactory'];
+
+        newCard.innerHTML = `
+            <div class="criterion-header" onclick="toggleCriterion(${index})">
+                <span class="criterion-num">C${index + 1}</span>
+                <input type="text"
+                       name="Criteria[${index}].CriterionName"
+                       class="criterion-name-input"
+                       onclick="event.stopPropagation();"
+                       placeholder="Enter criterion name" />
+                <span class="criterion-toggle" id="toggle-${index}">▼</span>
+            </div>
+            <div class="criterion-body open" id="body-${index}">
+                <div class="levels-grid">
+                    ${globalScores.map((score, j) => `
+                        <div class="level-card">
+                            <input type="hidden" name="Criteria[${index}].Levels[${j}].ScaleName" value="${scaleNames[j]}" />
+                            <input type="hidden" name="Criteria[${index}].Levels[${j}].Score" value="${score}" class="criterion-score" data-level-index="${j}" />
+                            <div class="level-header">
+                                <div class="level-score-display criterion-score-display" data-level-index="${j}">${score}</div>
+                                <span class="level-scale-label">${scaleNames[j]}</span>
+                            </div>
+                            <textarea name="Criteria[${index}].Levels[${j}].Description"
+                                      class="level-desc-textarea"
+                                      placeholder="Describe what this level looks like for this criterion..."></textarea>
+                        </div>
+                    `).join('')}
+                </div>
+                <button type="button" class="criterion-delete-btn" onclick="deleteCriterion(${index}, event)">
+                    🗑️ Delete Criterion
+                </button>
+            </div>
+        `;
+
+        criteriaList.appendChild(newCard);
         criterionCount++;
     }
 
-    function deleteCriterion(index) {
-        const row = document.querySelector(`.criteria-data-row[data-index="${index}"]`);
-        if (!row) return;
+    function deleteCriterion(index, event) {
+        event.stopPropagation();
+        const card = document.querySelector(`.criterion-card[data-index="${index}"]`);
+        if (!card) return;
 
-        if (confirm('Are you sure you want to delete this criterion?')) {
-            // Get the criterion ID from hidden input
-            const idInput = row.querySelector('input[name*=".Id"]');
-            if (idInput && idInput.value) {
-                // Track the deleted ID
-                deletedIds.push(idInput.value);
-                // Update the hidden deleted IDs field
-                updateDeletedIdsField();
-            }
-
-            // Remove the row from DOM
-            row.remove();
+        if (confirm('Are you sure you want to delete this criterion? This cannot be undone.')) {
+            card.remove();
         }
-    }
-
-    function updateDeletedIdsField() {
-        const container = document.getElementById('deletedCriteria');
-        container.innerHTML = '';
-
-        deletedIds.forEach((id, index) => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = `DeletedCriteriaIds[${index}]`;
-            input.value = id;
-            container.appendChild(input);
-        });
     }
 </script>

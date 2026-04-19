@@ -1,4 +1,4 @@
-﻿@model List<AIS_LO_System.Models.CourseSubmission>
+﻿@model List<AIS_LO_System.Models.ModeratorInboxPendingItem>
 @using AIS_LO_System.Models
 
 @{
@@ -10,6 +10,51 @@
 }
 
 <link rel="stylesheet" href="~/css/moderator.css" />
+
+<style>
+    .mod-filters {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+    }
+    .filter-form { margin: 0; }
+    .filter-row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .filter-select {
+        padding: 8px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 14px;
+        background: #fff;
+        min-width: 180px;
+        cursor: pointer;
+    }
+    .filter-select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    }
+    .filter-clear {
+        padding: 8px 14px;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 13px;
+        text-decoration: none;
+        color: #64748b;
+        font-weight: 500;
+    }
+    .filter-clear:hover {
+        background: #f1f5f9;
+        color: #475569;
+    }
+</style>
 
 <div class="mod-page">
 
@@ -48,6 +93,39 @@
             <div class="mod-alert mod-alert-error">@TempData["Error"]</div>
         }
 
+        <!-- FIX #6: Filter controls -->
+        <div class="mod-filters">
+            <form method="get" asp-action="Inbox" class="filter-form">
+                <div class="filter-row">
+                    <select name="filterItemType" class="filter-select" onchange="this.form.submit()">
+                        <option value="">All Types</option>
+                        @foreach (var type in Enum.GetValues<SubmissionItemType>())
+                        {
+                            <option value="@type" selected="@(ViewBag.FilterItemType?.ToString() == type.ToString())">
+                                @FormatItemType(type)
+                            </option>
+                        }
+                    </select>
+
+                    <select name="filterCourse" class="filter-select" onchange="this.form.submit()">
+                        <option value="">All Courses</option>
+                        @foreach (var course in moderatedCourses)
+                        {
+                            var courseKey = $"{course.Code}-{course.Year}-T{course.Trimester}";
+                            <option value="@courseKey" selected="@(ViewBag.FilterCourse == courseKey)">
+                                @course.Code @course.Year T@(course.Trimester)
+                            </option>
+                        }
+                    </select>
+
+                    @if (ViewBag.FilterItemType != null || ViewBag.FilterCourse != null)
+                    {
+                        <a href="@Url.Action("Inbox")" class="filter-clear">Clear Filters</a>
+                    }
+                </div>
+            </form>
+        </div>
+
         <!-- PENDING -->
         <section class="mod-section">
             <h2 class="mod-section-title">Pending Review</h2>
@@ -59,8 +137,9 @@
             else
             {
                 <div class="mod-cards">
-                    @foreach (var sub in Model)
+                    @foreach (var item in Model)
                     {
+                        var sub = item.Submissions[0];
                         <div class="mod-card mod-card-pending">
 
                             <div class="mod-card-top">
@@ -72,10 +151,18 @@
                                 <span class="mod-status mod-status-pending">Pending</span>
                             </div>
 
-                            <div class="mod-card-label">@sub.ItemLabel</div>
+                            <div class="mod-card-label">@item.DisplayLabel</div>
                             <div class="mod-card-meta">
-                                Submitted by <strong>@(sub.SubmittedBy?.FullName ?? "—")</strong>
-                                on @sub.SubmittedAt.ToString("dd MMM yyyy, h:mm tt")
+                                @if (item.IsGroupedLoAchievement || item.IsGroupedStudentLoReport)
+                                {
+                                    <span><strong>@item.Submissions.Count</strong> student report(s) in this batch.</span>
+                                    <span>Latest activity @item.SortDate.ToString("dd MMM yyyy, h:mm tt")</span>
+                                }
+                                else
+                                {
+                                    <span>Submitted by <strong>@(sub.SubmittedBy?.FullName ?? "—")</strong></span>
+                                    <span>on @sub.SubmittedAt.ToString("dd MMM yyyy, h:mm tt")</span>
+                                }
                             </div>
 
                             @{
@@ -88,22 +175,30 @@
                                 </div>
                             }
 
-                            <form asp-action="Review" method="post" class="mod-review-form">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="submissionId" value="@sub.Id" />
-                                <div class="mod-comment-wrap">
-                                    <textarea name="comment" class="mod-comment"
-                                              placeholder="Comment (required for denial, optional for approval)…"
-                                              rows="2"></textarea>
-                                </div>
-                                <div class="mod-review-actions">
-                                    <button type="submit" name="decision" value="approve" class="mod-btn-approve">Approve</button>
-                                    <button type="submit" name="decision" value="deny" class="mod-btn-deny"
-                                            onclick="return validateDeny(this)">
-                                        Deny
-                                    </button>
-                                </div>
-                            </form>
+                            @* Grouped LO Achievement / Student LO: review on detail page (one batch approve/deny). *@
+                            @if (!item.IsGroupedLoAchievement && !item.IsGroupedStudentLoReport)
+                            {
+                                <form asp-action="Review" method="post" class="mod-review-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="submissionId" value="@sub.Id" />
+                                    <div class="mod-comment-wrap">
+                                        <textarea name="comment" class="mod-comment"
+                                                  placeholder="Comment (required for denial, optional for approval)…"
+                                                  rows="2"></textarea>
+                                    </div>
+                                    <div class="mod-review-actions">
+                                        <button type="submit" name="decision" value="approve" class="mod-btn-approve">Approve</button>
+                                        <button type="submit" name="decision" value="deny" class="mod-btn-deny"
+                                                onclick="return validateDeny(this)">
+                                            Deny
+                                        </button>
+                                    </div>
+                                </form>
+                            }
+                            else if (viewUrl != null && (item.IsGroupedLoAchievement || item.IsGroupedStudentLoReport))
+                            {
+                                <p class="text-muted small mb-0">Open <strong>View</strong> to check PDFs and approve or deny this batch.</p>
+                            }
 
                         </div>
                     }
@@ -163,7 +258,6 @@
 </div>
 
 @functions {
-    // FIX #2: Added LOMapping case
     string FormatItemType(SubmissionItemType t) => t switch
     {
         SubmissionItemType.CourseOutline => "Course Outline",
@@ -172,13 +266,14 @@
         SubmissionItemType.StudentMarks => "Student Marks",
         SubmissionItemType.StudentLOReport => "Student LO Report",
         SubmissionItemType.CourseLOReport => "Course LO Report",
-        SubmissionItemType.LOMapping => "LO Mapping",       // FIX #2
+        SubmissionItemType.AssessmentLOReport => "Assessment LO Report",
+        SubmissionItemType.LOMapping => "LO Mapping",
+        SubmissionItemType.LOAchievementReport => "LO Achievement Report",
         SubmissionItemType.LearningOutcomes => "Learning Outcomes",
         SubmissionItemType.Assessments => "Assessments",
         _ => t.ToString()
     };
 
-    // FIX #2: Added LOMapping URL; FIX #3: ViewStudentDetail linked from ViewMarks
     string? GetViewUrl(CourseSubmission sub) => sub.ItemType switch
     {
         SubmissionItemType.CourseOutline =>
@@ -192,8 +287,14 @@
             Url.Action("ViewMarks", "Moderator", new { submissionId = sub.Id }),
         SubmissionItemType.StudentLOReport =>
             Url.Action("ViewStudentLOReport", "Moderator", new { submissionId = sub.Id }),
-        SubmissionItemType.LOMapping =>                              // FIX #2
+        SubmissionItemType.CourseLOReport =>
+            Url.Action("ViewCourseLOReport", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.AssessmentLOReport =>
+            Url.Action("ViewAssessmentLOReport", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.LOMapping =>
             Url.Action("ViewLOMapping", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.LOAchievementReport =>
+            Url.Action("ViewLOAchievementReport", "Moderator", new { submissionId = sub.Id }),
         SubmissionItemType.LearningOutcomes =>
             Url.Action("ViewLearningOutcomes", "Moderator", new { submissionId = sub.Id }),
         SubmissionItemType.Assessments =>
@@ -201,6 +302,7 @@
         _ => null
     };
 }
+
 
 @section Scripts {
     <script>
