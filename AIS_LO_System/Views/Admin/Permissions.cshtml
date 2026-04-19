@@ -16,7 +16,8 @@
             <div class="admin-panel-title">Permissions</div>
             <div style="font-size:13px;color:var(--color-text-secondary);">
                 @Model.Count(c => c.CanEditLO) of @Model.Count LO editing enabled &nbsp;·&nbsp;
-                @Model.Count(c => c.CanReuploadOutline) of @Model.Count outline upload enabled
+                @Model.Count(c => c.CanReuploadOutline) of @Model.Count outline upload enabled &nbsp;·&nbsp;
+                @Model.Count(c => c.CanEditAssignment) of @Model.Count assessment editing enabled
             </div>
         </div>
 
@@ -73,6 +74,16 @@
                             <button class="toggle-switch @(course.CanReuploadOutline ? "toggle-on" : "toggle-off")"
                                     data-course-id="@course.Id"
                                     data-permission="CanReuploadOutline"
+                                    onclick="togglePerm(this)">
+                                <span class="toggle-thumb"></span>
+                            </button>
+                        </div>
+                        <hr class="perm-divider" />
+                        <div class="perm-row">
+                            <span class="perm-label">Lecturer can edit assessments</span>
+                            <button class="toggle-switch @(course.CanEditAssignment ? "toggle-on" : "toggle-off")"
+                                    data-course-id="@course.Id"
+                                    data-permission="CanEditAssignment"
                                     onclick="togglePerm(this)">
                                 <span class="toggle-thumb"></span>
                             </button>

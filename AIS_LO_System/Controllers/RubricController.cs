@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace AIS_LO_System.Controllers
 {
@@ -32,6 +33,10 @@ namespace AIS_LO_System.Controllers
         {
             if (assignmentId == null)
                 return BadRequest("AssignmentId is required.");
+
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
 
             ViewBag.AssignmentId = assignmentId;
             ViewBag.AssessmentName = assessmentName;
@@ -75,6 +80,10 @@ namespace AIS_LO_System.Controllers
     int year,
     int trimester)
         {
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             if (file == null || file.Length == 0)
             {
                 TempData["Error"] = "Please select a file to upload.";
@@ -97,13 +106,15 @@ namespace AIS_LO_System.Controllers
                 await file.CopyToAsync(stream);
 
                 using var package = new ExcelPackage(stream);
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                var layout = FindRubricSheetLayout(package);
 
-                if (worksheet == null)
+                if (layout == null)
                 {
-                    TempData["Error"] = "Invalid Excel file.";
+                    TempData["Error"] = "Could not find a valid rubric worksheet. Please make sure the file includes headers like Criteria, 4, 3, 2, 1, 0, LO, and Weight (%).";
                     return RedirectToAction("Index", new { assignmentId, assessmentName, courseCode, courseTitle, year, trimester });
                 }
+
+                var worksheet = layout.Worksheet;
 
                 // Validate Assignment
                 var assignmentExists = await _context.Assignments
@@ -127,11 +138,12 @@ namespace AIS_LO_System.Controllers
                     await _context.SaveChangesAsync();
                 }
 
-                // Read scale names from row 2 (columns 2-6)
+                // Read scale names from the row below the detected score headers
                 var scaleNames = new string[5];
-                for (int col = 2; col <= 6; col++)
+                for (int i = 0; i < layout.ScoreColumns.Count; i++)
                 {
-                    scaleNames[col - 2] = worksheet.Cells[2, col].Value?.ToString()?.Trim() ?? $"Level {6 - col}";
+                    var scoreCol = layout.ScoreColumns[i];
+                    scaleNames[i] = worksheet.Cells[layout.ScaleNamesRow, scoreCol].Value?.ToString()?.Trim() ?? $"Level {layout.ScoreOrder[i]}";
                 }
 
                 // Create new rubric
@@ -142,19 +154,16 @@ namespace AIS_LO_System.Controllers
                     Criteria = new List<RubricCriterion>()
                 };
 
-                // Temp storage for LO/Weight data from columns 7-8
+                // Temp storage for LO/Weight data
                 var loWeightData = new List<(string? loText, decimal? weight)>();
 
-                // Start reading criteria from row 3 (after both header rows)
-                int row = 3;
-
-                while (worksheet.Cells[row, 1].Value != null)
+                // Start reading criteria after the scale-name row
+                for (int row = layout.DataStartRow; row <= worksheet.Dimension.End.Row; row++)
                 {
-                    var criterionName = worksheet.Cells[row, 1].Value?.ToString()?.Trim();
+                    var criterionName = worksheet.Cells[row, layout.CriteriaColumn].Value?.ToString()?.Trim();
 
                     if (string.IsNullOrWhiteSpace(criterionName))
                     {
-                        row++;
                         continue;
                     }
 
@@ -164,27 +173,32 @@ namespace AIS_LO_System.Controllers
                         Levels = new List<RubricLevel>()
                     };
 
-                    // Columns 2–6 = Levels (Score 4,3,2,1,0)
-                    for (int col = 2; col <= 6; col++)
+                    // Score columns = Levels (Score 4,3,2,1,0) detected from header row
+                    for (int i = 0; i < layout.ScoreColumns.Count; i++)
                     {
-                        var description = worksheet.Cells[row, col].Value?.ToString()?.Trim() ?? string.Empty;
+                        var scoreCol = layout.ScoreColumns[i];
+                        var description = worksheet.Cells[row, scoreCol].Value?.ToString()?.Trim() ?? string.Empty;
 
                         var level = new RubricLevel
                         {
-                            Score = 6 - col,  // 4, 3, 2, 1, 0
-                            ScaleName = scaleNames[col - 2],  // Excellent, Good, Satisfactory, Limited, Unsatisfactory
+                            Score = layout.ScoreOrder[i],
+                            ScaleName = scaleNames[i],
                             Description = description
                         };
 
                         criterion.Levels.Add(level);
                     }
 
-                    // Column 7 = LO (optional, e.g. "1,2,5" or "LO1, LO2, LO5")
-                    var loCell = worksheet.Cells[row, 7].Value?.ToString()?.Trim();
+                    // Optional LO column, e.g. "1,2,5" or "LO1, LO2, LO5"
+                    var loCell = layout.LOColumn.HasValue
+                        ? worksheet.Cells[row, layout.LOColumn.Value].Value?.ToString()?.Trim()
+                        : null;
 
-                    // Column 8 = Weight % (optional, e.g. "10" or "10.5")
+                    // Optional Weight % column, e.g. "10" or "10.5" or "10%"
                     decimal? weight = null;
-                    var weightCell = worksheet.Cells[row, 8].Value?.ToString()?.Trim();
+                    var weightCell = layout.WeightColumn.HasValue
+                        ? worksheet.Cells[row, layout.WeightColumn.Value].Value?.ToString()?.Trim()
+                        : null;
                     if (!string.IsNullOrEmpty(weightCell))
                     {
                         weightCell = weightCell.Replace("%", "").Trim();
@@ -195,7 +209,6 @@ namespace AIS_LO_System.Controllers
                     loWeightData.Add((loCell, weight));
 
                     rubric.Criteria.Add(criterion);
-                    row++;
                 }
 
                 if (!rubric.Criteria.Any())
@@ -241,7 +254,7 @@ namespace AIS_LO_System.Controllers
                         if (string.IsNullOrWhiteSpace(loText)) continue;
 
                         // Parse LO numbers from text like "1,2,5" or "LO1, LO2, LO5"
-                        var loNumbers = System.Text.RegularExpressions.Regex.Matches(loText, @"\d+")
+                        var loNumbers = Regex.Matches(loText, @"\d+")
                             .Select(m => int.Parse(m.Value))
                             .Distinct()
                             .ToList();
@@ -286,6 +299,14 @@ namespace AIS_LO_System.Controllers
                     }
                 }
 
+                // Warn if any LOs assigned to this assessment are not covered by any criterion
+                var uncoveredLOs = await GetUncoveredLOsAsync(assignmentId, rubric);
+                if (uncoveredLOs.Any())
+                {
+                    var loList = string.Join(", ", uncoveredLOs);
+                    TempData["Warning"] = $"⚠️ In the course outline, this assessment is assigned {loList} — but {(uncoveredLOs.Count == 1 ? "it has" : "they have")} not been mapped to any rubric criterion. Please update the rubric or LO mapping so all required LOs are covered.";
+                }
+
                 var successMsg = $"Rubric uploaded successfully! {rubric.Criteria.Count} criteria imported.";
                 if (mappingsCreated > 0)
                     successMsg += $" {mappingsCreated} LO mapping(s) auto-applied.";
@@ -303,7 +324,6 @@ namespace AIS_LO_System.Controllers
                         SubmissionItemType.Rubric, rubric.Id,
                         $"{assessmentName} — Rubric",
                         uploadUserId);
-                    TempData["Info"] = "📨 Rubric submitted to moderator for approval.";
                 }
                 return RedirectToAction(nameof(Index), new
                 {
@@ -451,7 +471,6 @@ namespace AIS_LO_System.Controllers
                     SubmissionItemType.Rubric, rubric.Id,
                     $"{assignment.AssessmentName} — Rubric",
                     editUserId);
-                TempData["Info"] = "📨 Updated rubric submitted to moderator for approval.";
             }
 
             if (assignment == null)
@@ -466,6 +485,140 @@ namespace AIS_LO_System.Controllers
                 year = assignment.Year,
                 trimester = assignment.Trimester
             });
+        }
+
+        private async Task<List<string>> GetUncoveredLOsAsync(int assignmentId, Rubric rubric)
+        {
+            var assignment = await _context.Assignments
+                .FirstOrDefaultAsync(a => a.Id == assignmentId);
+
+            if (assignment == null || string.IsNullOrEmpty(assignment.SelectedLearningOutcomeIds))
+                return new List<string>();
+
+            var allowedLOIds = assignment.SelectedLearningOutcomeIds
+                .Split(',')
+                .Where(s => int.TryParse(s, out _))
+                .Select(int.Parse)
+                .ToList();
+
+            if (!allowedLOIds.Any())
+                return new List<string>();
+
+            var coveredLOIds = rubric.Criteria
+                .SelectMany(c => c.LOMappings)
+                .Select(m => m.LearningOutcomeId)
+                .Distinct()
+                .ToHashSet();
+
+            var uncoveredIds = allowedLOIds.Where(id => !coveredLOIds.Contains(id)).ToList();
+            if (!uncoveredIds.Any())
+                return new List<string>();
+
+            var los = await _context.LearningOutcomes
+                .Where(lo => uncoveredIds.Contains(lo.Id))
+                .OrderBy(lo => lo.OrderNumber)
+                .ToListAsync();
+
+            return los.Select(lo => $"LO{lo.OrderNumber}").ToList();
+        }
+
+        private async Task<IActionResult?> BlockIfAssessmentDraftPendingAsync(string courseCode, int year, int trimester)
+        {
+            var sub = await _submissions.GetLatestAsync(courseCode, year, trimester, SubmissionItemType.Assessments);
+            if (sub?.Status != SubmissionStatus.Pending)
+                return null;
+
+            TempData["Error"] = "Assessment changes are waiting for moderator approval. Rubric pages are temporarily locked until the approved assessment setup goes live.";
+            return RedirectToAction("Assessments", "CourseInformation", new { courseCode, year, trimester });
+        }
+
+        private static RubricSheetLayout? FindRubricSheetLayout(ExcelPackage package)
+        {
+            foreach (var worksheet in package.Workbook.Worksheets)
+            {
+                if (worksheet.Dimension == null)
+                    continue;
+
+                int maxRow = Math.Min(worksheet.Dimension.End.Row, 8);
+                int maxCol = worksheet.Dimension.End.Column;
+
+                for (int headerRow = 1; headerRow <= maxRow; headerRow++)
+                {
+                    int? criteriaCol = null;
+                    int? loCol = null;
+                    int? weightCol = null;
+                    var scoreCols = new Dictionary<int, int>();
+
+                    for (int col = 1; col <= maxCol; col++)
+                    {
+                        var raw = worksheet.Cells[headerRow, col].Value?.ToString()?.Trim();
+                        if (string.IsNullOrWhiteSpace(raw))
+                            continue;
+
+                        var normalized = NormalizeHeader(raw);
+
+                        if (criteriaCol == null && (normalized.Contains("criteria") || normalized.Contains("criterion")))
+                        {
+                            criteriaCol = col;
+                            continue;
+                        }
+
+                        if (loCol == null && (normalized == "lo" || normalized.Contains("learningoutcomes") || normalized.Contains("learningoutcome")))
+                        {
+                            loCol = col;
+                            continue;
+                        }
+
+                        if (weightCol == null && normalized.Contains("weight"))
+                        {
+                            weightCol = col;
+                            continue;
+                        }
+
+                        if (int.TryParse(normalized, out var score) && score >= 0 && score <= 4)
+                        {
+                            scoreCols[score] = col;
+                        }
+                    }
+
+                    int[] expectedScores = { 4, 3, 2, 1, 0 };
+                    if (criteriaCol.HasValue && expectedScores.All(scoreCols.ContainsKey))
+                    {
+                        return new RubricSheetLayout
+                        {
+                            Worksheet = worksheet,
+                            HeaderRow = headerRow,
+                            ScaleNamesRow = headerRow + 1,
+                            DataStartRow = headerRow + 2,
+                            CriteriaColumn = criteriaCol.Value,
+                            ScoreOrder = expectedScores,
+                            ScoreColumns = expectedScores.Select(score => scoreCols[score]).ToList(),
+                            LOColumn = loCol,
+                            WeightColumn = weightCol
+                        };
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static string NormalizeHeader(string value)
+        {
+            return Regex.Replace(value.Trim().ToLowerInvariant(), @"[^a-z0-9]", "");
+        }
+
+        private sealed class RubricSheetLayout
+        {
+            public required ExcelWorksheet Worksheet { get; init; }
+            public required int HeaderRow { get; init; }
+            public required int ScaleNamesRow { get; init; }
+            public required int DataStartRow { get; init; }
+            public required int CriteriaColumn { get; init; }
+            public required int[] ScoreOrder { get; init; }
+            public required List<int> ScoreColumns { get; init; }
+            public int? LOColumn { get; init; }
+            public int? WeightColumn { get; init; }
         }
     }
 }

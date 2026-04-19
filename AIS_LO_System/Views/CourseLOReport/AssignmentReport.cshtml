@@ -363,6 +363,20 @@
         </div>
     </div>
 
+    <div class="d-flex justify-content-center mb-4">
+        <a asp-controller="CourseLOReport"
+           asp-action="DownloadAssignmentReportPdf"
+           asp-route-assignmentId="@Model.AssignmentId"
+           asp-route-courseCode="@Model.CourseCode"
+           asp-route-courseTitle="@Model.CourseTitle"
+           asp-route-assessmentName="@Model.AssessmentName"
+           asp-route-year="@Model.Year"
+           asp-route-trimester="@Model.Trimester"
+           class="btn btn-danger">
+            Download PDF
+        </a>
+    </div>
+
 </div>
 
 <style>

@@ -269,6 +269,8 @@
         SubmissionItemType.AssessmentLOReport => "Assessment LO Report",
         SubmissionItemType.LOMapping => "LO Mapping",
         SubmissionItemType.LOAchievementReport => "LO Achievement Report",
+        SubmissionItemType.LearningOutcomes => "Learning Outcomes",
+        SubmissionItemType.Assessments => "Assessments",
         _ => t.ToString()
     };
 
@@ -293,6 +295,10 @@
             Url.Action("ViewLOMapping", "Moderator", new { submissionId = sub.Id }),
         SubmissionItemType.LOAchievementReport =>
             Url.Action("ViewLOAchievementReport", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.LearningOutcomes =>
+            Url.Action("ViewLearningOutcomes", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.Assessments =>
+            Url.Action("ViewAssessments", "Moderator", new { submissionId = sub.Id }),
         _ => null
     };
 }

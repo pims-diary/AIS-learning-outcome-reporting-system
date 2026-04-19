@@ -17,18 +17,26 @@ namespace LOARS.Web.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ApplicationDbContext _context;
         private readonly SubmissionService _submissions;
+        private readonly ModerationDraftService _moderationDrafts;
 
-        public CourseInformationController(IWebHostEnvironment env, ApplicationDbContext context, SubmissionService submissions)
+        public CourseInformationController(
+            IWebHostEnvironment env,
+            ApplicationDbContext context,
+            SubmissionService submissions,
+            ModerationDraftService moderationDrafts)
         {
             _env = env;
             _context = context;
             _submissions = submissions;
+            _moderationDrafts = moderationDrafts;
         }
 
         private bool AllowOutlineReupload(string courseCode, int year, int trimester)
         {
             var course = _context.Courses
                 .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+            // Admin permission is the top authority
             return course?.CanReuploadOutline ?? true;
         }
 
@@ -37,6 +45,83 @@ namespace LOARS.Web.Controllers
             var course = _context.Courses
                 .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
             return course?.CanEditLO ?? true;
+        }
+
+        private bool AllowAssignmentEdit(string courseCode, int year, int trimester)
+        {
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            return course?.CanEditAssignment ?? true;
+        }
+
+        private bool HasOutlineFile(string courseCode, int year, int trimester)
+        {
+            var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
+            var baseName = GetOutlineBaseName(courseCode, year, trimester);
+
+            return new[] { ".pdf", ".docx" }
+                .Any(ext => System.IO.File.Exists(Path.Combine(dir, baseName + ext)));
+        }
+
+        private CourseSubmission? GetLatestAssessmentSubmission(string courseCode, int year, int trimester)
+        {
+            return _context.CourseSubmissions
+                .Where(s => s.CourseCode == courseCode
+                         && s.Year == year
+                         && s.Trimester == trimester
+                         && s.ItemType == SubmissionItemType.Assessments)
+                .OrderByDescending(s => s.SubmittedAt)
+                .FirstOrDefault();
+        }
+
+        private bool HasAssessmentFallbackIssue(string courseCode, int year, int trimester)
+        {
+            var latestAssessmentSubmission = GetLatestAssessmentSubmission(courseCode, year, trimester);
+            if (latestAssessmentSubmission != null && latestAssessmentSubmission.Status != SubmissionStatus.Approved)
+                return true;
+
+            if (!HasOutlineFile(courseCode, year, trimester))
+                return false;
+
+            var assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .ToList();
+
+            if (!assignments.Any())
+                return true;
+
+            return assignments.Sum(a => a.MarksPercentage) != 100;
+        }
+
+        private string GetAssessmentFallbackMessage(string courseCode, int year, int trimester)
+        {
+            var latestAssessmentSubmission = GetLatestAssessmentSubmission(courseCode, year, trimester);
+            if (latestAssessmentSubmission?.Status == SubmissionStatus.Pending)
+            {
+                return "Assessment changes are currently waiting for moderator approval. The live assessment setup stays locked until that review is finished.";
+            }
+
+            if (!HasOutlineFile(courseCode, year, trimester))
+            {
+                return "Manual assessment editing is only available after a course outline is uploaded and the extracted assessment data needs review.";
+            }
+
+            var assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .ToList();
+
+            if (!assignments.Any())
+            {
+                return "No assessments were extracted from the current course outline. You can use the Assessments page as a fallback and submit the correction for moderator approval.";
+            }
+
+            var assessmentTotal = assignments.Sum(a => a.MarksPercentage);
+            if (assessmentTotal != 100)
+            {
+                return $"Assessment totals currently add up to {assessmentTotal}%, not 100%. You can use the Assessments page as a fallback and submit the correction for moderator approval.";
+            }
+
+            return "Manual assessment editing is only available when the uploaded course outline needs assessment correction.";
         }
 
         // -------------------------
@@ -48,6 +133,12 @@ namespace LOARS.Web.Controllers
             SetCourseContext(courseCode, year, trimester);
 
             ViewBag.CanReupload = AllowOutlineReupload(courseCode, year, trimester);
+            var currentAssessmentTotal = GetAssessmentTotalMarks(courseCode, year, trimester);
+            var currentAssessmentCount = _context.Assignments
+                .Count(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester);
+            ViewBag.AssessmentTotalWarning = currentAssessmentCount > 0 && currentAssessmentTotal != 100
+                ? $"Assessment totals currently add up to {currentAssessmentTotal}%, not 100%. Please review the extracted assessments or update them from the Assessments page."
+                : null;
 
             var dir = Path.Combine(_env.WebRootPath, "uploads", "outlines");
             var baseName = GetOutlineBaseName(courseCode, year, trimester);
@@ -101,6 +192,18 @@ namespace LOARS.Web.Controllers
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
             var baseName = GetOutlineBaseName(courseCode, year, trimester);
             var savedPath = Path.Combine(dir, baseName + ext);
+            var tempPath = Path.Combine(dir, $"{Guid.NewGuid()}{ext}");
+
+            using (var stream = System.IO.File.Create(tempPath))
+                await file.CopyToAsync(stream);
+
+            string? courseCodeMismatchWarning = null;
+            var detectedCode = TryDetectCourseCodeFromOutline(tempPath, ext);
+            if (!string.IsNullOrWhiteSpace(detectedCode) &&
+                !detectedCode.Equals(courseCode, StringComparison.OrdinalIgnoreCase))
+            {
+                courseCodeMismatchWarning = $"This file appears to contain {detectedCode} instead of {courseCode}. The outline was uploaded but flagged for moderator review. If this is incorrect, the moderator can deny the submission.";
+            }
 
             // Delete any previous version (different extension) before saving
             foreach (var old in new[] { ".pdf", ".docx" })
@@ -110,48 +213,15 @@ namespace LOARS.Web.Controllers
                     System.IO.File.Delete(oldPath);
             }
 
-            using (var stream = System.IO.File.Create(savedPath))
-                await file.CopyToAsync(stream);
-
-            // Check if the uploaded file's course code matches this course
-            string mismatchWarning = null;
-            try
-            {
-                var fileText = ext == ".docx"
-                    ? DocumentService.ExtractTextFromDocx(savedPath)
-                    : "";
-
-                if (ext == ".pdf")
-                {
-                    // Use reflection-free approach — just read first bit of text
-                    using var pdfReader = new iText.Kernel.Pdf.PdfReader(savedPath);
-                    using var pdfDoc = new iText.Kernel.Pdf.PdfDocument(pdfReader);
-                    if (pdfDoc.GetNumberOfPages() > 0)
-                        fileText = iText.Kernel.Pdf.Canvas.Parser.PdfTextExtractor
-                            .GetTextFromPage(pdfDoc.GetPage(1));
-                }
-
-                if (!string.IsNullOrWhiteSpace(fileText))
-                {
-                    // Look for course codes like COMP720, SOFT708, INFO712 in the first chunk of text
-                    var codeMatch = Regex.Match(fileText.Substring(0, Math.Min(fileText.Length, 2000)),
-                        @"\b([A-Z]{3,4}\d{3})\b");
-
-                    if (codeMatch.Success)
-                    {
-                        var detectedCode = codeMatch.Groups[1].Value;
-                        if (!detectedCode.Equals(courseCode, StringComparison.OrdinalIgnoreCase))
-                        {
-                            mismatchWarning = $"⚠️ Warning: This file appears to be for {detectedCode}, but you uploaded it to {courseCode}. Please check you uploaded the correct file.";
-                        }
-                    }
-                }
-            }
-            catch { }
+            System.IO.File.Move(tempPath, savedPath);
 
             // Extract Learning Outcomes from the uploaded file
             try
             {
+                var existingAssignmentCount = _context.Assignments
+                    .Count(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester);
+                var warnings = new List<string>();
+
                 var extractedLOs = DocumentService.ExtractLearningOutcomes(savedPath);
                 if (extractedLOs.Any())
                 {
@@ -165,6 +235,10 @@ namespace LOARS.Web.Controllers
                 {
                     SyncAssessmentsToDatabase(courseCode, year, trimester, extractedAssessments);
                 }
+                else if (existingAssignmentCount > 0)
+                {
+                    ClearAssignmentsForCourseOffering(courseCode, year, trimester);
+                }
 
                 // Build success message
                 var parts = new List<string> { "Course outline uploaded!" };
@@ -176,9 +250,24 @@ namespace LOARS.Web.Controllers
                     parts.Add("(No Learning Outcomes or Assessments found — add them manually)");
 
                 TempData["Success"] = string.Join(" ", parts);
+                if (!extractedAssessments.Any() && existingAssignmentCount > 0)
+                {
+                    warnings.Add("No assessments were extracted from the uploaded outline. Previous assessment links were removed, so the Assessments section is now blank until valid assessments are extracted.");
+                }
 
-                if (mismatchWarning != null)
-                    TempData["Error"] = mismatchWarning;
+                var currentAssessmentTotal = GetAssessmentTotalMarks(courseCode, year, trimester);
+                var currentAssessmentCount = _context.Assignments
+                    .Count(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester);
+                if (currentAssessmentCount > 0 && currentAssessmentTotal != 100)
+                {
+                    warnings.Add($"Assessment totals currently add up to {currentAssessmentTotal}%, not 100%. Please review the extracted assessments or update them from the Assessments page.");
+                }
+
+                if (courseCodeMismatchWarning != null)
+                    warnings.Add(courseCodeMismatchWarning);
+
+                if (warnings.Any())
+                    TempData["Error"] = string.Join(" ", warnings);
             }
             catch (Exception ex)
             {
@@ -192,10 +281,14 @@ namespace LOARS.Web.Controllers
                 c.Code == courseCode && c.Year == year && c.Trimester == trimester);
             if (course?.ModeratorId != null && userId > 0)
             {
+                var label = courseCodeMismatchWarning != null
+                    ? $"Course Outline — {courseCode} {year} T{trimester} (file may contain {detectedCode})"
+                    : $"Course Outline — {courseCode} {year} T{trimester}";
+
                 await _submissions.SubmitAsync(
                     courseCode, year, trimester,
                     SubmissionItemType.CourseOutline, null,
-                    $"Course Outline — {courseCode} {year} T{trimester}",
+                    label,
                     userId);
                 TempData["Info"] = "📨 Submitted to moderator for approval.";
             }
@@ -232,6 +325,37 @@ namespace LOARS.Web.Controllers
             }
 
             return learningOutcomes;
+        }
+
+        private string? TryDetectCourseCodeFromOutline(string filePath, string ext)
+        {
+            try
+            {
+                var fileText = ext == ".docx"
+                    ? DocumentService.ExtractTextFromDocx(filePath)
+                    : string.Empty;
+
+                if (ext == ".pdf")
+                {
+                    using var pdfReader = new PdfReader(filePath);
+                    using var pdfDoc = new PdfDocument(pdfReader);
+                    if (pdfDoc.GetNumberOfPages() > 0)
+                        fileText = PdfTextExtractor.GetTextFromPage(pdfDoc.GetPage(1));
+                }
+
+                if (string.IsNullOrWhiteSpace(fileText))
+                    return null;
+
+                var codeMatch = Regex.Match(
+                    fileText.Substring(0, Math.Min(fileText.Length, 2000)),
+                    @"\b([A-Z]{3,4}\d{3})\b");
+
+                return codeMatch.Success ? codeMatch.Groups[1].Value : null;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         // ✅ NEW: Parse text to extract numbered Learning Outcomes
@@ -300,32 +424,48 @@ namespace LOARS.Web.Controllers
         // LEARNING OUTCOMES (VIEW)
         // -------------------------
         [HttpGet]
-        public IActionResult LearningOutcomes(string courseCode, int year, int trimester)
+        public async Task<IActionResult> LearningOutcomes(string courseCode, int year, int trimester)
         {
             SetCourseContext(courseCode, year, trimester);
 
             ViewBag.CanEditLO = AllowLOEdit(courseCode, year, trimester);
 
             var los = LoadLos(courseCode, year, trimester);
+            var submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.LearningOutcomes);
 
             ViewBag.LearningOutcomes = los;
             ViewBag.LOs = los;
-
+            ViewBag.Submission = submission;
+            ViewBag.PendingApprovalNote = submission?.Status == SubmissionStatus.Pending
+                ? "Pending learning outcome changes are waiting for moderator approval. The current live learning outcomes stay unchanged until approval."
+                : null;
             ViewBag.EditMode = false;
             return View();
         }
 
         [HttpGet]
-        public IActionResult EditLearningOutcomes(string courseCode, int year, int trimester)
+        public async Task<IActionResult> EditLearningOutcomes(string courseCode, int year, int trimester)
         {
             SetCourseContext(courseCode, year, trimester);
 
             ViewBag.CanEditLO = AllowLOEdit(courseCode, year, trimester);
 
             var los = LoadLos(courseCode, year, trimester);
+            var submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.LearningOutcomes);
+            if (submission != null && submission.Status != SubmissionStatus.Approved)
+            {
+                var draft = await _moderationDrafts.LoadLearningOutcomeDraftAsync(submission.Id);
+                if (draft?.Outcomes?.Any() == true)
+                    los = draft.Outcomes;
+            }
             ViewBag.LearningOutcomes = los;
             ViewBag.LOs = los;
-
+            ViewBag.Submission = submission;
+            ViewBag.PendingApprovalNote = submission?.Status == SubmissionStatus.Pending
+                ? "You are editing a pending learning outcome draft. These changes are not live until the moderator approves them."
+                : null;
             ViewBag.EditMode = true;
             return View("LearningOutcomes");
         }
@@ -335,7 +475,7 @@ namespace LOARS.Web.Controllers
         // -------------------------
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult SaveLearningOutcomes(string courseCode, int year, int trimester, List<string> outcomes)
+        public async Task<IActionResult> SaveLearningOutcomes(string courseCode, int year, int trimester, List<string> outcomes)
         {
             if (!AllowLOEdit(courseCode, year, trimester))
                 return Forbid();
@@ -345,13 +485,30 @@ namespace LOARS.Web.Controllers
                 .Select(x => x.Trim())
                 .ToList();
 
-            // Save to JSON (existing functionality)
-            SaveLos(courseCode, year, trimester, cleaned);
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
 
-            // Sync to database so Epic 8 can use them
-            SyncLosToDatabase(courseCode, cleaned);
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            if (course?.ModeratorId == null || userId <= 0)
+            {
+                TempData["Error"] = "No moderator is assigned to this course yet, so learning outcome changes cannot be submitted for approval.";
+                return RedirectToAction(nameof(EditLearningOutcomes), new { courseCode, year, trimester });
+            }
 
-            TempData["Success"] = "Learning outcomes saved successfully!";
+            var submission = await _submissions.SubmitAsync(
+                courseCode, year, trimester,
+                SubmissionItemType.LearningOutcomes, null,
+                $"Learning Outcomes - {courseCode} {year} T{trimester}",
+                userId);
+
+            await _moderationDrafts.SaveLearningOutcomeDraftAsync(
+                submission.Id,
+                courseCode,
+                year,
+                trimester,
+                cleaned);
+
+            TempData["Success"] = "Learning outcome changes were submitted to the moderator for approval. They are not live yet.";
             return RedirectToAction(nameof(LearningOutcomes), new { courseCode, year, trimester });
         }
 
@@ -376,6 +533,13 @@ namespace LOARS.Web.Controllers
         // Keep for backwards compatibility with any existing .pdf files
         private static string GetOutlineFileName(string courseCode, int year, int trimester)
             => $"{courseCode}-{year}-T{trimester}.pdf";
+
+        private int GetAssessmentTotalMarks(string courseCode, int year, int trimester)
+        {
+            return _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .Sum(a => (int?)a.MarksPercentage) ?? 0;
+        }
 
         private string GetLosPath(string courseCode, int year, int trimester)
         {
@@ -466,43 +630,16 @@ namespace LOARS.Web.Controllers
             var existingAssignments = _context.Assignments
                 .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
                 .ToList();
-
-            RemoveDuplicateAssignments(courseCode, existingAssignments);
-            _context.SaveChanges();
+            var originalAssignmentIds = existingAssignments
+                .Select(a => a.Id)
+                .ToHashSet();
 
             // Get existing LOs to map order numbers to IDs
             var courseLOs = _context.LearningOutcomes
                 .Where(lo => lo.CourseCode == courseCode)
                 .ToList();
 
-            var extractedNames = assessments
-                .Select(a => NormalizeAssessmentTitle(a.Title))
-                .Where(name => !string.IsNullOrWhiteSpace(name))
-                .ToHashSet();
-
-            // Remove old assignments that are NOT in the new outline
-            // BUT only if they have no rubric or marks (safe to delete)
-            foreach (var old in existingAssignments)
-            {
-                var normalizedOldName = NormalizeAssessmentTitle(old.AssessmentName);
-                if (!extractedNames.Contains(normalizedOldName))
-                {
-                    bool hasRubric = _context.Rubrics.Any(r => r.AssignmentId == old.Id);
-                    bool hasMarks = _context.StudentAssessmentMarks
-                        .Any(m => m.CourseCode == courseCode && m.AssessmentName == old.AssessmentName);
-
-                    if (!hasRubric && !hasMarks)
-                    {
-                        _context.Assignments.Remove(old);
-                    }
-                }
-            }
-            _context.SaveChanges();
-
-            // Refresh existing list after cleanup
-            existingAssignments = _context.Assignments
-                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
-                .ToList();
+            var matchedAssignmentIds = new HashSet<int>();
 
             foreach (var assess in assessments)
             {
@@ -521,11 +658,16 @@ namespace LOARS.Web.Controllers
                 var selectedLOIds = loIds.Any() ? string.Join(",", loIds) : null;
 
                 // Check if this assessment already exists
-                var existing = existingAssignments.FirstOrDefault(a =>
-                    NormalizeAssessmentTitle(a.AssessmentName) == normalizedAssessmentTitle);
+                var existing = FindBestExistingAssignmentMatch(
+                    courseCode,
+                    existingAssignments,
+                    matchedAssignmentIds,
+                    normalizedAssessmentTitle,
+                    assess.MarksPercentage);
 
                 if (existing != null)
                 {
+                    matchedAssignmentIds.Add(existing.Id);
                     RenameAssessmentMarksIfNeeded(courseCode, existing.AssessmentName, assess.Title);
 
                     // Update existing — safe, doesn't delete rubric or marks
@@ -537,7 +679,7 @@ namespace LOARS.Web.Controllers
                 else
                 {
                     // Create new
-                    _context.Assignments.Add(new Assignment
+                    var created = new Assignment
                     {
                         AssessmentName = assess.Title,
                         CourseCode = courseCode,
@@ -547,11 +689,27 @@ namespace LOARS.Web.Controllers
                         MarksPercentage = assess.MarksPercentage,
                         SelectedLearningOutcomeIds = selectedLOIds,
                         LOsLockedByOutline = true
-                    });
+                    };
+
+                    _context.Assignments.Add(created);
                 }
             }
 
             _context.SaveChanges();
+
+            if (assessments.Any())
+            {
+                var assignmentsToRemove = existingAssignments
+                    .Where(a => originalAssignmentIds.Contains(a.Id) && !matchedAssignmentIds.Contains(a.Id))
+                    .ToList();
+
+                foreach (var assignment in assignmentsToRemove)
+                {
+                    RemoveAssignmentAndRelatedData(courseCode, year, trimester, assignment);
+                }
+
+                _context.SaveChanges();
+            }
         }
 
         private void RemoveDuplicateAssignments(string courseCode, List<Assignment> assignments)
@@ -564,6 +722,7 @@ namespace LOARS.Web.Controllers
             {
                 var ordered = group
                     .OrderByDescending(AssignmentHasRubric)
+                    .ThenByDescending(AssignmentHasFiles)
                     .ThenByDescending(a => AssignmentHasMarks(courseCode, a.AssessmentName))
                     .ThenBy(a => a.Id)
                     .ToList();
@@ -572,7 +731,9 @@ namespace LOARS.Web.Controllers
 
                 foreach (var duplicate in ordered.Skip(1))
                 {
-                    if (AssignmentHasRubric(duplicate) || AssignmentHasMarks(courseCode, duplicate.AssessmentName))
+                    if (AssignmentHasRubric(duplicate) ||
+                        AssignmentHasFiles(duplicate) ||
+                        AssignmentHasMarks(courseCode, duplicate.AssessmentName))
                         continue;
 
                     _context.Assignments.Remove(duplicate);
@@ -583,9 +744,72 @@ namespace LOARS.Web.Controllers
         private bool AssignmentHasRubric(Assignment assignment)
             => _context.Rubrics.Any(r => r.AssignmentId == assignment.Id);
 
+        private bool AssignmentHasFiles(Assignment assignment)
+            => _context.AssignmentFiles.Any(f => f.AssignmentId == assignment.Id);
+
         private bool AssignmentHasMarks(string courseCode, string assessmentName)
             => _context.StudentAssessmentMarks.Any(m =>
                 m.CourseCode == courseCode && m.AssessmentName == assessmentName);
+
+        private void RemoveAssignmentAndRelatedData(string courseCode, int year, int trimester, Assignment assignment)
+        {
+            var assignmentFiles = _context.AssignmentFiles
+                .Where(f => f.AssignmentId == assignment.Id)
+                .ToList();
+
+            foreach (var file in assignmentFiles)
+            {
+                if (string.IsNullOrWhiteSpace(file.FilePath))
+                    continue;
+
+                var relativePath = file.FilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+                var fullPath = Path.Combine(_env.WebRootPath, relativePath);
+                if (System.IO.File.Exists(fullPath))
+                {
+                    try
+                    {
+                        System.IO.File.Delete(fullPath);
+                    }
+                    catch
+                    {
+                    }
+                }
+            }
+
+            var relatedSubmissions = _context.CourseSubmissions
+                .Where(s =>
+                    s.CourseCode == courseCode &&
+                    s.Year == year &&
+                    s.Trimester == trimester &&
+                    s.ItemRefId == assignment.Id)
+                .ToList();
+
+            if (relatedSubmissions.Any())
+                _context.CourseSubmissions.RemoveRange(relatedSubmissions);
+
+            var relatedAssessmentMarks = _context.StudentAssessmentMarks
+                .Where(m => m.CourseCode == courseCode && m.AssessmentName == assignment.AssessmentName)
+                .ToList();
+
+            if (relatedAssessmentMarks.Any())
+                _context.StudentAssessmentMarks.RemoveRange(relatedAssessmentMarks);
+
+            _context.Assignments.Remove(assignment);
+        }
+
+        private void ClearAssignmentsForCourseOffering(string courseCode, int year, int trimester)
+        {
+            var assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .ToList();
+
+            foreach (var assignment in assignments)
+            {
+                RemoveAssignmentAndRelatedData(courseCode, year, trimester, assignment);
+            }
+
+            _context.SaveChanges();
+        }
 
         private void RenameAssessmentMarksIfNeeded(string courseCode, string? oldName, string? newName)
         {
@@ -612,10 +836,307 @@ namespace LOARS.Web.Controllers
                 return string.Empty;
 
             var normalized = title.ToLowerInvariant();
-            normalized = Regex.Replace(normalized, @"\bassign\b", "assignment");
+            normalized = Regex.Replace(normalized, @"\bassign(?:ment)?\b", "assignment");
+            normalized = Regex.Replace(normalized, @"\bassessment\b", "assignment");
+            normalized = Regex.Replace(normalized, @"\bmid\s+term\b", "midterm");
             normalized = Regex.Replace(normalized, @"[^a-z0-9]+", " ");
             normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
             return normalized;
         }
+
+        private Assignment? FindBestExistingAssignmentMatch(
+            string courseCode,
+            List<Assignment> existingAssignments,
+            HashSet<int> matchedAssignmentIds,
+            string normalizedAssessmentTitle,
+            int marksPercentage)
+        {
+            var unmatchedAssignments = existingAssignments
+                .Where(a => !matchedAssignmentIds.Contains(a.Id))
+                .ToList();
+
+            var exactMatch = unmatchedAssignments.FirstOrDefault(a =>
+                NormalizeAssessmentTitle(a.AssessmentName) == normalizedAssessmentTitle);
+
+            if (exactMatch != null)
+                return exactMatch;
+
+            var bestCandidate = unmatchedAssignments
+                .Select(a => new
+                {
+                    Assignment = a,
+                    Similarity = GetAssessmentTitleSimilarity(
+                        normalizedAssessmentTitle,
+                        NormalizeAssessmentTitle(a.AssessmentName)),
+                    SameMarks = a.MarksPercentage == marksPercentage,
+                    HasRubric = AssignmentHasRubric(a),
+                    HasFiles = AssignmentHasFiles(a),
+                    HasMarks = AssignmentHasMarks(courseCode, a.AssessmentName)
+                })
+                .Where(x => x.Similarity >= 0.55m || (x.SameMarks && x.Similarity >= 0.40m))
+                .OrderByDescending(x => x.Similarity)
+                .ThenByDescending(x => x.SameMarks)
+                .ThenByDescending(x => x.HasRubric)
+                .ThenByDescending(x => x.HasFiles)
+                .ThenByDescending(x => x.HasMarks)
+                .ThenBy(x => x.Assignment.Id)
+                .FirstOrDefault();
+
+            return bestCandidate?.Assignment;
+        }
+
+        private static decimal GetAssessmentTitleSimilarity(string left, string right)
+        {
+            if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+                return 0m;
+
+            if (left == right)
+                return 1m;
+
+            if (left.Contains(right, StringComparison.Ordinal) || right.Contains(left, StringComparison.Ordinal))
+                return 0.9m;
+
+            var leftTokens = left.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+            var rightTokens = right.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+
+            if (!leftTokens.Any() || !rightTokens.Any())
+                return 0m;
+
+            var overlap = leftTokens.Intersect(rightTokens).Count();
+            var union = leftTokens.Union(rightTokens).Count();
+
+            return union == 0 ? 0m : (decimal)overlap / union;
+        }
+
+        // -------------------------
+        // ASSESSMENTS (VIEW)
+        // -------------------------
+        [HttpGet]
+        public async Task<IActionResult> Assessments(string courseCode, int year, int trimester)
+        {
+            SetCourseContext(courseCode, year, trimester);
+            var canEditAssignment = AllowAssignmentEdit(courseCode, year, trimester);
+            ViewBag.CanEditAssignment = canEditAssignment;
+            if (canEditAssignment && HasAssessmentFallbackIssue(courseCode, year, trimester))
+                ViewBag.AssessmentEditMessage = "Manual assessment editing is enabled because the current course outline assessment data needs review. Changes require moderator approval.";
+            else if (canEditAssignment)
+                ViewBag.AssessmentEditMessage = "Manual assessment editing is enabled by admin. Changes require moderator approval before going live.";
+            else
+                ViewBag.AssessmentEditMessage = null;
+
+            var assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .OrderBy(a => a.Id)
+                .ToList();
+            var submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.Assessments);
+            ViewBag.Assignments = assignments;
+
+            ViewBag.LearningOutcomes = _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode)
+                .OrderBy(lo => lo.OrderNumber)
+                .ToList();
+            var assessmentTotal = assignments.Sum(a => a.MarksPercentage);
+            ViewBag.AssessmentTotalWarning = assignments.Any() && assessmentTotal != 100
+                ? $"Assessment totals currently add up to {assessmentTotal}%, not 100%. Please review the assessments."
+                : null;
+            ViewBag.Submission = submission;
+            ViewBag.PendingApprovalNote = submission?.Status == SubmissionStatus.Pending
+                ? "Pending assessment changes are waiting for moderator approval. The current live assessments stay unchanged until approval."
+                : null;
+            ViewBag.EditMode = false;
+            return View();
+        }
+
+        // -------------------------
+        // ASSESSMENTS (EDIT)
+        // -------------------------
+        [HttpGet]
+        public async Task<IActionResult> EditAssessments(string courseCode, int year, int trimester)
+        {
+            if (!AllowAssignmentEdit(courseCode, year, trimester))
+            {
+                TempData["Error"] = GetAssessmentFallbackMessage(courseCode, year, trimester);
+                return RedirectToAction(nameof(Assessments), new { courseCode, year, trimester });
+            }
+
+            SetCourseContext(courseCode, year, trimester);
+            ViewBag.CanEditAssignment = true;
+            ViewBag.AssessmentEditMessage = "Manual assessment editing is enabled as a fallback because the current course outline assessment data needs review.";
+
+            var submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.Assessments);
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+            var assignments = _context.Assignments
+                .Where(a => a.CourseCode == courseCode && a.Year == year && a.Trimester == trimester)
+                .OrderBy(a => a.Id)
+                .ToList();
+
+            if (submission != null && submission.Status != SubmissionStatus.Approved)
+            {
+                var draft = await _moderationDrafts.LoadAssessmentDraftAsync(submission.Id);
+                if (draft != null)
+                    assignments = BuildAssignmentsFromDraft(draft, course?.Title ?? string.Empty);
+            }
+            ViewBag.Assignments = assignments;
+
+            ViewBag.LearningOutcomes = _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode)
+                .OrderBy(lo => lo.OrderNumber)
+                .ToList();
+            var assessmentTotal = assignments.Sum(a => a.MarksPercentage);
+            ViewBag.AssessmentTotalWarning = assignments.Any() && assessmentTotal != 100
+                ? $"Assessment totals currently add up to {assessmentTotal}%, not 100%. Please review the assessments."
+                : null;
+            ViewBag.Submission = submission;
+            ViewBag.PendingApprovalNote = submission?.Status == SubmissionStatus.Pending
+                ? "You are editing a pending assessment draft. These changes are not live until the moderator approves them."
+                : null;
+            ViewBag.EditMode = true;
+            return View("Assessments");
+        }
+
+        // -------------------------
+        // ASSESSMENTS (SAVE)
+        // -------------------------
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SaveAssessments(string courseCode, int year, int trimester, List<AssignmentEditInput> assignments)
+        {
+            if (!AllowAssignmentEdit(courseCode, year, trimester))
+            {
+                TempData["Error"] = GetAssessmentFallbackMessage(courseCode, year, trimester);
+                return RedirectToAction(nameof(Assessments), new { courseCode, year, trimester });
+            }
+
+            var course = _context.Courses
+                .FirstOrDefault(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+
+            var validLearningOutcomeIds = _context.LearningOutcomes
+                .Where(lo => lo.CourseCode == courseCode)
+                .Select(lo => lo.Id)
+                .ToHashSet();
+
+            var errors = new List<string>();
+            var seenNames = new HashSet<string>();
+            var draftItems = new List<AssessmentDraftItem>();
+
+            foreach (var input in assignments ?? new List<AssignmentEditInput>())
+            {
+                if (string.IsNullOrWhiteSpace(input.AssessmentName)) continue;
+
+                var normalizedName = input.AssessmentName.Trim();
+                var normalizedKey = NormalizeAssessmentTitle(normalizedName);
+                if (!seenNames.Add(normalizedKey))
+                {
+                    errors.Add($"\"{normalizedName}\" duplicates another assessment name in this draft.");
+                    continue;
+                }
+
+                if (input.MarksPercentage < 0 || input.MarksPercentage > 100)
+                {
+                    errors.Add($"\"{normalizedName}\" has an invalid marks percentage.");
+                    continue;
+                }
+
+                var selectedLOIds = ParseAssignmentLearningOutcomeIds(input.SelectedLOIdsStr);
+                var invalidLOIds = selectedLOIds
+                    .Where(id => !validLearningOutcomeIds.Contains(id))
+                    .Distinct()
+                    .ToList();
+
+                if (invalidLOIds.Any())
+                {
+                    errors.Add($"\"{normalizedName}\" contains invalid Learning Outcome selections.");
+                    continue;
+                }
+
+                draftItems.Add(new AssessmentDraftItem
+                {
+                    Id = input.Id,
+                    AssessmentName = normalizedName,
+                    MarksPercentage = input.MarksPercentage,
+                    SelectedLOIds = selectedLOIds
+                });
+            }
+
+            var total = draftItems.Sum(d => d.MarksPercentage);
+            if (total != 100)
+            {
+                errors.Add($"Assessment totals add up to {total}%, not 100%. Please adjust the marks so they total exactly 100%.");
+            }
+
+            if (errors.Any())
+            {
+                TempData["Error"] = string.Join(" ", errors);
+                return RedirectToAction(nameof(EditAssessments), new { courseCode, year, trimester });
+            }
+
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            if (course?.ModeratorId == null || userId <= 0)
+            {
+                TempData["Error"] = "No moderator is assigned to this course yet, so assessment changes cannot be submitted for approval.";
+                return RedirectToAction(nameof(EditAssessments), new { courseCode, year, trimester });
+            }
+
+            var submission = await _submissions.SubmitAsync(
+                courseCode, year, trimester,
+                SubmissionItemType.Assessments, null,
+                $"Assessments - {courseCode} {year} T{trimester}",
+                userId);
+
+            await _moderationDrafts.SaveAssessmentDraftAsync(
+                submission.Id,
+                courseCode,
+                year,
+                trimester,
+                draftItems);
+
+            TempData["Success"] = "Assessment changes were submitted to the moderator for approval. They are not live yet.";
+            return RedirectToAction(nameof(Assessments), new { courseCode, year, trimester });
+        }
+
+        private static List<int> ParseAssignmentLearningOutcomeIds(string? ids)
+        {
+            if (string.IsNullOrWhiteSpace(ids))
+                return new List<int>();
+
+            return ids.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(value => value.Trim())
+                .Where(value => int.TryParse(value, out _))
+                .Select(int.Parse)
+                .Distinct()
+                .ToList();
+        }
+
+        private static List<Assignment> BuildAssignmentsFromDraft(AssessmentDraft draft, string courseTitle)
+        {
+            return (draft.Assessments ?? new List<AssessmentDraftItem>())
+                .Select(item => new Assignment
+                {
+                    Id = item.Id,
+                    AssessmentName = item.AssessmentName,
+                    CourseCode = draft.CourseCode,
+                    CourseTitle = courseTitle,
+                    Year = draft.Year,
+                    Trimester = draft.Trimester,
+                    MarksPercentage = item.MarksPercentage,
+                    SelectedLearningOutcomeIds = item.SelectedLOIds.Any()
+                        ? string.Join(",", item.SelectedLOIds.Distinct())
+                        : null,
+                    LOsLockedByOutline = false
+                })
+                .ToList();
+        }
+    }
+
+    public class AssignmentEditInput
+    {
+        public int Id { get; set; }
+        public string AssessmentName { get; set; } = string.Empty;
+        public int MarksPercentage { get; set; }
+        public string SelectedLOIdsStr { get; set; } = string.Empty;
     }
 }

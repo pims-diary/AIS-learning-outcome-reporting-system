@@ -33,6 +33,7 @@ namespace AIS_LO_System.Models
         // Permissions
         public bool CanEditLO { get; set; } = true;
         public bool CanReuploadOutline { get; set; } = true;
+        public bool CanEditAssignment { get; set; } = true;
 
         public ICollection<StudentCourseEnrolment> StudentEnrolments { get; set; } = new List<StudentCourseEnrolment>();
         public ICollection<LecturerCourseEnrolment> LecturerEnrolments { get; set; } = new List<LecturerCourseEnrolment>();

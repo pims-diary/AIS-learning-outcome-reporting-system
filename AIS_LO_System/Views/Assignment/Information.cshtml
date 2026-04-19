@@ -129,10 +129,44 @@
             }
         </div>
 
+        <!-- Format Guide -->
+        <details style="margin-top:20px; background:#f0f4ff; border:1px solid #b6d4fe; border-radius:8px; padding:4px 16px;">
+            <summary style="cursor:pointer; font-weight:600; color:#084298; padding:10px 0; font-size:14px;">
+                Format Guide: How the system cross-checks your assignment
+            </summary>
+            <div style="font-size:13px; color:#333; line-height:1.7; padding-bottom:12px;">
+                <p style="margin:8px 0;">The system automatically extracts Learning Outcomes from your assignment document and cross-checks them against the course outline.</p>
+
+                <p style="margin:12px 0 4px; font-weight:600;">Required: Standard introduction line</p>
+                <p style="margin:4px 0 8px; padding-left:12px; border-left:3px solid #b6d4fe;">
+                    Your document must include the standard AIS line:<br />
+                    <em>"This [assignment/test/assessment] is worth <strong>X%</strong> of the total marks in the course and will cover the following learning outcomes as listed in the Course Outline:"</em>
+                </p>
+
+                <p style="margin:12px 0 4px; font-weight:600;">After that line, list the LOs in any of these formats:</p>
+                <ul style="margin:4px 0 8px 20px; padding:0;">
+                    <li><code>Learning Outcome 1: Demonstrate an in-depth knowledge...</code></li>
+                    <li><code>Learning Outcome [2]: Design and develop the presentation layer...</code></li>
+                    <li><code>LO 3: Deploy and test operating systems concepts...</code></li>
+                    <li>Or plain text (no number): <code>Implement the industrial IT project...</code></li>
+                </ul>
+
+                <p style="margin:12px 0 4px; font-weight:600;">How matching works:</p>
+                <ul style="margin:4px 0 8px 20px; padding:0;">
+                    <li><strong>The wording must closely match</strong> the course outline LO text</li>
+                    <li><span style="color:#155724;">&#10003; Aligned</span> = more than 70% word overlap with the course outline</li>
+                    <li><span style="color:#856404;">&#9888; Wording Differs</span> = matched but wording overlap is below 70%</li>
+                    <li><span style="color:#721c24;">&#10007; Missing</span> = an LO that should be in the assignment but was not found</li>
+                </ul>
+
+                <p style="margin:8px 0; color:#555;"><em>Tip: Copy the exact LO wording from the course outline into your assignment document for the best cross-check results.</em></p>
+            </div>
+        </details>
+
         <!-- Re-upload Section -->
         @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
         {
-            <div class="reupload-section">
+            <div class="reupload-section" style="margin-top:16px;">
                 <form asp-action="UploadAssignment"
                       method="post"
                       enctype="multipart/form-data"
@@ -196,12 +230,15 @@
                         var color = item.Status == "Aligned" ? "#155724" : "#856404";
                         var bg = item.Status == "Aligned" ? "#d4edda" : "#fff3cd";
                         var icon = item.Status == "Aligned" ? "✅" : "⚠️";
+                        var similarityLabel = item.Status == "Aligned"
+                            ? $"{(int)(item.Similarity * 100)}% wording match"
+                            : $"{(int)(item.Similarity * 100)}% wording overlap";
 
                         <div style="background:@bg; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid rgba(0,0,0,0.08);">
                             <div style="font-weight:600; color:@color; margin-bottom:4px;">
                                 @icon LO @item.LONumber — @item.Status
                                 <span style="font-weight:400; font-size:13px; color:#888;">
-                                    (@((int)(item.Similarity * 100))% match)
+                                    (@similarityLabel)
                                 </span>
                             </div>
                             <div style="font-size:13px; color:#333; margin-bottom:4px;">
@@ -216,15 +253,18 @@
 
                 @if (crossCheck.Missing.Any())
                 {
-                    <h3 style="font-size:16px; margin:16px 0 8px;">Missing from Assignment</h3>
+                    <h3 style="font-size:16px; margin:16px 0 8px;">Needs Review</h3>
                     @foreach (var item in crossCheck.Missing)
                     {
-                        <div style="background:#f8d7da; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid #f5c6cb;">
-                            <div style="font-weight:600; color:#721c24; margin-bottom:4px;">
-                                ❌ LO @item.LONumber — Expected but not found in assignment document
+                        <div style="background:#fff3cd; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid #ffc107;">
+                            <div style="font-weight:600; color:#856404; margin-bottom:4px;">
+                                ⚠️ LO @item.LONumber — No clear wording match found in the assignment document
                             </div>
-                            <div style="font-size:13px; color:#333;">
+                            <div style="font-size:13px; color:#333; margin-bottom:4px;">
                                 <strong>Course Outline:</strong> @item.OutlineText
+                            </div>
+                            <div style="font-size:13px; color:#666;">
+                                This may mean the LO is missing, phrased very differently, or not detected clearly by the parser.
                             </div>
                         </div>
                     }

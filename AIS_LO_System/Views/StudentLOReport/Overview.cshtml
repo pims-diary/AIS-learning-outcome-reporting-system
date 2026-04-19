@@ -57,8 +57,6 @@
            asp-route-trimester="@Model.Trimester"
            class="btn btn-outline-secondary">
             ← Go Back
-
-            
         </a>
     </div>
 
@@ -170,9 +168,14 @@
                         <thead>
                             <tr>
                                 <th>Assessment</th>
+                                <th>Weight</th>
                                 <th>Status</th>
-                                <th>Total Contribution to LO(s)</th>
-                                <th>Student Achievement</th>
+                                <th title="Shows how much this assignment contributes to each learning outcome across the whole course.">
+                                    Contribution to Course LO(s)
+                                </th>
+                                <th title="Shows how well the student performed for that learning outcome within this assignment only.">
+                                    Student Performance in Assessment
+                                </th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -181,6 +184,10 @@
                             {
                                 <tr>
                                     <td>@item.AssessmentName</td>
+
+                                    <td>
+                                        @(item.AssignmentWeight > 0 ? item.AssignmentWeight + "%" : "Not Set")
+                                    </td>
 
                                     <td>
                                         @if (item.IsGraded)
@@ -193,14 +200,14 @@
                                         }
                                     </td>
 
-                                    <td>
+                                    <td title="@item.ContributionTooltip">
                                         @foreach (var contribution in item.Contributions)
                                         {
                                             <div>@contribution</div>
                                         }
                                     </td>
 
-                                    <td>
+                                    <td title="@item.AchievementTooltip">
                                         @foreach (var achievement in item.Achievements)
                                         {
                                             <div>@achievement</div>
@@ -252,7 +259,7 @@
                                 <th>Learning Outcome</th>
                                 <th>Student Score</th>
                                 <th>Maximum Possible Score</th>
-                                <th>Achievement (%)</th>
+                                <th>Student Achievement (%)</th>
                                 <th>LO Result</th>
                             </tr>
                         </thead>
@@ -288,7 +295,6 @@
                 </p>
             }
         </div>
-        
     </div>
 
     <div class="d-flex justify-content-center mb-4">
@@ -305,8 +311,6 @@
     </div>
 
 </div>
-
-
 
 <style>
     .chart-box {

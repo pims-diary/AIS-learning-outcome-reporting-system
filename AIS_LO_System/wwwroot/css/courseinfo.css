@@ -90,8 +90,25 @@
 .btn-primary {
     padding: 10px 18px;
     border-radius: 20px;
-    border: none;
+    border: 1px solid #b71c1c;
+    background: #c62828;
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
     cursor: pointer;
+}
+
+.btn-primary:hover {
+    background: #b71c1c;
+    color: #fff;
+}
+
+.btn-primary:disabled {
+    background: #f3d6d6;
+    border-color: #e8bcbc;
+    color: #9e6b6b;
+    cursor: not-allowed;
 }
 
 .btn-secondary {

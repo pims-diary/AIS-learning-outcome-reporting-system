@@ -62,6 +62,12 @@
                 @TempData["Error"]
             </div>
         }
+        @if (ViewBag.AssessmentTotalWarning != null)
+        {
+            <div class="outline-warning">
+                @ViewBag.AssessmentTotalWarning
+            </div>
+        }
 
         @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
 
@@ -126,9 +132,44 @@
             <div class="empty">No course outline uploaded yet.</div>
         }
 
-        <div class="actions-center" style="margin-top:24px;">
+        <!-- Format Guide -->
+        <details style="margin-top:24px; background:#f0f4ff; border:1px solid #b6d4fe; border-radius:8px; padding:4px 16px;">
+            <summary style="cursor:pointer; font-weight:600; color:#084298; padding:10px 0; font-size:14px;">
+                Format Guide: How the system reads your course outline
+            </summary>
+            <div style="font-size:13px; color:#333; line-height:1.7; padding-bottom:12px;">
+                <p style="margin:8px 0;"><strong>Supported formats:</strong> PDF or DOCX</p>
+
+                <p style="margin:12px 0 4px; font-weight:600;">Learning Outcomes extraction:</p>
+                <ul style="margin:4px 0 8px 20px; padding:0;">
+                    <li>For DOCX: the system looks for a <strong>Heading 2</strong> section containing "Learning Outcomes"</li>
+                    <li>All content under that heading (until the next Heading 2) is parsed as LOs</li>
+                    <li>Supports numbered format (<code>1. text</code>) or plain paragraphs</li>
+                    <li>For PDF: text-based parsing searches for "LEARNING OUTCOMES" header</li>
+                </ul>
+
+                <p style="margin:12px 0 4px; font-weight:600;">Assessment table extraction:</p>
+                <ul style="margin:4px 0 8px 20px; padding:0;">
+                    <li>For DOCX: the system looks for a <strong>Heading 2</strong> section containing "Assessment"</li>
+                    <li>The first <strong>table</strong> after that heading is parsed as the assessment table</li>
+                    <li>The table header row must contain columns with <strong>"Title"</strong> and <strong>"Marks"</strong> (or "Marks %")</li>
+                    <li>Optionally include a <strong>"Learning Outcomes"</strong> column for LO mapping (e.g., "1, 2, 3")</li>
+                </ul>
+
+                <p style="margin:8px 0; color:#555;"><em>Tip: Use the standard AIS course outline template with Heading 2 styles for section headers. This ensures reliable extraction even if the template layout changes.</em></p>
+            </div>
+        </details>
+
+        <div class="actions-center" style="margin-top:16px;">
             @if (canReupload)
             {
+                @if (hasFile)
+                {
+                    <div class="outline-warning">
+                        Re-uploading will replace the current course outline file for this course offering and refresh the extracted assessment data from the new outline. Check the updated assessments after upload before continuing.
+                    </div>
+                }
+
                 <form asp-controller="CourseInformation"
                       asp-action="UploadOutline"
                       method="post"
@@ -150,8 +191,8 @@
                     <script>
                         document.getElementById('outlineUploadForm').addEventListener('submit', function(e) {
                         var confirmed = confirm(
-                        "⚠️ Re-uploading the course outline will reset all assessments, rubrics, LO mappings, and weights for this course.\n\n" +
-                        "Any marking progress may also be affected.\n\n" +
+                        "Re-uploading will replace the current course outline file for this course offering.\n\n" +
+                        "The extracted assessments will be refreshed from the new outline. Please review the updated assessments after upload.\n\n" +
                         "Are you sure you want to continue?"
                         );
                         if (!confirmed) {
@@ -163,7 +204,6 @@
             }
             else if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
             {
-                @* Admin locked re-upload — show disabled state but only when not impersonating *@
                 <button class="btn-primary" type="button" disabled>Re-upload Course Outline</button>
                 <div class="denied">Action Denied (permission required).</div>
             }
@@ -180,6 +220,17 @@
     padding: 12px 16px;
     border-radius: 6px;
     margin-bottom: 16px;
+    }
+
+    .outline-warning {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    max-width: 760px;
+    text-align: left;
     }
 
     .crumb a {

@@ -35,6 +35,10 @@ namespace AIS_LO_System.Controllers
             int trimester,
             string? searchTerm)
         {
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>
                     c.Code == courseCode &&
@@ -130,12 +134,12 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
             {
                 TempData["Error"] = "No rubric found for this assignment.";
-                return RedirectToAction("Index", new
+                return RedirectToAction("Index", "Rubric", new
                 {
                     assignmentId,
+                    assessmentName,
                     courseCode,
                     courseTitle,
-                    assessmentName,
                     year,
                     trimester
                 });
@@ -251,13 +255,13 @@ namespace AIS_LO_System.Controllers
 
         [HttpGet]
         public async Task<IActionResult> DownloadLOAchievementReportPdf(
-            int studentId,
-            int assignmentId,
-            string courseCode,
-            string courseTitle,
-            string assessmentName,
-            int year,
-            int trimester)
+    int studentId,
+    int assignmentId,
+    string courseCode,
+    string courseTitle,
+    string assessmentName,
+    int year,
+    int trimester)
         {
             var vm = await BuildLOAchievementReportViewModel(
                 studentId,
@@ -295,6 +299,8 @@ namespace AIS_LO_System.Controllers
                 }
             }
 
+            var downloadedAt = DateTime.Now;
+
             var pdfBytes = Document.Create(container =>
             {
                 container.Page(page =>
@@ -303,14 +309,20 @@ namespace AIS_LO_System.Controllers
                     page.Margin(30);
                     page.DefaultTextStyle(x => x.FontSize(10));
 
+                    // ✅ HEADER (UPDATED)
                     page.Header().Column(column =>
                     {
                         column.Item().Text($"LO Achievement Report - {vm.StudentName}")
                             .FontSize(18).Bold();
+
                         column.Item().Text($"{vm.CourseCode} {vm.CourseTitle}");
                         column.Item().Text($"Assessment: {vm.AssessmentName}");
                         column.Item().Text($"Student ID: {vm.StudentId}");
-                        column.Item().Text($"Semester: {vm.Year} - Trimester {vm.Trimester}");
+
+                        column.Item().Text($"Semester: Trimester {vm.Trimester}, {vm.Year}");
+
+                        // ✅ NEW LINE
+                        column.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
                     });
 
                     page.Content().Column(column =>
@@ -391,7 +403,9 @@ namespace AIS_LO_System.Controllers
             var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "lo-achievement");
             Directory.CreateDirectory(directory);
 
-            var filename = $"{vm.StudentId}_{vm.AssessmentName.Replace(" ", "_")}_LOAchievementReport.pdf";
+            var safeAssessmentName = vm.AssessmentName.Replace(" ", "_");
+            var filename =
+                $"{vm.StudentId}_{vm.CourseCode}_{safeAssessmentName}_Trimester_{vm.Trimester}_{vm.Year}.pdf";
             var fullPath = Path.Combine(directory, filename);
             await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
 
@@ -566,6 +580,10 @@ namespace AIS_LO_System.Controllers
             string? comment,
             string selectedLevelsJson)
         {
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
             if (student == null)
                 return NotFound();
@@ -577,12 +595,12 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
             {
                 TempData["Error"] = "Rubric not found.";
-                return RedirectToAction("Index", new
+                return RedirectToAction("Index", "Rubric", new
                 {
                     assignmentId,
+                    assessmentName,
                     courseCode,
                     courseTitle,
-                    assessmentName,
                     year,
                     trimester
                 });
@@ -702,6 +720,10 @@ namespace AIS_LO_System.Controllers
             int year,
             int trimester)
         {
+            var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
+            if (draftLock != null)
+                return draftLock;
+
             var existingMarks = await _context.StudentCriterionMarks
                 .Where(x => x.AssignmentId == assignmentId && x.StudentRefId == studentId)
                 .ToListAsync();
@@ -736,6 +758,17 @@ namespace AIS_LO_System.Controllers
                 trimester
             });
         }
+
+        private async Task<IActionResult?> BlockIfAssessmentDraftPendingAsync(string courseCode, int year, int trimester)
+        {
+            var sub = await _submissions.GetLatestAsync(courseCode, year, trimester, SubmissionItemType.Assessments);
+            if (sub?.Status != SubmissionStatus.Pending)
+                return null;
+
+            TempData["Error"] = "Assessment changes are waiting for moderator approval. Marking is temporarily locked until the approved assessment setup goes live.";
+            return RedirectToAction("Assessments", "CourseInformation", new { courseCode, year, trimester });
+        }
+
     }
 
     public class CriterionSelectionInput

@@ -4,6 +4,7 @@ using AIS_LO_System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AIS_LO_System.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260414213050_AddCanEditAssignment")]
+    partial class AddCanEditAssignment
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -325,8 +328,8 @@ namespace AIS_LO_System.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("ModeratorComment")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<DateTime?>("ReviewedAt")
                         .HasColumnType("datetime2");
@@ -340,7 +343,7 @@ namespace AIS_LO_System.Migrations
                     b.Property<DateTime>("SubmittedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("SubmittedByUserId")
+                    b.Property<int>("SubmittedByUserId")
                         .HasColumnType("int");
 
                     b.Property<int>("Trimester")
@@ -725,7 +728,8 @@ namespace AIS_LO_System.Migrations
                     b.HasOne("AIS_LO_System.Models.AppUser", "SubmittedBy")
                         .WithMany()
                         .HasForeignKey("SubmittedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
 
                     b.Navigation("ReviewedBy");
 

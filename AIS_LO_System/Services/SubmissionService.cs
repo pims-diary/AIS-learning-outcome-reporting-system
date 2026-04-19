@@ -59,7 +59,13 @@ namespace AIS_LO_System.Services
             }
 
             if (existing != null && existing.Status == SubmissionStatus.Pending)
-                return existing; // already awaiting review
+            {
+                existing.ItemLabel = itemLabel;
+                existing.SubmittedAt = DateTime.Now;
+                existing.SubmittedByUserId = submittedByUserId;
+                await _context.SaveChangesAsync();
+                return existing; // still awaiting review, but draft content was refreshed
+            }
 
             // Denied or no record → create fresh submission
             var submission = new CourseSubmission
