@@ -39,6 +39,11 @@ namespace AIS_LO_System.Controllers
             if (draftLock != null)
                 return draftLock;
 
+            var mappingGate = await BlockIfMappingIncompleteAsync(
+                assignmentId, assessmentName, courseCode, courseTitle, year, trimester);
+            if (mappingGate != null)
+                return mappingGate;
+
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>
                     c.Code == courseCode &&
@@ -117,6 +122,11 @@ namespace AIS_LO_System.Controllers
             int year,
             int trimester)
         {
+            var mappingGate = await BlockIfMappingIncompleteAsync(
+                assignmentId, assessmentName, courseCode, courseTitle, year, trimester);
+            if (mappingGate != null)
+                return mappingGate;
+
             var student = await _context.Students
                 .FirstOrDefaultAsync(s => s.Id == studentId);
 
@@ -584,6 +594,11 @@ namespace AIS_LO_System.Controllers
             if (draftLock != null)
                 return draftLock;
 
+            var mappingGate = await BlockIfMappingIncompleteAsync(
+                assignmentId, assessmentName, courseCode, courseTitle, year, trimester);
+            if (mappingGate != null)
+                return mappingGate;
+
             var student = await _context.Students.FirstOrDefaultAsync(s => s.Id == studentId);
             if (student == null)
                 return NotFound();
@@ -767,6 +782,100 @@ namespace AIS_LO_System.Controllers
 
             TempData["Error"] = "Assessment changes are waiting for moderator approval. Marking is temporarily locked until the approved assessment setup goes live.";
             return RedirectToAction("Assessments", "CourseInformation", new { courseCode, year, trimester });
+        }
+
+        // Safety gate: even if the moderator has approved the rubric, we still refuse to let
+        // the lecturer mark students until the LO mapping is actually complete — every criterion
+        // mapped to at least one LO, every weight > 0, and total weight == 100%. Without this,
+        // a lecturer marking against an incomplete rubric would silently produce zeroed weights.
+        private async Task<IActionResult?> BlockIfMappingIncompleteAsync(
+            int assignmentId,
+            string assessmentName,
+            string courseCode,
+            string courseTitle,
+            int year,
+            int trimester)
+        {
+            var rubric = await _context.Rubrics
+                .Include(r => r.Criteria)
+                    .ThenInclude(c => c.LOMappings)
+                .FirstOrDefaultAsync(r => r.AssignmentId == assignmentId);
+
+            if (rubric == null)
+            {
+                TempData["Error"] = "⚠️ You cannot mark students yet. No rubric has been created for this assessment. Please create the rubric first.";
+                return RedirectToAction("Index", "Rubric", new
+                {
+                    assignmentId,
+                    assessmentName,
+                    courseCode,
+                    courseTitle,
+                    year,
+                    trimester
+                });
+            }
+
+            if (rubric.Criteria == null || !rubric.Criteria.Any())
+            {
+                TempData["Error"] = "⚠️ You cannot mark students yet. The rubric has no criteria defined. Please complete the rubric first.";
+                return RedirectToAction("Index", "Rubric", new
+                {
+                    assignmentId,
+                    assessmentName,
+                    courseCode,
+                    courseTitle,
+                    year,
+                    trimester
+                });
+            }
+
+            string? reason = null;
+
+            var unmappedCriteria = rubric.Criteria
+                .Where(c => c.LOMappings == null || !c.LOMappings.Any())
+                .Select(c => c.CriterionName)
+                .ToList();
+
+            if (unmappedCriteria.Any())
+            {
+                reason = unmappedCriteria.Count == rubric.Criteria.Count
+                    ? "No LO mappings have been saved for this rubric."
+                    : $"The following criteria are not mapped to any Learning Outcome: {string.Join(", ", unmappedCriteria)}.";
+            }
+            else
+            {
+                var allMappings = rubric.Criteria.SelectMany(c => c.LOMappings).ToList();
+
+                if (allMappings.Any(m => m.Weight <= 0))
+                {
+                    reason = "One or more criteria have no weight assigned.";
+                }
+                else
+                {
+                    // Each criterion's weight is repeated across its LO mapping rows.
+                    // Sum one weight per criterion to get the real total.
+                    var totalWeight = rubric.Criteria
+                        .Select(c => c.LOMappings.First().Weight)
+                        .Sum();
+
+                    if (Math.Abs(totalWeight - 100m) > 0.01m)
+                        reason = $"The total criterion weight is {totalWeight:F0}% — it must equal 100%.";
+                }
+            }
+
+            if (reason == null)
+                return null;
+
+            TempData["Error"] = $"⚠️ You cannot mark students yet. {reason} Please complete the LO mapping before marking.";
+            return RedirectToAction("Index", "LOMapping", new
+            {
+                assignmentId,
+                assessmentName,
+                courseCode,
+                courseTitle,
+                year,
+                trimester
+            });
         }
 
     }
