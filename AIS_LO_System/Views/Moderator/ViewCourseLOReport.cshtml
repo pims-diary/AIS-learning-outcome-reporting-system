@@ -3,6 +3,7 @@
     ViewData["Title"] = "Review: Course LO Report";
     Layout = "_DashboardLayout";
     var submission = ViewBag.Submission as CourseSubmission;
+    var assignments = ViewBag.Assignments as List<Assignment> ?? new List<Assignment>();
 }
 
 <link rel="stylesheet" href="~/css/moderator.css" />
@@ -29,5 +30,47 @@
     else
     {
         <div class="mod-empty">Course LO Report PDF not found.</div>
+    }
+
+    @if (assignments.Any())
+    {
+        <div class="card shadow-sm mt-4">
+            <div class="card-body">
+                <h4 class="fw-bold mb-3">Assessment Reports</h4>
+                <p class="text-muted mb-3">View detailed LO reports for individual assessments:</p>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead>
+                            <tr>
+                                <th>Assessment Name</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var assignment in assignments)
+                            {
+                                <tr>
+                                    <td>@assignment.AssessmentName</td>
+                                    <td>
+                                        <a asp-controller="Moderator"
+                                               asp-action="ViewAssignmentReport"
+                                               asp-route-assignmentId="@assignment.Id"
+                                               asp-route-courseCode="@ViewBag.CourseCode"
+                                               asp-route-courseTitle="@ViewBag.CourseTitle"
+                                               asp-route-assessmentName="@assignment.AssessmentName"
+                                               asp-route-year="@ViewBag.Year"
+                                               asp-route-trimester="@ViewBag.Trimester"
+                                               asp-route-submissionId="@submission.Id"
+                                               class="btn btn-sm btn-danger">
+                                            View Report
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     }
 </div>

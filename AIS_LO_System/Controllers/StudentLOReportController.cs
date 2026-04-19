@@ -14,6 +14,8 @@ namespace AIS_LO_System.Controllers
     [Authorize(Roles = "Lecturer")]
     public class StudentLOReportController : Controller
     {
+        private readonly ApplicationDbContext _context;
+        private readonly SubmissionService _submissions;
         private readonly IWebHostEnvironment _env;
 
         public StudentLOReportController(
@@ -24,15 +26,6 @@ namespace AIS_LO_System.Controllers
             _context = context;
             _submissions = submissions;
             _env = env;
-        }
-
-        private readonly ApplicationDbContext _context;
-        private readonly SubmissionService _submissions;
-
-        public StudentLOReportController(ApplicationDbContext context, SubmissionService submissions)
-        {
-            _context = context;
-            _submissions = submissions;
         }
 
         [HttpGet]
@@ -94,30 +87,52 @@ namespace AIS_LO_System.Controllers
                 Students = students
             };
 
-            // FIX #3: Only auto-submit if there's no existing Pending or Approved submission
+            // Get latest submission for display (no auto-submit on page view)
             var existingSubmission = await _submissions.GetLatestAsync(
                 courseCode, year, trimester, SubmissionItemType.StudentLOReport);
-
-            int.TryParse(User.FindFirst("UserId")?.Value, out int reportUserId);
-            if (!moderatorView &&
-                course.ModeratorId != null &&
-                reportUserId > 0 &&
-                (existingSubmission == null || existingSubmission.Status == SubmissionStatus.Denied))
-            {
-                await _submissions.SubmitAsync(
-                    courseCode, year, trimester,
-                    SubmissionItemType.StudentLOReport, null,
-                    $"Student LO Report — {courseCode} {year} T{trimester}",
-                    reportUserId);
-
-                // Refresh submission after creating it
-                existingSubmission = await _submissions.GetLatestAsync(
-                    courseCode, year, trimester, SubmissionItemType.StudentLOReport);
-            }
 
             ViewBag.Submission = existingSubmission;
 
             return View(vm);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitAllStudentReports(
+            string courseCode,
+            string courseTitle,
+            int year,
+            int trimester)
+        {
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c =>
+                    c.Code == courseCode &&
+                    c.Year == year &&
+                    c.Trimester == trimester);
+
+            if (course?.ModeratorId == null)
+            {
+                TempData["Error"] = "No moderator assigned to this course.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            if (userId == 0)
+            {
+                TempData["Error"] = "User not authenticated.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            // Submit all student reports to moderator
+            await _submissions.SubmitAsync(
+                courseCode, year, trimester,
+                SubmissionItemType.StudentLOReport,
+                null, // No specific student - this represents all students
+                $"Student LO Report (All Students) — {courseCode} {year} T{trimester}",
+                userId);
+
+            TempData["Success"] = "All student LO reports have been submitted to the moderator for review.";
+            return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
         }
 
         [HttpGet]
@@ -137,6 +152,9 @@ namespace AIS_LO_System.Controllers
                 return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
             }
 
+            ViewBag.Submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.StudentLOReport, studentId);
+
             return View(vm);
         }
 
@@ -153,6 +171,27 @@ namespace AIS_LO_System.Controllers
 
             if (vm == null)
                 return NotFound();
+
+            // Auto-submit to moderator when downloading single student report
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c =>
+                    c.Code == courseCode &&
+                    c.Year == year &&
+                    c.Trimester == trimester);
+
+            if (course?.ModeratorId != null)
+            {
+                int.TryParse(User.FindFirst("UserId")?.Value, out int currentUserId);
+                if (currentUserId > 0)
+                {
+                    await _submissions.SubmitAsync(
+                        courseCode, year, trimester,
+                        SubmissionItemType.StudentLOReport,
+                        studentId, // ItemRefId references the specific student
+                        $"Student LO Report — {vm.StudentName} ({vm.StudentId})",
+                        currentUserId);
+                }
+            }
 
             var pdfBytes = Document.Create(container =>
             {
@@ -281,26 +320,6 @@ namespace AIS_LO_System.Controllers
             var filename = $"{student?.StudentId}_{courseCode}_{year}_T{trimester}_StudentLOReport.pdf";
             var fullPath = Path.Combine(directory, filename);
             await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
-
-            // Auto-submit to moderator
-            var course = await _context.Courses.FirstOrDefaultAsync(c =>
-                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
-
-            var existingSubmission = await _submissions.GetLatestAsync(
-                courseCode, year, trimester, SubmissionItemType.StudentLOReport, studentId);
-
-            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
-            if (course?.ModeratorId != null &&
-                userId > 0 &&
-                (existingSubmission == null || existingSubmission.Status == SubmissionStatus.Denied))
-            {
-                await _submissions.SubmitAsync(
-                    courseCode, year, trimester,
-                    SubmissionItemType.StudentLOReport,
-                    studentId, // ItemRefId = studentId
-                    $"Student LO Report — {student?.StudentId} ({student?.FullName})",
-                    userId);
-            }
 
             return File(pdfBytes, "application/pdf", $"{student?.StudentId}_{courseCode}_{year}_T{trimester}_StudentLOReport.pdf");
 

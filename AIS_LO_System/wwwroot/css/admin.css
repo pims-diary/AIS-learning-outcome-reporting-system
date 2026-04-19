@@ -294,6 +294,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 15px;
+    min-width: 800px;
 }
 
     .admin-table th {
@@ -308,7 +309,7 @@
         padding: 18px 12px;
         color: #1a1a1a;
         border-bottom: 1px solid #f0f0f0;
-        vertical-align: middle;
+        vertical-align: top;
     }
 
     .admin-table tr:last-child td {
@@ -739,6 +740,10 @@ tr.row-inactive td {
     white-space: nowrap;
 }
 
+td:has(.enrol-tag) {
+    max-width: 280px;
+}
+
 .enrol-tag-current {
     background: #dbeafe;
     color: #1e40af;
@@ -769,7 +774,7 @@ tr.row-inactive td {
 /* Table row breathing room */
 .admin-table td {
     padding: 16px 12px;
-    vertical-align: middle;
+    vertical-align: top;
 }
 
 .admin-table th {
@@ -778,12 +783,9 @@ tr.row-inactive td {
 
 /* Actions cell — keep buttons on one line with a gap */
 .admin-td-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: nowrap;
+    text-align: right;
     white-space: nowrap;
-    min-width: 340px;
+    vertical-align: top;
 }
 
 /* ==============================================
@@ -1118,3 +1120,8 @@ a.enrol-tag {
     .action-item-danger:hover {
         background: #fff1f2;
     }
+
+.users-td-assigned {
+    max-width: 260px;
+    vertical-align: top;
+}

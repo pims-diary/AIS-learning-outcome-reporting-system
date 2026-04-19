@@ -1,4 +1,4 @@
-﻿@model List<AIS_LO_System.Models.CourseSubmission>
+﻿@model List<AIS_LO_System.Models.ModeratorInboxPendingItem>
 @using AIS_LO_System.Models
 
 @{
@@ -137,8 +137,9 @@
             else
             {
                 <div class="mod-cards">
-                    @foreach (var sub in Model)
+                    @foreach (var item in Model)
                     {
+                        var sub = item.Submissions[0];
                         <div class="mod-card mod-card-pending">
 
                             <div class="mod-card-top">
@@ -150,10 +151,18 @@
                                 <span class="mod-status mod-status-pending">Pending</span>
                             </div>
 
-                            <div class="mod-card-label">@sub.ItemLabel</div>
+                            <div class="mod-card-label">@item.DisplayLabel</div>
                             <div class="mod-card-meta">
-                                Submitted by <strong>@(sub.SubmittedBy?.FullName ?? "—")</strong>
-                                on @sub.SubmittedAt.ToString("dd MMM yyyy, h:mm tt")
+                                @if (item.IsGroupedLoAchievement || item.IsGroupedStudentLoReport)
+                                {
+                                    <span><strong>@item.Submissions.Count</strong> student report(s) in this batch.</span>
+                                    <span>Latest activity @item.SortDate.ToString("dd MMM yyyy, h:mm tt")</span>
+                                }
+                                else
+                                {
+                                    <span>Submitted by <strong>@(sub.SubmittedBy?.FullName ?? "—")</strong></span>
+                                    <span>on @sub.SubmittedAt.ToString("dd MMM yyyy, h:mm tt")</span>
+                                }
                             </div>
 
                             @{
@@ -166,22 +175,30 @@
                                 </div>
                             }
 
-                            <form asp-action="Review" method="post" class="mod-review-form">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="submissionId" value="@sub.Id" />
-                                <div class="mod-comment-wrap">
-                                    <textarea name="comment" class="mod-comment"
-                                              placeholder="Comment (required for denial, optional for approval)…"
-                                              rows="2"></textarea>
-                                </div>
-                                <div class="mod-review-actions">
-                                    <button type="submit" name="decision" value="approve" class="mod-btn-approve">Approve</button>
-                                    <button type="submit" name="decision" value="deny" class="mod-btn-deny"
-                                            onclick="return validateDeny(this)">
-                                        Deny
-                                    </button>
-                                </div>
-                            </form>
+                            @* Grouped LO Achievement / Student LO: review on detail page (one batch approve/deny). *@
+                            @if (!item.IsGroupedLoAchievement && !item.IsGroupedStudentLoReport)
+                            {
+                                <form asp-action="Review" method="post" class="mod-review-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="submissionId" value="@sub.Id" />
+                                    <div class="mod-comment-wrap">
+                                        <textarea name="comment" class="mod-comment"
+                                                  placeholder="Comment (required for denial, optional for approval)…"
+                                                  rows="2"></textarea>
+                                    </div>
+                                    <div class="mod-review-actions">
+                                        <button type="submit" name="decision" value="approve" class="mod-btn-approve">Approve</button>
+                                        <button type="submit" name="decision" value="deny" class="mod-btn-deny"
+                                                onclick="return validateDeny(this)">
+                                            Deny
+                                        </button>
+                                    </div>
+                                </form>
+                            }
+                            else if (viewUrl != null && (item.IsGroupedLoAchievement || item.IsGroupedStudentLoReport))
+                            {
+                                <p class="text-muted small mb-0">Open <strong>View</strong> to check PDFs and approve or deny this batch.</p>
+                            }
 
                         </div>
                     }
@@ -251,6 +268,7 @@
         SubmissionItemType.CourseLOReport => "Course LO Report",
         SubmissionItemType.AssessmentLOReport => "Assessment LO Report",
         SubmissionItemType.LOMapping => "LO Mapping",
+        SubmissionItemType.LOAchievementReport => "LO Achievement Report",
         _ => t.ToString()
     };
 
@@ -273,6 +291,8 @@
             Url.Action("ViewAssessmentLOReport", "Moderator", new { submissionId = sub.Id }),
         SubmissionItemType.LOMapping =>
             Url.Action("ViewLOMapping", "Moderator", new { submissionId = sub.Id }),
+        SubmissionItemType.LOAchievementReport =>
+            Url.Action("ViewLOAchievementReport", "Moderator", new { submissionId = sub.Id }),
         _ => null
     };
 }

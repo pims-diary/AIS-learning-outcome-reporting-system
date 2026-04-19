@@ -11,7 +11,8 @@ namespace AIS_LO_System.Models
         StudentLOReport,        // Student LO Report for all assessments (course-level)
         CourseLOReport,         // Course LO Report for all students
         AssessmentLOReport,     // Assessment LO Report for all students (single assignment)
-        LOMapping               // Manually-assigned LO mapping sent for moderator review
+        LOMapping,              // Manually-assigned LO mapping sent for moderator review
+        LOAchievementReport     // LO Achievement Report for a single student on single assignment
     }
 
     public enum SubmissionStatus

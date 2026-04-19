@@ -1,0 +1,167 @@
+﻿@model List<AIS_LO_System.Controllers.LOAchievementStudentRowViewModel>
+@using AIS_LO_System.Models
+@using AIS_LO_System.Controllers
+@{
+    ViewData["Title"] = "Review: LO Achievement Report";
+    Layout = "_DashboardLayout";
+    var submission = ViewBag.Submission as CourseSubmission;
+    var pendingSubmissionIds = ViewBag.PendingSubmissionIds as List<int> ?? new List<int>();
+    var pendingCount = (int)(ViewBag.PendingStudentReportCount ?? 0);
+    var latestPending = ViewBag.LatestPendingSubmittedAt as DateTime?;
+}
+
+<link rel="stylesheet" href="~/css/moderator.css" />
+
+<div class="mod-page">
+    <div class="mod-doc-header">
+        <a asp-action="Inbox" class="mod-back">← Back to Inbox</a>
+        <h1>LO Achievement Report — @ViewBag.AssessmentName</h1>
+        <p class="text-muted mb-0">@ViewBag.CourseCode @ViewBag.Year T@(ViewBag.Trimester)</p>
+    </div>
+
+    @* Approved / denied popup (same as other moderator views); skip while a batch is still pending to avoid duplicate pending UI. *@
+    @if (pendingCount == 0 && submission != null && submission.Status != SubmissionStatus.Pending)
+    {
+        @await Component.InvokeAsync("SubmissionStatus", new { submission })
+    }
+
+    @if (pendingCount > 0)
+    {
+        <div class="sub-status-banner sub-status-pending">
+            <span class="sub-status-icon">⏳</span>
+            <div class="sub-status-body">
+                <strong>Pending</strong>
+                <span>@pendingCount student report(s) awaiting review</span>
+                @if (latestPending.HasValue)
+                {
+                    <span class="sub-status-date">Latest activity @latestPending.Value.ToString("dd MMM yyyy, h:mm tt")</span>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-light border mt-3 mb-0" role="status">
+            All student reports shown below have been reviewed for this assignment.
+        </div>
+    }
+
+    <div class="card shadow-sm mt-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+                <div>
+                    <h4 class="fw-bold mb-1">Student Reports</h4>
+                    <div class="text-muted"><strong>Reports Submitted:</strong> @ViewBag.TotalStudents</div>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width:20%;">Student ID</th>
+                            <th style="width:35%;">Student Name</th>
+                            <th style="width:15%;" class="text-center">Status</th>
+                            <th style="width:30%;" class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Any())
+                        {
+                            foreach (var row in Model)
+                            {
+                                <tr>
+                                    <td>@row.StudentId</td>
+                                    <td>@row.StudentName</td>
+                                    <td class="text-center">
+                                        @if (row.Status == SubmissionStatus.Approved)
+                                        {
+                                            <span class="badge bg-success">Approved</span>
+                                        }
+                                        else if (row.Status == SubmissionStatus.Denied)
+                                        {
+                                            <span class="badge bg-danger">Denied</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        }
+                                    </td>
+                                    <td class="text-center">
+                                        @if (row.PdfUrl != null)
+                                        {
+                                            <div class="d-flex gap-2 justify-content-center">
+                                                <a href="@Url.Action("ViewLOAchievementReportPdf", "Moderator", new { submissionId = row.SubmissionId })"
+                                                       class="btn btn-sm btn-danger"
+                                                       target="_blank">
+                                                    View PDF
+                                                </a>
+                                                <a href="@Url.Action("DownloadLOAchievementReportPdf", "Moderator", new { submissionId = row.SubmissionId })"
+                                                       class="btn btn-sm btn-outline-secondary">
+                                                    Download
+                                                </a>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted fst-italic small">PDF not available</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">No student reports found.</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (pendingSubmissionIds.Any())
+            {
+                <hr class="mt-4" />
+                <div class="mt-3">
+                    <h5 class="fw-semibold mb-3">Review this batch</h5>
+                    <p class="text-muted small mb-3">Approve or deny applies to every <strong>pending</strong> student report listed above.</p>
+                    <form asp-action="Review" method="post">
+                        @Html.AntiForgeryToken()
+                        @foreach (var sid in pendingSubmissionIds)
+                        {
+                            <input type="hidden" name="submissionIds" value="@sid" />
+                        }
+                        <div class="mb-3">
+                            <textarea name="comment"
+                                      class="form-control"
+                                      placeholder="Comment (required for denial, optional for approval)…"
+                                      rows="2"></textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" name="decision" value="approve" class="mod-btn-approve">Approve</button>
+                            <button type="submit" name="decision" value="deny" class="mod-btn-deny"
+                                    onclick="return validateDeny(this)">
+                                Deny
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function validateDeny(btn) {
+            const form = btn.closest('form');
+            const comment = form.querySelector('textarea[name="comment"]').value.trim();
+            if (!comment) {
+                alert('Please add a comment explaining the reason for denial.');
+                return false;
+            }
+            return confirm('Deny this submission?');
+        }
+    </script>
+}

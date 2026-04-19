@@ -1,8 +1,10 @@
 ﻿@model AIS_LO_System.Models.Reports.StudentCourseLOOverviewViewModel
+@using AIS_LO_System.Models
 
 @{
     ViewData["Title"] = "Overall LO Achievement Overview";
     Layout = "_DashboardLayout";
+    var studentLoSubmission = ViewBag.Submission as CourseSubmission;
 }
 
 <div class="container mt-4">
@@ -33,6 +35,11 @@
 
         <span>Overall LO Achievement Overview</span>
     </div>
+
+    @if (studentLoSubmission != null)
+    {
+        @await Component.InvokeAsync("SubmissionStatus", new { submission = studentLoSubmission })
+    }
 
     <div class="d-flex justify-content-between align-items-start mb-4">
         <div>

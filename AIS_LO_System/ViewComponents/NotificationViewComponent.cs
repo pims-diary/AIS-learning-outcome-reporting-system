@@ -35,41 +35,90 @@ namespace AIS_LO_System.ViewComponents
 
             if (isModerator)
             {
-                // Moderator sees PENDING submissions across all their courses
+                // Moderator sees PENDING submissions across all their courses.
+                // LO Achievement reports are grouped per assignment (same as moderator inbox).
                 var moderatedKeys = await _context.Courses
                     .Where(c => c.ModeratorId == userId)
                     .Select(c => new { c.Code, c.Year, c.Trimester })
                     .ToListAsync();
 
-                var pending = new List<CourseSubmission>();
+                var pendingRaw = new List<CourseSubmission>();
                 foreach (var k in moderatedKeys)
                 {
-                    var items = await _context.CourseSubmissions
+                    var batch = await _context.CourseSubmissions
                         .Include(s => s.SubmittedBy)
                         .Where(s => s.CourseCode == k.Code
                                  && s.Year == k.Year
                                  && s.Trimester == k.Trimester
                                  && s.Status == SubmissionStatus.Pending)
                         .OrderByDescending(s => s.SubmittedAt)
-                        .Take(10)
                         .ToListAsync();
-                    pending.AddRange(items);
+                    pendingRaw.AddRange(batch);
                 }
 
-                vm.IsModerator = true;
-                vm.Count = pending.Count;
-                vm.Items = pending
-                    .OrderByDescending(s => s.SubmittedAt)
-                    .Take(8)
-                    .Select(s => new NotificationItem
+                var lo = pendingRaw.Where(s => s.ItemType == SubmissionItemType.LOAchievementReport).ToList();
+                var sloStudent = pendingRaw.Where(s =>
+                    s.ItemType == SubmissionItemType.StudentLOReport && s.ItemRefId != null).ToList();
+                var rest = pendingRaw.Where(s =>
+                    s.ItemType != SubmissionItemType.LOAchievementReport
+                    && !(s.ItemType == SubmissionItemType.StudentLOReport && s.ItemRefId != null)).ToList();
+
+                var loGroups = lo.GroupBy(s => new { s.CourseCode, s.Year, s.Trimester, s.ItemRefId }).ToList();
+                var sloGroups = sloStudent.GroupBy(s => new { s.CourseCode, s.Year, s.Trimester }).ToList();
+                var notifItems = new List<NotificationItem>();
+
+                foreach (var g in loGroups)
+                {
+                    var list = g.OrderByDescending(s => s.SubmittedAt).ToList();
+                    var assignment = await _context.Assignments.FindAsync(g.Key.ItemRefId);
+                    var assessmentName = assignment?.AssessmentName ?? "Assignment";
+                    var rep = list[0];
+                    var n = list.Count;
+                    notifItems.Add(new NotificationItem
+                    {
+                        Label = $"LO Achievement Report — {assessmentName} ({n} student{(n == 1 ? "" : "s")})",
+                        CourseCode = rep.CourseCode,
+                        Date = list.Max(s => s.SubmittedAt),
+                        StatusCss = "notif-pending",
+                        StatusText = "Pending",
+                        Href = $"/Moderator/ViewLOAchievementReport?submissionId={rep.Id}"
+                    });
+                }
+
+                foreach (var g in sloGroups)
+                {
+                    var list = g.OrderByDescending(s => s.SubmittedAt).ToList();
+                    var rep = list[0];
+                    var n = list.Count;
+                    notifItems.Add(new NotificationItem
+                    {
+                        Label = $"Student LO Report — {rep.CourseCode} {rep.Year} T{rep.Trimester} ({n} student{(n == 1 ? "" : "s")})",
+                        CourseCode = rep.CourseCode,
+                        Date = list.Max(s => s.SubmittedAt),
+                        StatusCss = "notif-pending",
+                        StatusText = "Pending",
+                        Href = $"/Moderator/ViewStudentLOReport?submissionId={rep.Id}"
+                    });
+                }
+
+                foreach (var s in rest.OrderByDescending(s => s.SubmittedAt))
+                {
+                    notifItems.Add(new NotificationItem
                     {
                         Label = s.ItemLabel,
                         CourseCode = s.CourseCode,
                         Date = s.SubmittedAt,
                         StatusCss = "notif-pending",
                         StatusText = "Pending",
-                        Href = $"/Moderator/Inbox"
-                    })
+                        Href = "/Moderator/Inbox"
+                    });
+                }
+
+                vm.IsModerator = true;
+                vm.Count = loGroups.Count + sloGroups.Count + rest.Count;
+                vm.Items = notifItems
+                    .OrderByDescending(i => i.Date)
+                    .Take(8)
                     .ToList();
             }
             else

@@ -1,7 +1,9 @@
 ﻿@model AIS_LO_System.Models.MarkStudents.LOAchievementReportViewModel
+@using AIS_LO_System.Models
 
 @{
     ViewData["Title"] = "LO Achievement Report";
+    var loSubmission = ViewBag.Submission as CourseSubmission;
 }
 
 <div class="container mt-4 lo-report-page">
@@ -43,6 +45,11 @@
         <span>/</span>
         <span>LO Achievement Report</span>
     </div>
+
+    @if (loSubmission != null)
+    {
+        @await Component.InvokeAsync("SubmissionStatus", new { submission = loSubmission })
+    }
 
     <div class="report-card">
         <div class="report-header d-flex justify-content-between align-items-start mb-3">

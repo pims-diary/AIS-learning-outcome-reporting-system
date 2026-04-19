@@ -1,7 +1,7 @@
 ﻿using AIS_LO_System.Data;
 using AIS_LO_System.Models;
 using AIS_LO_System.Models.MarkStudents;
-using AIS_LO_System.Services;  // FIX #4: Added
+using AIS_LO_System.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,12 +15,14 @@ namespace AIS_LO_System.Controllers
     public class MarkStudentsController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly SubmissionService _submissions;  // FIX #4: Added
+        private readonly SubmissionService _submissions;
+        private readonly IWebHostEnvironment _env;
 
-        public MarkStudentsController(ApplicationDbContext context, SubmissionService submissions)
+        public MarkStudentsController(ApplicationDbContext context, SubmissionService submissions, IWebHostEnvironment env)
         {
             _context = context;
-            _submissions = submissions;  // FIX #4: Added
+            _submissions = submissions;
+            _env = env;
         }
 
         [HttpGet]
@@ -230,6 +232,20 @@ namespace AIS_LO_System.Controllers
             if (vm == null)
                 return NotFound();
 
+            var newLabel = $"LO Achievement Report — {vm.StudentInternalId} — {vm.StudentName} — {assessmentName}";
+            var legacyLabel = $"LO Achievement Report — {vm.StudentName} — {assessmentName}";
+            ViewBag.Submission = await _context.CourseSubmissions
+                .Include(s => s.ReviewedBy)
+                .Where(s =>
+                    s.CourseCode == courseCode &&
+                    s.Year == year &&
+                    s.Trimester == trimester &&
+                    s.ItemType == SubmissionItemType.LOAchievementReport &&
+                    s.ItemRefId == assignmentId &&
+                    (s.ItemLabel == newLabel || s.ItemLabel == legacyLabel))
+                .OrderByDescending(s => s.SubmittedAt)
+                .FirstOrDefaultAsync();
+
             return View(vm);
         }
 
@@ -254,6 +270,30 @@ namespace AIS_LO_System.Controllers
 
             if (vm == null)
                 return NotFound();
+
+            // Auto-submit to moderator when downloading LO Achievement report.
+            // The label embeds StudentInternalId so SubmissionService can treat each
+            // student as a distinct submission even when they share the same assignmentId.
+            // Format: "LO Achievement Report — {StudentInternalId} — {StudentName} — {AssessmentName}"
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c =>
+                    c.Code == courseCode &&
+                    c.Year == year &&
+                    c.Trimester == trimester);
+
+            if (course?.ModeratorId != null)
+            {
+                int.TryParse(User.FindFirst("UserId")?.Value, out int currentUserId);
+                if (currentUserId > 0)
+                {
+                    await _submissions.SubmitAsync(
+                        courseCode, year, trimester,
+                        SubmissionItemType.LOAchievementReport,
+                        assignmentId,
+                        $"LO Achievement Report — {vm.StudentInternalId} — {vm.StudentName} — {assessmentName}",
+                        currentUserId);
+                }
+            }
 
             var pdfBytes = Document.Create(container =>
             {
@@ -347,9 +387,15 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            var fileName = $"{vm.StudentId}_{vm.AssessmentName.Replace(" ", "_")}_LO_Report.pdf";
+            // Save PDF to file system for moderator review
+            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "lo-achievement");
+            Directory.CreateDirectory(directory);
 
-            return File(pdfBytes, "application/pdf", fileName);
+            var filename = $"{vm.StudentId}_{vm.AssessmentName.Replace(" ", "_")}_LOAchievementReport.pdf";
+            var fullPath = Path.Combine(directory, filename);
+            await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
+
+            return File(pdfBytes, "application/pdf", filename);
 
             static IContainer CellStyle(IContainer container)
             {
@@ -619,7 +665,7 @@ namespace AIS_LO_System.Controllers
 
             await _context.SaveChangesAsync();
 
-            // FIX #4: Auto-submit student marks to moderator
+            // Auto-submit student marks to moderator
             int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
             var course = await _context.Courses.FirstOrDefaultAsync(c =>
                 c.Code == courseCode && c.Year == year && c.Trimester == trimester);

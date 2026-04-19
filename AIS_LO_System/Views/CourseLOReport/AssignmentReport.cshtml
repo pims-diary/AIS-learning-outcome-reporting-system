@@ -1,49 +1,123 @@
 ﻿@model AIS_LO_System.Models.Reports.AssignmentClassLOReportViewModel
+@using AIS_LO_System.Models
 
 @{
     ViewData["Title"] = "Assessment Class LO Report";
     Layout = "_DashboardLayout";
+    
+    var submissionId = TempData.Peek("ModeratorSubmissionId") as int?;
+    var viewingAsModeratorFromInbox = User.IsInRole("Admin") && submissionId.HasValue;
+    
+    int.TryParse(User.FindFirst("UserId")?.Value, out int currentUserId);
+    var course = ViewBag.Course as Course;
+    var submission = ViewBag.Submission as CourseSubmission;
+    
+    var isCourseModerator = course?.ModeratorId == currentUserId;
+    var isModerator = viewingAsModeratorFromInbox;
+    
+    var canSubmit = !viewingAsModeratorFromInbox &&
+                    (submission == null || submission.Status != SubmissionStatus.Pending);
 }
 
 <div class="container mt-4">
 
     <div class="breadcrumb mb-3">
-        <a class="crumb-link"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            @Model.CourseCode @Model.CourseTitle
-        </a>
+        @if (isModerator)
+        {
+            <a class="crumb-link" asp-controller="Moderator" asp-action="Inbox">
+                Moderator Inbox
+            </a>
+            <span>/</span>
+            <a class="crumb-link"
+                   asp-controller="Moderator"
+                   asp-action="ViewCourseLOReport"
+                   asp-route-submissionId="@submissionId">
+                Course LO Report
+            </a>
+        }
+        else
+        {
+            <a class="crumb-link"
+                   asp-controller="CourseDashboard"
+                   asp-action="Index"
+                   asp-route-courseCode="@Model.CourseCode"
+                   asp-route-year="@Model.Year"
+                   asp-route-trimester="@Model.Trimester">
+                @Model.CourseCode @Model.CourseTitle
+            </a>
 
-        <span>/</span>
-        <a class="crumb-link"
-           asp-controller="CourseLOReport"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            Course LO Report
-        </a>
+            <span>/</span>
+            <a class="crumb-link"
+                   asp-controller="CourseLOReport"
+                   asp-action="Index"
+                   asp-route-courseCode="@Model.CourseCode"
+                   asp-route-courseTitle="@Model.CourseTitle"
+                   asp-route-year="@Model.Year"
+                   asp-route-trimester="@Model.Trimester">
+                Course LO Report
+            </a>
+        }
 
         <span>/</span>
         <span>@Model.AssessmentName</span>
     </div>
 
+    @if (submission != null)
+    {
+        @await Component.InvokeAsync("SubmissionStatus", new { submission })
+    }
+    @if (!isModerator && submission != null && submission.Status == SubmissionStatus.Pending && isCourseModerator)
+    {
+        <p class="text-muted small mb-3">
+            As course moderator you can review this in your
+            <a asp-controller="Moderator" asp-action="Inbox">Moderator Inbox</a>.
+        </p>
+    }
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="fw-bold mb-0">@Model.AssessmentName - Class LO Report</h2>
 
-        <a asp-controller="CourseLOReport"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="btn btn-outline-secondary">
-            ← Go Back
-        </a>
+        <div class="d-flex gap-2">
+            @if (canSubmit)
+            {
+                <form asp-controller="CourseLOReport"
+                      asp-action="SubmitAssignmentReport"
+                      method="post"
+                      class="d-inline">
+                    <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
+                    <input type="hidden" name="courseCode" value="@Model.CourseCode" />
+                    <input type="hidden" name="courseTitle" value="@Model.CourseTitle" />
+                    <input type="hidden" name="assessmentName" value="@Model.AssessmentName" />
+                    <input type="hidden" name="year" value="@Model.Year" />
+                    <input type="hidden" name="trimester" value="@Model.Trimester" />
+                    <button type="submit" class="btn btn-primary">
+                        📤 Submit for Moderation
+                    </button>
+                </form>
+            }
+
+            @if (isModerator)
+            {
+                <a asp-controller="Moderator"
+                       asp-action="ViewCourseLOReport"
+                       asp-route-submissionId="@submissionId"
+                       class="btn btn-outline-secondary">
+                    ← Go Back
+                </a>
+            }
+            else
+            {
+                <a asp-controller="CourseLOReport"
+                       asp-action="Index"
+                       asp-route-courseCode="@Model.CourseCode"
+                       asp-route-courseTitle="@Model.CourseTitle"
+                       asp-route-year="@Model.Year"
+                       asp-route-trimester="@Model.Trimester"
+                       class="btn btn-outline-secondary">
+                    ← Go Back
+                </a>
+            }
+        </div>
     </div>
 
     <div class="card shadow-sm mb-4">
@@ -130,15 +204,15 @@
                                     <td><span class="badge bg-danger">At Risk</span></td>
                                     <td>
                                         <a asp-controller="MarkStudents"
-                                           asp-action="LOAchievementReport"
-                                           asp-route-studentId="@student.StudentInternalId"
-                                           asp-route-assignmentId="@Model.AssignmentId"
-                                           asp-route-courseCode="@Model.CourseCode"
-                                           asp-route-courseTitle="@Model.CourseTitle"
-                                           asp-route-assessmentName="@Model.AssessmentName"
-                                           asp-route-year="@Model.Year"
-                                           asp-route-trimester="@Model.Trimester"
-                                           class="btn btn-sm btn-danger">
+                                               asp-action="LOAchievementReport"
+                                               asp-route-studentId="@student.StudentInternalId"
+                                               asp-route-assignmentId="@Model.AssignmentId"
+                                               asp-route-courseCode="@Model.CourseCode"
+                                               asp-route-courseTitle="@Model.CourseTitle"
+                                               asp-route-assessmentName="@Model.AssessmentName"
+                                               asp-route-year="@Model.Year"
+                                               asp-route-trimester="@Model.Trimester"
+                                               class="btn btn-sm btn-danger">
                                             Report
                                         </a>
                                     </td>
