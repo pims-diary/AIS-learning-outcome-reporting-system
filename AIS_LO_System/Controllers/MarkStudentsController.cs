@@ -231,13 +231,13 @@ namespace AIS_LO_System.Controllers
 
         [HttpGet]
         public async Task<IActionResult> DownloadLOAchievementReportPdf(
-            int studentId,
-            int assignmentId,
-            string courseCode,
-            string courseTitle,
-            string assessmentName,
-            int year,
-            int trimester)
+    int studentId,
+    int assignmentId,
+    string courseCode,
+    string courseTitle,
+    string assessmentName,
+    int year,
+    int trimester)
         {
             var vm = await BuildLOAchievementReportViewModel(
                 studentId,
@@ -251,6 +251,9 @@ namespace AIS_LO_System.Controllers
             if (vm == null)
                 return NotFound();
 
+            // ✅ NEW: capture download time
+            var downloadedAt = DateTime.Now;
+
             var pdfBytes = Document.Create(container =>
             {
                 container.Page(page =>
@@ -259,14 +262,20 @@ namespace AIS_LO_System.Controllers
                     page.Margin(30);
                     page.DefaultTextStyle(x => x.FontSize(10));
 
+                    // ✅ HEADER (UPDATED)
                     page.Header().Column(column =>
                     {
                         column.Item().Text($"LO Achievement Report - {vm.StudentName}")
                             .FontSize(18).Bold();
+
                         column.Item().Text($"{vm.CourseCode} {vm.CourseTitle}");
                         column.Item().Text($"Assessment: {vm.AssessmentName}");
                         column.Item().Text($"Student ID: {vm.StudentId}");
-                        column.Item().Text($"Semester: {vm.Year} - Trimester {vm.Trimester}");
+
+                        column.Item().Text($"Semester: Trimester {vm.Trimester}, {vm.Year}");
+
+                        // ✅ NEW LINE
+                        column.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
                     });
 
                     page.Content().Column(column =>
@@ -343,7 +352,11 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            var fileName = $"{vm.StudentId}_{vm.AssessmentName.Replace(" ", "_")}_LO_Report.pdf";
+            // ✅ FIXED FILE NAME FORMAT
+            var safeAssessmentName = vm.AssessmentName.Replace(" ", "_");
+
+            var fileName =
+                $"{vm.StudentId}_{vm.CourseCode}_{safeAssessmentName}_Trimester_{vm.Trimester}_{vm.Year}.pdf";
 
             return File(pdfBytes, "application/pdf", fileName);
 
@@ -680,3 +693,7 @@ namespace AIS_LO_System.Controllers
         public int SelectedLevel { get; set; }
     }
 }
+
+
+
+

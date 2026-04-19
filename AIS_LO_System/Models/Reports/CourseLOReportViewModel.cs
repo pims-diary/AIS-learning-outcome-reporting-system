@@ -102,11 +102,16 @@ namespace AIS_LO_System.Models.Reports
         public bool HasAnyGradedStudent { get; set; }
         public string StatusText { get; set; } = string.Empty;
 
+        public int AssignmentWeight { get; set; }
+
         public List<string> Contributions { get; set; } = new();
         public List<string> ClassAchievements { get; set; } = new();
+
+        public string ContributionTooltip { get; set; } = string.Empty;
+        public string ClassAchievementTooltip { get; set; } = string.Empty;
     }
 
-    // NEW: whole-class single-assignment report
+    // Whole-class single-assignment report
     public class AssignmentClassLOReportViewModel
     {
         public int AssignmentId { get; set; }

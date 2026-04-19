@@ -70,7 +70,12 @@ namespace AIS_LO_System.Models.Reports
         public bool IsGraded { get; set; }
         public string StatusText { get; set; } = string.Empty;
 
+        public int AssignmentWeight { get; set; }
+
         public List<string> Contributions { get; set; } = new();
         public List<string> Achievements { get; set; } = new();
+
+        public string ContributionTooltip { get; set; } = string.Empty;
+        public string AchievementTooltip { get; set; } = string.Empty;
     }
 }
