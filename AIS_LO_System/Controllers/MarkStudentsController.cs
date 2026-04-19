@@ -803,7 +803,7 @@ namespace AIS_LO_System.Controllers
 
             if (rubric == null)
             {
-                TempData["Error"] = "⚠️ You cannot mark students yet. No rubric has been created for this assessment. Please create the rubric first.";
+                TempData["Error"] = "⚠️ You cannot mark students yet. Please create the rubric first.";
                 return RedirectToAction("Index", "Rubric", new
                 {
                     assignmentId,
@@ -817,7 +817,7 @@ namespace AIS_LO_System.Controllers
 
             if (rubric.Criteria == null || !rubric.Criteria.Any())
             {
-                TempData["Error"] = "⚠️ You cannot mark students yet. The rubric has no criteria defined. Please complete the rubric first.";
+                TempData["Error"] = "⚠️ You cannot mark students yet. Please complete the rubric first.";
                 return RedirectToAction("Index", "Rubric", new
                 {
                     assignmentId,
@@ -831,16 +831,14 @@ namespace AIS_LO_System.Controllers
 
             string? reason = null;
 
-            var unmappedCriteria = rubric.Criteria
-                .Where(c => c.LOMappings == null || !c.LOMappings.Any())
-                .Select(c => c.CriterionName)
-                .ToList();
+            var unmappedCount = rubric.Criteria
+                .Count(c => c.LOMappings == null || !c.LOMappings.Any());
 
-            if (unmappedCriteria.Any())
+            if (unmappedCount > 0)
             {
-                reason = unmappedCriteria.Count == rubric.Criteria.Count
-                    ? "No LO mappings have been saved for this rubric."
-                    : $"The following criteria are not mapped to any Learning Outcome: {string.Join(", ", unmappedCriteria)}.";
+                reason = unmappedCount == rubric.Criteria.Count
+                    ? "No LO mappings have been saved yet."
+                    : "Some criteria are not mapped to a Learning Outcome.";
             }
             else
             {
@@ -848,7 +846,7 @@ namespace AIS_LO_System.Controllers
 
                 if (allMappings.Any(m => m.Weight <= 0))
                 {
-                    reason = "One or more criteria have no weight assigned.";
+                    reason = "Some criteria have no weight assigned.";
                 }
                 else
                 {
@@ -859,14 +857,14 @@ namespace AIS_LO_System.Controllers
                         .Sum();
 
                     if (Math.Abs(totalWeight - 100m) > 0.01m)
-                        reason = $"The total criterion weight is {totalWeight:F0}% — it must equal 100%.";
+                        reason = $"Total weight is {totalWeight:F0}% (must be 100%).";
                 }
             }
 
             if (reason == null)
                 return null;
 
-            TempData["Error"] = $"⚠️ You cannot mark students yet. {reason} Please complete the LO mapping before marking.";
+            TempData["Error"] = $"⚠️ You cannot mark students yet. {reason} Please complete the LO mapping below.";
             return RedirectToAction("Index", "LOMapping", new
             {
                 assignmentId,
