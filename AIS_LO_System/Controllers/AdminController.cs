@@ -679,7 +679,12 @@ namespace AIS_LO_System.Controllers
                 return RedirectToAction(nameof(Students), "Admin");
             }
 
-            var courseMap = await _context.Courses.ToDictionaryAsync(c => c.Code, c => c.Id);
+            var courseMap = (await _context.Courses.ToListAsync())
+                .GroupBy(c => c.Code)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.OrderByDescending(c => c.Year).ThenByDescending(c => c.Trimester).First().Id
+                );
             var studentMap = await _context.Students.ToDictionaryAsync(s => s.StudentId, s => s.Id);
             var enrolList = await _context.StudentCourseEnrolments
                 .Select(e => new { e.StudentId, e.CourseId })
