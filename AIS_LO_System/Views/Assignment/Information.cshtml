@@ -10,30 +10,19 @@
 
 <div class="assignment-info-page">
 
-    <!-- Breadcrumb -->
-    <div class="breadcrumb">
-        <a asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
-            @ViewBag.CourseCode @ViewBag.Year - Tri @ViewBag.Trimester
-        </a>
-        <span>/</span>
-        <a asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="@ViewBag.AssessmentName"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
-            Assessments
-        </a>
-        <span>/</span>
-        <span>@ViewBag.AssessmentName</span>
-        <span>/</span>
-        <span>Assignment Information</span>
-    </div>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                (ViewBag.AssessmentName as string, "Assignment", "Index", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                ("Assignment Information", null, null, null)
+            }
+        },
+        { "BackController",  "Assignment" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
+    })
 
     <!-- Header -->
     <div class="info-header">

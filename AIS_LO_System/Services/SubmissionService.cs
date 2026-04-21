@@ -16,8 +16,6 @@ namespace AIS_LO_System.Services
         /// <summary>
         /// Creates a new Pending submission (or resets an existing Denied one back to Pending).
         /// If an identical item is already Pending or Approved, this is a no-op.
-        /// For LOAchievementReport, each student+assignment combination is treated as a
-        /// distinct submission (matched by ItemLabel) so every student gets their own inbox entry.
         /// Returns the submission.
         /// </summary>
         public async Task<CourseSubmission> SubmitAsync(
@@ -32,12 +30,6 @@ namespace AIS_LO_System.Services
                          && s.Trimester == trimester
                          && s.ItemType == itemType
                          && s.ItemRefId == itemRefId);
-
-            // LOAchievementReport is per-student: each student on the same assignment
-            // must produce its own submission row. We distinguish them by ItemLabel
-            // (format: "LO Achievement Report — {StudentInternalId} — {StudentName} — {AssessmentName}").
-            if (itemType == SubmissionItemType.LOAchievementReport)
-                query = query.Where(s => s.ItemLabel == itemLabel);
 
             var existing = await query
                 .OrderByDescending(s => s.SubmittedAt)

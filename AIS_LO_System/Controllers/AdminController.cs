@@ -84,6 +84,8 @@ namespace AIS_LO_System.Controllers
             var query = _context.Courses
                 .Include(c => c.Lecturer)
                 .Include(c => c.Moderator)
+                .Include(c => c.LecturerEnrolments)
+                    .ThenInclude(e => e.User)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -126,7 +128,7 @@ namespace AIS_LO_System.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddCourse(string code, string title, int year, int trimester,
-            string school, int? lecturerId, int? moderatorId)
+            string school, List<int>? lecturerIds, int? moderatorId)
         {
             if (string.IsNullOrWhiteSpace(code) || string.IsNullOrWhiteSpace(title))
             {
@@ -143,7 +145,7 @@ namespace AIS_LO_System.Controllers
                 Year = year,
                 Trimester = trimester,
                 School = string.IsNullOrWhiteSpace(school) ? "Information Technology" : school.Trim(),
-                LecturerId = lecturerId,
+                LecturerId = null,
                 ModeratorId = moderatorId,
                 CanEditLO = true,
                 CanReuploadOutline = true,
@@ -152,6 +154,10 @@ namespace AIS_LO_System.Controllers
 
             _context.Courses.Add(course);
             await _context.SaveChangesAsync();
+
+            await SyncCourseLecturerAssignmentsAsync(course, lecturerIds, moderatorId);
+            await _context.SaveChangesAsync();
+
             TempData["Success"] = $"Course {course.Code} added.";
             return RedirectToAction(nameof(Courses), "Admin");
         }
@@ -159,7 +165,7 @@ namespace AIS_LO_System.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> EditCourse(int id, string title, int year, int trimester,
-    string school, int? lecturerId, int? moderatorId)
+    string school, List<int>? lecturerIds, int? moderatorId)
         {
             var course = await _context.Courses
                 .Include(c => c.LecturerEnrolments)
@@ -170,28 +176,8 @@ namespace AIS_LO_System.Controllers
             course.Year = year;
             course.Trimester = trimester;
             course.School = string.IsNullOrWhiteSpace(school) ? course.School : school.Trim();
-            course.LecturerId = lecturerId;
-            course.ModeratorId = moderatorId;
 
-            // Sync LecturerCourseEnrolment: ensure lecturer and moderator both have an enrolment row.
-            // Deduplicate first — if the same person is both lecturer and moderator, only one row needed.
-            var enrolledUserIds = course.LecturerEnrolments.Select(e => e.UserId).ToHashSet();
-
-            var usersToEnrol = new HashSet<int>();
-            if (lecturerId.HasValue) usersToEnrol.Add(lecturerId.Value);
-            if (moderatorId.HasValue) usersToEnrol.Add(moderatorId.Value);
-
-            foreach (var userId in usersToEnrol)
-            {
-                if (!enrolledUserIds.Contains(userId))
-                {
-                    _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
-                    {
-                        UserId = userId,
-                        CourseId = id
-                    });
-                }
-            }
+            await SyncCourseLecturerAssignmentsAsync(course, lecturerIds, moderatorId);
 
             await _context.SaveChangesAsync();
             TempData["Success"] = "Course updated.";
@@ -784,6 +770,53 @@ namespace AIS_LO_System.Controllers
 
         private static bool ValidSchool(string school) =>
             Schools.Any(s => s.Equals(school, StringComparison.OrdinalIgnoreCase));
+
+        private async Task SyncCourseLecturerAssignmentsAsync(Course course, IEnumerable<int>? lecturerIds, int? moderatorId)
+        {
+            var selectedLecturerIds = (lecturerIds ?? Enumerable.Empty<int>())
+                .Where(id => id > 0)
+                .Distinct()
+                .ToList();
+
+            var currentPrimaryLecturerId = course.LecturerId;
+            if (currentPrimaryLecturerId.HasValue && selectedLecturerIds.Contains(currentPrimaryLecturerId.Value))
+                course.LecturerId = currentPrimaryLecturerId;
+            else
+                course.LecturerId = selectedLecturerIds.FirstOrDefault() is var firstId && firstId > 0 ? firstId : null;
+
+            course.ModeratorId = moderatorId;
+
+            if (!(_context.Entry(course).Collection(c => c.LecturerEnrolments).IsLoaded))
+            {
+                await _context.Entry(course)
+                    .Collection(c => c.LecturerEnrolments)
+                    .LoadAsync();
+            }
+
+            var desiredUserIds = new HashSet<int>(selectedLecturerIds);
+            if (moderatorId.HasValue)
+                desiredUserIds.Add(moderatorId.Value);
+
+            var existingEnrolments = course.LecturerEnrolments.ToList();
+
+            foreach (var enrolment in existingEnrolments.Where(e => !desiredUserIds.Contains(e.UserId)))
+            {
+                _context.LecturerCourseEnrolments.Remove(enrolment);
+            }
+
+            var existingUserIds = existingEnrolments.Select(e => e.UserId).ToHashSet();
+            foreach (var userId in desiredUserIds)
+            {
+                if (!existingUserIds.Contains(userId))
+                {
+                    _context.LecturerCourseEnrolments.Add(new LecturerCourseEnrolment
+                    {
+                        UserId = userId,
+                        CourseId = course.Id
+                    });
+                }
+            }
+        }
 
         [HttpGet]
         public async Task<IActionResult> GetStudentReports(int studentId, string courseCode, int year, int trimester)

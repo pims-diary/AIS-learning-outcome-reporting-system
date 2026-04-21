@@ -7,38 +7,23 @@
 
 <div class="container mt-4">
 
-    <!-- Breadcrumb -->
-    <div class="breadcrumb mb-3">
-        <a class="crumb-link"
-               asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester">
-            @Model.CourseCode @Model.CourseTitle
-        </a>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{Model.CourseCode} {Model.Year} - T{Model.Trimester}", "CourseDashboard", "Index", new { courseCode = Model.CourseCode, year = Model.Year, trimester = Model.Trimester }),
+                ("Reports", null, null, null),
+                ("Student LO Report", null, null, null)
+            }
+        },
+        { "BackController",  "CourseDashboard" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { courseCode = Model.CourseCode, year = Model.Year, trimester = Model.Trimester } as object },
+    })
 
-        <span>/</span>
-
-        <span class="crumb-link">Reports</span>
-
-        <span>/</span>
-
-        <span>Student LO Report</span>
-    </div>
-
-    <!-- Title + Back -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- Title -->
+    <div class="d-flex align-items-center mb-4">
         <h2 class="fw-bold mb-0">Student LO Report</h2>
-
-        <a asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester"
-               class="btn btn-outline-secondary">
-            ← Go Back
-        </a>
     </div>
 
     @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
@@ -50,8 +35,9 @@
             <input type="hidden" name="courseTitle" value="@Model.CourseTitle" />
             <input type="hidden" name="year" value="@Model.Year" />
             <input type="hidden" name="trimester" value="@Model.Trimester" />
-            <button type="submit" class="btn btn-primary">
-                📤 Submit All Student Reports to Moderator
+            <button type="submit"
+                    style="background-color:#c21c00;color:white;padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;border:none;line-height:1.2;white-space:nowrap;">
+                Submit All Student Reports to Moderator
             </button>
         </form>
     </div>

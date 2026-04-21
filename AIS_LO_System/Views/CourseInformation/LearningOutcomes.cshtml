@@ -15,43 +15,19 @@
 
 <div class="page-shell">
 
-    <div class="top-header">
-        <img class="ais-logo" src="~/images/AIS_logo.png" alt="AIS Logo" />
-
-        <!-- ✅ FIXED: CLICKABLE BREADCRUMBS -->
-        <div class="crumb">
-            <a asp-controller="LecturerDashboard"
-                   asp-action="Index">
-                Home
-            </a>
-            <span class="sep">/</span>
-            <a asp-controller="LecturerDashboard"
-                   asp-action="Index"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
-                @ViewBag.Year – Tri @ViewBag.Trimester
-            </a>
-            <span class="sep">/</span>
-            <a asp-controller="CourseDashboard"
-                   asp-action="Index"
-                   asp-route-courseCode="@ViewBag.CourseCode"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester">
-                @ViewBag.CourseCode
-            </a>
-            <span class="sep">/</span>
-            <strong>Learning Outcomes</strong>
-        </div>
-
-        <a class="backlink"
-               asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
-            ← Go Back
-        </a>
-    </div>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ("Home", "LecturerDashboard", "Index", null),
+                ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                ("Learning Outcomes", null, null, null)
+            }
+        },
+        { "BackController",  "CourseDashboard" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
+    })
 
     <div class="content-card">
         <h2 class="page-title">Learning Outcomes</h2>

@@ -108,6 +108,10 @@ namespace AIS_LO_System.Controllers
             ViewBag.AssessmentName = assessmentName;
             ViewBag.Year = year;
             ViewBag.Trimester = trimester;
+            ViewBag.StudentMarksSubmission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.StudentMarks, assignmentId);
+            ViewBag.LOAchievementSubmission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.LOAchievementReport, assignmentId);
 
             return View(vm);
         }
@@ -234,6 +238,28 @@ namespace AIS_LO_System.Controllers
             int year,
             int trimester)
         {
+            // Guard: LO Achievement results require saved marks
+            var isMarked = await _context.StudentAssessmentMarks.AnyAsync(m =>
+                m.StudentRefId == studentId &&
+                m.CourseCode == courseCode &&
+                m.AssessmentName == assessmentName &&
+                m.IsMarked);
+
+            if (!isMarked)
+            {
+                TempData["Error"] = "Marks have not been saved yet for this student. Please save marks before viewing the LO Achievement report.";
+                return RedirectToAction(nameof(MarkStudent), new
+                {
+                    studentId,
+                    assignmentId,
+                    courseCode,
+                    courseTitle,
+                    assessmentName,
+                    year,
+                    trimester
+                });
+            }
+
             var vm = await BuildLOAchievementReportViewModel(
                 studentId,
                 assignmentId,
@@ -246,32 +272,118 @@ namespace AIS_LO_System.Controllers
             if (vm == null)
                 return NotFound();
 
-            var newLabel = $"LO Achievement Report — {vm.StudentInternalId} — {vm.StudentName} — {assessmentName}";
-            var legacyLabel = $"LO Achievement Report — {vm.StudentName} — {assessmentName}";
-            ViewBag.Submission = await _context.CourseSubmissions
-                .Include(s => s.ReviewedBy)
-                .Where(s =>
-                    s.CourseCode == courseCode &&
-                    s.Year == year &&
-                    s.Trimester == trimester &&
-                    s.ItemType == SubmissionItemType.LOAchievementReport &&
-                    s.ItemRefId == assignmentId &&
-                    (s.ItemLabel == newLabel || s.ItemLabel == legacyLabel))
-                .OrderByDescending(s => s.SubmittedAt)
-                .FirstOrDefaultAsync();
+            // One submission represents the whole assignment batch
+            ViewBag.Submission = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.LOAchievementReport, assignmentId);
 
             return View(vm);
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitLOAchievementReport(
+            int studentId,
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester)
+        {
+            // Legacy per-student submit endpoint: keep route stable, but submit the whole batch.
+            await SubmitLOAchievementReports(
+                assignmentId, courseCode, courseTitle, assessmentName, year, trimester);
+            return RedirectToAction(nameof(LOAchievementReport), new { studentId, assignmentId, courseCode, courseTitle, assessmentName, year, trimester });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitLOAchievementReports(
+            int assignmentId,
+            string courseCode,
+            string courseTitle,
+            string assessmentName,
+            int year,
+            int trimester)
+        {
+            var course = await _context.Courses
+                .FirstOrDefaultAsync(c =>
+                    c.Code == courseCode &&
+                    c.Year == year &&
+                    c.Trimester == trimester);
+
+            if (course?.ModeratorId == null)
+            {
+                TempData["Error"] = "No moderator assigned to this course.";
+                return RedirectToAction(nameof(Index), new { assignmentId, courseCode, courseTitle, assessmentName, year, trimester });
+            }
+
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            if (userId == 0)
+            {
+                TempData["Error"] = "User not authenticated.";
+                return RedirectToAction(nameof(Index), new { assignmentId, courseCode, courseTitle, assessmentName, year, trimester });
+            }
+
+            var existing = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.LOAchievementReport, assignmentId);
+
+            if (existing?.Status == SubmissionStatus.Pending)
+            {
+                TempData["Error"] = "LO Achievement Reports for this assessment have already been submitted and are pending review.";
+                return RedirectToAction(nameof(Index), new { assignmentId, courseCode, courseTitle, assessmentName, year, trimester });
+            }
+
+            // Generate and save every student's PDF at submit time
+            var enrolledStudentIds = await _context.StudentCourseEnrolments
+                .Where(e => e.CourseId == course!.Id)
+                .Select(e => e.StudentId)
+                .Distinct()
+                .ToListAsync();
+
+            var students = await _context.Students
+                .Where(s => enrolledStudentIds.Contains(s.Id))
+                .OrderBy(s => s.StudentId)
+                .ToListAsync();
+
+            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "lo-achievement");
+            Directory.CreateDirectory(directory);
+
+            var safeAssessmentName = SafeFilePart(assessmentName);
+            var generatedAt = DateTime.Now;
+
+            foreach (var student in students)
+            {
+                var vm = await BuildLOAchievementReportViewModel(
+                    student.Id, assignmentId, courseCode, courseTitle, assessmentName, year, trimester);
+                if (vm == null) continue;
+
+                var pdfBytes = GenerateLoAchievementPdfBytes(vm, generatedAt);
+                var filename = $"{vm.StudentId}_{safeAssessmentName}_LOAchievementReport.pdf";
+                var fullPath = Path.Combine(directory, filename);
+                await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
+            }
+
+            await _submissions.SubmitAsync(
+                courseCode, year, trimester,
+                SubmissionItemType.LOAchievementReport,
+                assignmentId,
+                $"LO Achievement Report — {assessmentName}",
+                userId);
+
+            TempData["Success"] = $"LO Achievement Reports for '{assessmentName}' have been submitted to the moderator for review.";
+            return RedirectToAction(nameof(Index), new { assignmentId, courseCode, courseTitle, assessmentName, year, trimester });
+        }
+
         [HttpGet]
         public async Task<IActionResult> DownloadLOAchievementReportPdf(
-    int studentId,
-    int assignmentId,
-    string courseCode,
-    string courseTitle,
-    string assessmentName,
-    int year,
-    int trimester)
+int studentId,
+int assignmentId,
+string courseCode,
+string courseTitle,
+string assessmentName,
+int year,
+int trimester)
         {
             var vm = await BuildLOAchievementReportViewModel(
                 studentId,
@@ -285,33 +397,31 @@ namespace AIS_LO_System.Controllers
             if (vm == null)
                 return NotFound();
 
-            // Auto-submit to moderator when downloading LO Achievement report.
-            // The label embeds StudentInternalId so SubmissionService can treat each
-            // student as a distinct submission even when they share the same assignmentId.
-            // Format: "LO Achievement Report — {StudentInternalId} — {StudentName} — {AssessmentName}"
-            var course = await _context.Courses
-                .FirstOrDefaultAsync(c =>
-                    c.Code == courseCode &&
-                    c.Year == year &&
-                    c.Trimester == trimester);
-
-            if (course?.ModeratorId != null)
-            {
-                int.TryParse(User.FindFirst("UserId")?.Value, out int currentUserId);
-                if (currentUserId > 0)
-                {
-                    await _submissions.SubmitAsync(
-                        courseCode, year, trimester,
-                        SubmissionItemType.LOAchievementReport,
-                        assignmentId,
-                        $"LO Achievement Report — {vm.StudentInternalId} — {vm.StudentName} — {assessmentName}",
-                        currentUserId);
-                }
-            }
-
             var downloadedAt = DateTime.Now;
+            var pdfBytes = GenerateLoAchievementPdfBytes(vm, downloadedAt);
 
-            var pdfBytes = Document.Create(container =>
+            // Save PDF to file system for moderator review
+            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "lo-achievement");
+            Directory.CreateDirectory(directory);
+
+            var safeAssessmentName = SafeFilePart(vm.AssessmentName);
+            var filename = $"{vm.StudentId}_{safeAssessmentName}_LOAchievementReport.pdf";
+            var fullPath = Path.Combine(directory, filename);
+            await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
+
+            return File(pdfBytes, "application/pdf", filename);
+        }
+
+        private static string SafeFilePart(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return "Report";
+            var invalid = Path.GetInvalidFileNameChars().Concat(new[] { ' ' }).Distinct().ToArray();
+            return string.Join("_", value.Split(invalid, StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        private static byte[] GenerateLoAchievementPdfBytes(LOAchievementReportViewModel vm, DateTime generatedAt)
+        {
+            return Document.Create(container =>
             {
                 container.Page(page =>
                 {
@@ -319,7 +429,6 @@ namespace AIS_LO_System.Controllers
                     page.Margin(30);
                     page.DefaultTextStyle(x => x.FontSize(10));
 
-                    // ✅ HEADER (UPDATED)
                     page.Header().Column(column =>
                     {
                         column.Item().Text($"LO Achievement Report - {vm.StudentName}")
@@ -328,11 +437,8 @@ namespace AIS_LO_System.Controllers
                         column.Item().Text($"{vm.CourseCode} {vm.CourseTitle}");
                         column.Item().Text($"Assessment: {vm.AssessmentName}");
                         column.Item().Text($"Student ID: {vm.StudentId}");
-
                         column.Item().Text($"Semester: Trimester {vm.Trimester}, {vm.Year}");
-
-                        // ✅ NEW LINE
-                        column.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
+                        column.Item().Text($"Generated on: {generatedAt:dd MMM yyyy, hh:mm tt}");
                     });
 
                     page.Content().Column(column =>
@@ -402,24 +508,9 @@ namespace AIS_LO_System.Controllers
 
                     page.Footer()
                         .AlignCenter()
-                        .Text(text =>
-                        {
-                            text.Span("Generated from AIS LO System");
-                        });
+                        .Text(text => { text.Span("Generated from AIS LO System"); });
                 });
             }).GeneratePdf();
-
-            // Save PDF to file system for moderator review
-            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "lo-achievement");
-            Directory.CreateDirectory(directory);
-
-            var safeAssessmentName = vm.AssessmentName.Replace(" ", "_");
-            var filename =
-                $"{vm.StudentId}_{vm.CourseCode}_{safeAssessmentName}_Trimester_{vm.Trimester}_{vm.Year}.pdf";
-            var fullPath = Path.Combine(directory, filename);
-            await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
-
-            return File(pdfBytes, "application/pdf", filename);
 
             static IContainer CellStyle(IContainer container)
             {

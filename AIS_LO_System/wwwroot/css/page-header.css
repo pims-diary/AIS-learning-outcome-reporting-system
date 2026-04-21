@@ -1,0 +1,92 @@
+﻿/* ============================================================
+   page-header.css
+   Shared styles for .ph-bar (breadcrumbs + Go Back button).
+   Used by every lecturer-side page via _PageHeader partial.
+   ============================================================ */
+
+/* Bar wrapper ------------------------------------------------ */
+.ph-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+/* Breadcrumbs ------------------------------------------------ */
+.ph-crumbs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2px;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.ph-crumb {
+    color: #6b7280;
+}
+
+.ph-crumb-link {
+    color: #c21c00;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.15s, text-decoration 0.15s;
+}
+
+    .ph-crumb-link:hover {
+        color: #991700;
+        text-decoration: underline;
+    }
+
+.ph-crumb-active {
+    color: #111827;
+    font-weight: 600;
+}
+
+.ph-sep {
+    color: #d1d5db;
+    margin: 0 5px;
+    font-weight: 300;
+    user-select: none;
+}
+
+/* Go Back button --------------------------------------------- */
+.ph-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+    text-decoration: none;
+    background: #fff;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
+}
+
+    .ph-back:hover {
+        background: #f3f4f6;
+        border-color: #9ca3af;
+        color: #111827;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        text-decoration: none;
+    }
+
+    .ph-back:active {
+        background: #e5e7eb;
+    }
+
+/* Responsive ------------------------------------------------- */
+@media (max-width: 600px) {
+    .ph-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
