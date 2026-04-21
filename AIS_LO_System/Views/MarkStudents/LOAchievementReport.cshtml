@@ -3,48 +3,26 @@
 
 @{
     ViewData["Title"] = "LO Achievement Report";
+    Layout = "_DashboardLayout";
     var loSubmission = ViewBag.Submission as CourseSubmission;
 }
 
 <div class="container mt-4 lo-report-page">
 
-    <div class="breadcrumb mb-3 small">
-        <a class="crumb-link"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            @Model.CourseCode @Model.CourseTitle
-        </a>
-        <span>/</span>
-
-        <a class="crumb-link"
-           asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            Assessments
-        </a>
-        <span>/</span>
-
-        <a class="crumb-link"
-           asp-controller="MarkStudents"
-           asp-action="Index"
-           asp-route-assignmentId="@Model.AssignmentId"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            Mark Students
-        </a>
-        <span>/</span>
-        <span>LO Achievement Report</span>
-    </div>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{Model.CourseCode} {Model.Year} - T{Model.Trimester}", "CourseDashboard", "Index", new { courseCode = Model.CourseCode, year = Model.Year, trimester = Model.Trimester }),
+                (Model.AssessmentName, "Assignment", "Index", new { assessmentName = Model.AssessmentName, courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, year = Model.Year, trimester = Model.Trimester }),
+                ("Mark Students", "MarkStudents", "Index", new { assignmentId = Model.AssignmentId, courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, assessmentName = Model.AssessmentName, year = Model.Year, trimester = Model.Trimester }),
+                ("LO Achievement Report", null, null, null)
+            }
+        },
+        { "BackController",  "MarkStudents" },
+        { "BackAction",      "MarkStudent" },
+        { "BackRouteValues", new { studentId = Model.StudentInternalId, assignmentId = Model.AssignmentId, courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, assessmentName = Model.AssessmentName, year = Model.Year, trimester = Model.Trimester } as object },
+    })
 
     @if (loSubmission != null)
     {
@@ -55,18 +33,7 @@
         <div class="report-header d-flex justify-content-between align-items-start mb-3">
             <h2 class="report-title">LO Achievement Report for <em>@Model.StudentName</em></h2>
 
-            <a asp-controller="MarkStudents"
-               asp-action="MarkStudent"
-               asp-route-studentId="@Model.StudentInternalId"
-               asp-route-assignmentId="@Model.AssignmentId"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-courseTitle="@Model.CourseTitle"
-               asp-route-assessmentName="@Model.AssessmentName"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester"
-               class="back-link">
-                ← Go Back
-            </a>
+
         </div>
 
         <!-- Top page info -->
@@ -198,28 +165,28 @@
 
         <div class="report-actions mt-4">
             <a asp-controller="MarkStudents"
-               asp-action="DownloadLOAchievementReportPdf"
-               asp-route-studentId="@Model.StudentInternalId"
-               asp-route-assignmentId="@Model.AssignmentId"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-courseTitle="@Model.CourseTitle"
-               asp-route-assessmentName="@Model.AssessmentName"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester"
-               class="btn report-btn">
+                   asp-action="DownloadLOAchievementReportPdf"
+                   asp-route-studentId="@Model.StudentInternalId"
+                   asp-route-assignmentId="@Model.AssignmentId"
+                   asp-route-courseCode="@Model.CourseCode"
+                   asp-route-courseTitle="@Model.CourseTitle"
+                   asp-route-assessmentName="@Model.AssessmentName"
+                   asp-route-year="@Model.Year"
+                   asp-route-trimester="@Model.Trimester"
+                   style="background-color:#c21c00;color:white;padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;border:none;text-decoration:none;display:inline-block;line-height:1.2;white-space:nowrap;">
                 Download PDF
             </a>
 
             <a asp-controller="MarkStudents"
-               asp-action="MarkStudent"
-               asp-route-studentId="@Model.StudentInternalId"
-               asp-route-assignmentId="@Model.AssignmentId"
-               asp-route-courseCode="@Model.CourseCode"
-               asp-route-courseTitle="@Model.CourseTitle"
-               asp-route-assessmentName="@Model.AssessmentName"
-               asp-route-year="@Model.Year"
-               asp-route-trimester="@Model.Trimester"
-               class="btn report-btn">
+                   asp-action="MarkStudent"
+                   asp-route-studentId="@Model.StudentInternalId"
+                   asp-route-assignmentId="@Model.AssignmentId"
+                   asp-route-courseCode="@Model.CourseCode"
+                   asp-route-courseTitle="@Model.CourseTitle"
+                   asp-route-assessmentName="@Model.AssessmentName"
+                   asp-route-year="@Model.Year"
+                   asp-route-trimester="@Model.Trimester"
+                   style="background-color:#c21c00;color:white;padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;border:none;text-decoration:none;display:inline-block;line-height:1.2;white-space:nowrap;">
                 Cancel
             </a>
         </div>

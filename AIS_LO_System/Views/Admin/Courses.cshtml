@@ -74,90 +74,118 @@
             </form>
         </div>
 
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th>Course Code</th>
-                    <th>Trimester</th>
-                    <th>Department</th>
-                    <th>Status</th>
-                    <th>Lecturer/s</th>
-                    <th>Moderator</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (!Model.Any())
-                {
+        <div style="overflow-x:auto;">
+            <table class="admin-table">
+                <thead>
                     <tr>
-                        <td colspan="7" class="admin-empty">No Courses Added Yet</td>
+                        <th>Course Code</th>
+                        <th>Trimester</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                        <th>Lecturer/s</th>
+                        <th>Moderator</th>
+                        <th></th>
                     </tr>
-                }
-                else
-                {
-                    @foreach (var c in Model)
+                </thead>
+                <tbody>
+                    @if (!Model.Any())
                     {
-                        bool isActive = c.Year == ViewBag.CurrentYear && c.Trimester == ViewBag.CurrentTrimester;
-                        var deptClass = c.School switch
-                        {
-                            "Business" => "dept-pill-business",
-                            "Tourism" => "dept-pill-tourism",
-                            "Hospitality" => "dept-pill-hospitality",
-                            _ => "dept-pill-it"
-                        };
-                        <tr class="@(!isActive ? "row-inactive" : "")">
-                            <td class="admin-td-code">@c.Code</td>
-                            <td>@c.Year T@(c.Trimester)</td>
-                            <td><span class="dept-pill @deptClass">@c.School</span></td>
-                            <td>
-                                <span class="status-pill @(isActive ? "status-active" : "status-inactive")">
-                                    @(isActive ? "Active" : "Inactive")
-                                </span>
-                            </td>
-                            <td>
-                                @if (c.Lecturer != null)
-                                {
-                                    <span class="role-pill-lecturer">@c.Lecturer.FullName</span>
-                                }
-                                else
-                                {
-                                    <span class="role-pill-unassigned">Unassigned</span>
-                                }
-                            </td>
-                            <td>
-                                @if (c.Moderator != null)
-                                {
-                                    <span class="role-pill-moderator">@c.Moderator.FullName</span>
-                                }
-                                else
-                                {
-                                    <span class="role-pill-unassigned">Unassigned</span>
-                                }
-                            </td>
-                            <td class="admin-td-actions">
-                                <button class="btn-admin-edit"
-                                        data-id="@c.Id"
-                                        data-title="@c.Title"
-                                        data-school="@c.School"
-                                        data-year="@c.Year"
-                                        data-trimester="@c.Trimester"
-                                        data-lecturer="@(c.LecturerId?.ToString() ?? "")"
-                                        data-moderator="@(c.ModeratorId?.ToString() ?? "")"
-                                        onclick="openEditCourse(this)">
-                                    Edit
-                                </button>
-                                <form asp-action="RemoveCourse" method="post" style="display:inline"
-                                      onsubmit="return confirm('Remove @c.Code? This will also remove all student and lecturer enrolments for this course.')">
-                                    @Html.AntiForgeryToken()
-                                    <input type="hidden" name="id" value="@c.Id" />
-                                    <button type="submit" class="btn-admin-remove">Remove</button>
-                                </form>
-                            </td>
+                        <tr>
+                            <td colspan="7" class="admin-empty">No Courses Added Yet</td>
                         </tr>
                     }
-                }
-            </tbody>
-        </table>
+                    else
+                    {
+                        @foreach (var c in Model)
+                        {
+                            bool isActive = c.Year == ViewBag.CurrentYear && c.Trimester == ViewBag.CurrentTrimester;
+                            var deptClass = c.School switch
+                            {
+                                "Business" => "dept-pill-business",
+                                "Tourism" => "dept-pill-tourism",
+                                "Hospitality" => "dept-pill-hospitality",
+                                _ => "dept-pill-it"
+                            };
+                            var lecturerRoster = c.LecturerEnrolments
+                                .Where(e => e.UserId != c.ModeratorId)
+                                .Select(e => e.User)
+                                .Where(u => u != null)
+                                .GroupBy(u => u!.Id)
+                                .Select(g => g.First())
+                                .OrderBy(u => u!.FullName)
+                                .ToList();
+                            if (c.Lecturer != null && lecturerRoster.All(u => u!.Id != c.Lecturer.Id))
+                            {
+                                lecturerRoster.Insert(0, c.Lecturer);
+                            }
+                            var visibleLecturers = lecturerRoster.Take(1).ToList();
+                            var extraLecturerCount = lecturerRoster.Count - visibleLecturers.Count;
+                            var lecturerIds = string.Join(",", lecturerRoster.Select(u => u!.Id));
+                            var lecturerNames = string.Join(", ", lecturerRoster.Select(u => u!.FullName));
+
+                            <tr class="@(!isActive ? "row-inactive" : "")">
+                                <td class="admin-td-code">@c.Code</td>
+                                <td>@c.Year T@(c.Trimester)</td>
+                                <td><span class="dept-pill @deptClass">@c.School</span></td>
+                                <td>
+                                    <span class="status-pill @(isActive ? "status-active" : "status-inactive")">
+                                        @(isActive ? "Active" : "Inactive")
+                                    </span>
+                                </td>
+                                <td>
+                                    @if (lecturerRoster.Any())
+                                    {
+                                        <div class="role-pill-list" title="@lecturerNames">
+                                            @foreach (var lecturer in visibleLecturers)
+                                            {
+                                                <span class="role-pill-lecturer">@lecturer!.FullName</span>
+                                            }
+                                            @if (extraLecturerCount > 0)
+                                            {
+                                                <span class="role-pill-more">+@extraLecturerCount more</span>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="role-pill-unassigned">Unassigned</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (c.Moderator != null)
+                                    {
+                                        <span class="role-pill-moderator">@c.Moderator.FullName</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="role-pill-unassigned">Unassigned</span>
+                                    }
+                                </td>
+                                <td class="admin-td-actions">
+                                    <button class="btn-admin-edit"
+                                            data-id="@c.Id"
+                                            data-title="@c.Title"
+                                            data-school="@c.School"
+                                            data-year="@c.Year"
+                                            data-trimester="@c.Trimester"
+                                            data-lecturers="@lecturerIds"
+                                            data-moderator="@(c.ModeratorId?.ToString() ?? "")"
+                                            onclick="openEditCourse(this)">
+                                        Edit
+                                    </button>
+                                    <form asp-action="RemoveCourse" method="post" style="display:inline"
+                                          onsubmit="return confirm('Remove @c.Code? This will also remove all student and lecturer enrolments for this course.')">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@c.Id" />
+                                        <button type="submit" class="btn-admin-remove">Remove</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -202,17 +230,20 @@
             </div>
             <div class="admin-form-row">
                 <div class="admin-form-group">
-                    <label>Assign Lecturer</label>
-                    <select name="lecturerId" class="admin-input">
-                        <option value="">Unassigned</option>
+                    <label>Assign Lecturer/s</label>
+                    <div class="admin-checkbox-list">
                         @foreach (var l in lecturers)
                         {
-                            <option value="@l.Id">@l.FullName</option>
+                            <label class="admin-checkbox-item">
+                                <input type="checkbox" name="lecturerIds" value="@l.Id" />
+                                @l.FullName
+                            </label>
                         }
-                    </select>
+                    </div>
+                    <div class="admin-form-helper">Select one or more lecturers for this course.</div>
                 </div>
                 <div class="admin-form-group">
-                    <label>Assign Moderator <span style="font-weight:400;color:var(--color-text-secondary)">(any lecturer, must differ from above)</span></label>
+                    <label>Assign Moderator <span style="font-weight:400;color:var(--color-text-secondary)">(can be same as lecturer)</span></label>
                     <select name="moderatorId" class="admin-input">
                         <option value="">Unassigned</option>
                         @foreach (var m in moderators)
@@ -268,17 +299,20 @@
             </div>
             <div class="admin-form-row">
                 <div class="admin-form-group">
-                    <label>Lecturer</label>
-                    <select name="lecturerId" id="editCourseLecturer" class="admin-input">
-                        <option value="">Unassigned</option>
+                    <label>Lecturer/s</label>
+                    <div class="admin-checkbox-list" id="editCourseLecturers">
                         @foreach (var l in lecturers)
                         {
-                            <option value="@l.Id">@l.FullName</option>
+                            <label class="admin-checkbox-item">
+                                <input type="checkbox" name="lecturerIds" value="@l.Id" />
+                                @l.FullName
+                            </label>
                         }
-                    </select>
+                    </div>
+                    <div class="admin-form-helper">Select one or more lecturers for this course.</div>
                 </div>
                 <div class="admin-form-group">
-                    <label>Moderator <span style="font-weight:400;color:var(--color-text-secondary)">(any lecturer, must differ from above)</span></label>
+                    <label>Moderator <span style="font-weight:400;color:var(--color-text-secondary)">(can be same as lecturer)</span></label>
                     <select name="moderatorId" id="editCourseModerator" class="admin-input">
                         <option value="">Unassigned</option>
                         @foreach (var m in moderators)
@@ -306,7 +340,9 @@
             const school   = btn.dataset.school;
             const year     = btn.dataset.year;
             const trimester = btn.dataset.trimester;
-            const lecId    = btn.dataset.lecturer;
+            const lecturerIds = btn.dataset.lecturers
+                ? btn.dataset.lecturers.split(',').map(Number).filter(Number.isFinite)
+                : [];
             const modId    = btn.dataset.moderator;
 
             document.getElementById('editCourseId').value = id;
@@ -316,7 +352,9 @@
             var sel = document.getElementById('editCourseSchool');
             sel.value = school;
             if (sel.value !== school) sel.value = 'Information Technology';
-            document.getElementById('editCourseLecturer').value = lecId || '';
+            document.querySelectorAll('#editCourseLecturers input[type=checkbox]').forEach(cb => {
+                cb.checked = lecturerIds.includes(parseInt(cb.value));
+            });
             document.getElementById('editCourseModerator').value = modId || '';
             openModal('editCourseModal');
         }

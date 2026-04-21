@@ -168,43 +168,19 @@
 
 <div class="edit-rubric-container">
 
-    <!-- Breadcrumb -->
-    <div class="edit-breadcrumb">
-        <a asp-controller="CourseDashboard"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
-            @ViewBag.CourseCode @($"{ViewBag.Year}-T{ViewBag.Trimester}")
-        </a>
-        <span>/</span>
-        <a asp-controller="Assignment"
-               asp-action="Index"
-               asp-route-assessmentName="@ViewBag.AssessmentName"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
-            Assessments
-        </a>
-        <span>/</span>
-        <span>@ViewBag.AssessmentName</span>
-        <span>/</span>
-        <span>Edit Rubric</span>
-    </div>
-
-    <!-- Title + Go Back -->
-    <div class="edit-header">
-        <h1>Edit Rubric</h1>
-        <a asp-action="Index"
-           asp-route-assignmentId="@ViewBag.AssignmentId"
-           asp-route-assessmentName="@ViewBag.AssessmentName"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester"
-           class="edit-go-back">← Go Back</a>
-    </div>
+@await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                (ViewBag.AssessmentName as string, "Assignment", "Index", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                ("Edit Rubric", null, null, null)
+            }
+        },
+        { "BackController",  "Rubric" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { assignmentId = ViewBag.AssignmentId, assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
+    })
 
     <!-- Save/Cancel Actions -->
     <div class="edit-actions">

@@ -3,55 +3,73 @@
 @{
     ViewData["Title"] = "Mark Students";
     Layout = "_DashboardLayout";
+    var studentMarksSubmission = ViewBag.StudentMarksSubmission as AIS_LO_System.Models.CourseSubmission;
+    var loAchievementSubmission = ViewBag.LOAchievementSubmission as AIS_LO_System.Models.CourseSubmission;
+    var canSubmitLoAchievementBatch =
+        loAchievementSubmission == null || loAchievementSubmission.Status != AIS_LO_System.Models.SubmissionStatus.Pending;
 }
 
 <div class="container mt-4">
 
-    <!-- Breadcrumb -->
-    <div class="breadcrumb mb-3">
-        <a class="crumb-link"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            @Model.CourseCode @ViewBag.CourseTitle
-        </a>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{Model.CourseCode} {Model.Year} - T{Model.Trimester}", "CourseDashboard", "Index", new { courseCode = Model.CourseCode, year = Model.Year, trimester = Model.Trimester }),
+                (Model.AssessmentName, "Assignment", "Index", new { assessmentName = Model.AssessmentName, courseCode = Model.CourseCode, courseTitle = ViewBag.CourseTitle, year = Model.Year, trimester = Model.Trimester }),
+                ("Mark Students", null, null, null)
+            }
+        },
+        { "BackController",  "Assignment" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { assessmentName = Model.AssessmentName, courseCode = Model.CourseCode, courseTitle = ViewBag.CourseTitle, year = Model.Year, trimester = Model.Trimester } as object },
+    })
 
-        <span>/</span>
+    <!-- Page Title -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+        <h2 class="fw-bold mb-0">Mark Students</h2>
 
-        <a class="crumb-link"
-           asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            Assessments
-        </a>
-
-        <span>/</span>
-        <span>Mark Students</span>
+        @if (canSubmitLoAchievementBatch)
+        {
+            <form asp-controller="MarkStudents"
+                  asp-action="SubmitLOAchievementReports"
+                  method="post"
+                  class="d-inline">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="assignmentId" value="@ViewBag.AssignmentId" />
+                <input type="hidden" name="courseCode" value="@Model.CourseCode" />
+                <input type="hidden" name="courseTitle" value="@ViewBag.CourseTitle" />
+                <input type="hidden" name="assessmentName" value="@Model.AssessmentName" />
+                <input type="hidden" name="year" value="@Model.Year" />
+                <input type="hidden" name="trimester" value="@Model.Trimester" />
+                <button type="submit"
+                        class="ais-red-btn">
+                    Submit LO Achievement Batch
+                </button>
+            </form>
+        }
     </div>
 
-    <!-- Page Title + Back Button -->
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="fw-bold">Mark Students</h2>
+    @if (studentMarksSubmission != null || loAchievementSubmission != null)
+    {
+        <div class="submission-status-stack">
+            @if (studentMarksSubmission != null)
+            {
+                <div class="submission-status-item">
+                    <div class="submission-status-label">Student Marks</div>
+                    @await Component.InvokeAsync("SubmissionStatus", new { submission = studentMarksSubmission })
+                </div>
+            }
 
-        <a class="btn btn-outline-secondary"
-           asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@ViewBag.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            ← Back
-        </a>
-    </div>
-
-    @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.Submission as AIS_LO_System.Models.CourseSubmission })
+            @if (loAchievementSubmission != null)
+            {
+                <div class="submission-status-item">
+                    <div class="submission-status-label">LO Achievement</div>
+                    @await Component.InvokeAsync("SubmissionStatus", new { submission = loAchievementSubmission })
+                </div>
+            }
+        </div>
+    }
 
     <!-- Card -->
     <div class="card shadow-sm">
@@ -117,25 +135,25 @@
                                     <td>
                                         @if (student.IsMarked)
                                         {
-                                            <span class="status-marked">Marked</span>
+                                            <span class="ais-pill ais-pill-success">Marked</span>
                                         }
                                         else
                                         {
-                                            <span class="status-not-marked">Not Marked</span>
+                                            <span class="ais-pill ais-pill-danger">Not Marked</span>
                                         }
                                     </td>
 
                                     <td class="text-center">
                                         <a asp-controller="MarkStudents"
-                                           asp-action="MarkStudent"
-                                           asp-route-studentId="@student.InternalId"
-                                           asp-route-assignmentId="@ViewBag.AssignmentId"
-                                           asp-route-courseCode="@Model.CourseCode"
-                                           asp-route-courseTitle="@ViewBag.CourseTitle"
-                                           asp-route-assessmentName="@Model.AssessmentName"
-                                           asp-route-year="@Model.Year"
-                                           asp-route-trimester="@Model.Trimester"
-                                           class="action-btn">
+                                               asp-action="MarkStudent"
+                                               asp-route-studentId="@student.InternalId"
+                                               asp-route-assignmentId="@ViewBag.AssignmentId"
+                                               asp-route-courseCode="@Model.CourseCode"
+                                               asp-route-courseTitle="@ViewBag.CourseTitle"
+                                               asp-route-assessmentName="@Model.AssessmentName"
+                                               asp-route-year="@Model.Year"
+                                               asp-route-trimester="@Model.Trimester"
+                                               class="action-btn">
                                             @(student.IsMarked ? "View" : "Mark Student")
                                         </a>
 
@@ -172,3 +190,68 @@
         }
     });
 </script>
+
+<style>
+    .submission-status-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .submission-status-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .submission-status-label {
+        min-width: 130px;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #374151;
+    }
+
+    /* Match Image 3, but not oversized */
+    .ais-red-btn {
+        background-color: #c21c00;
+        color: white;
+        padding: 10px 22px;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .ais-red-btn:hover {
+        filter: brightness(0.95);
+    }
+
+    .ais-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+        line-height: 1.1;
+        white-space: nowrap;
+    }
+
+    .ais-pill-success {
+        background: #ecfdf5;
+        border-color: #d1fae5;
+        color: #065f46;
+    }
+
+    .ais-pill-danger {
+        background: #fef2f2;
+        border-color: #fee2e2;
+        color: #991b1b;
+    }
+</style>

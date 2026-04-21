@@ -67,6 +67,24 @@
 
     .notif-list { max-height: 380px; overflow-y: auto; }
 
+    .notif-section {
+        border-top: 1px solid #f0f0f0;
+    }
+
+    .notif-section:first-child {
+        border-top: none;
+    }
+
+    .notif-section-title {
+        padding: 10px 16px 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #6b7280;
+        background: #fafafa;
+    }
+
     .notif-item {
         display: flex;
         flex-direction: column;
@@ -119,6 +137,18 @@
         font-size: 13px; color: #1a6fbb; text-decoration: none; font-weight: 600;
     }
     .notif-footer a:hover { text-decoration: underline; }
+
+    .notif-clear-btn {
+        border: none;
+        background: transparent;
+        color: #1a6fbb;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .notif-clear-btn:hover { text-decoration: underline; }
 </style>
 
 <div class="notif-wrapper" id="notifWrapper">
@@ -126,61 +156,129 @@
         <i class="bi bi-bell"></i>
         @if (Model.Count > 0)
         {
-            <span class="notif-badge">@(Model.Count > 9 ? "9+" : Model.Count.ToString())</span>
+            <span class="notif-badge" id="notifBadge">@(Model.Count > 9 ? "9+" : Model.Count.ToString())</span>
         }
     </button>
 
     <div class="notif-dropdown" id="notifDropdown">
         <div class="notif-header">
             <span>
-                @(Model.IsModerator ? "Pending Review" : "Recent Decisions")
+                Notifications
             </span>
             @if (Model.Count > 0)
             {
-                <span class="notif-header-sub">@Model.Count @(Model.Count == 1 ? "item" : "items")</span>
+                <span class="notif-header-sub" id="notifHeaderCount">@Model.Count @(Model.Count == 1 ? "item" : "items")</span>
             }
         </div>
 
-        <div class="notif-list">
-            @if (!Model.Items.Any())
+        <div class="notif-list" id="notifList">
+            @if (!Model.ModeratorItems.Any() && !Model.LecturerItems.Any())
             {
-                <div class="notif-empty">
+                <div class="notif-empty" id="notifEmptyState">
                     <i class="bi bi-check2-circle" style="font-size:24px; display:block; margin-bottom:6px;"></i>
-                    @(Model.IsModerator ? "No pending submissions" : "No recent decisions")
+                    No notifications
                 </div>
             }
             else
             {
-                @foreach (var item in Model.Items)
+                <div class="notif-empty" id="notifEmptyState" style="display:none;">
+                    <i class="bi bi-check2-circle" style="font-size:24px; display:block; margin-bottom:6px;"></i>
+                    No notifications
+                </div>
+
+                @if (Model.IsModerator)
                 {
-                    <a class="notif-item" href="@item.Href">
-                        <div class="notif-item-top">
-                            <span class="notif-label">@item.Label</span>
-                            <span class="notif-pill @item.StatusCss">@item.StatusText</span>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                            <span class="notif-course">@item.CourseCode</span>
-                            <span class="notif-date">@item.Date.ToString("dd MMM, h:mm tt")</span>
-                        </div>
-                        @if (!string.IsNullOrWhiteSpace(item.Comment))
+                    <div class="notif-section" data-section-role="moderator">
+                        <div class="notif-section-title">Pending Review</div>
+                        @if (Model.ModeratorItems.Any())
                         {
-                            <div class="notif-comment">💬 @item.Comment</div>
+                            @foreach (var item in Model.ModeratorItems)
+                            {
+                                <a class="notif-item"
+                                   href="@item.Href"
+                                   data-notif-id="@item.ClientKey"
+                                   data-notif-role="moderator">
+                                    <div class="notif-item-top">
+                                        <span class="notif-label">@item.Label</span>
+                                        <span class="notif-pill @item.StatusCss">@item.StatusText</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                        <span class="notif-course">@item.CourseCode</span>
+                                        <span class="notif-date">@item.Date.ToString("dd MMM, h:mm tt")</span>
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(item.Comment))
+                                    {
+                                        <div class="notif-comment">💬 @item.Comment</div>
+                                    }
+                                </a>
+                            }
                         }
-                    </a>
+                        else
+                        {
+                            <div class="notif-empty" data-empty-role="moderator">No pending submissions</div>
+                        }
+                    </div>
                 }
+
+                <div class="notif-section" data-section-role="lecturer">
+                    <div class="notif-section-title">Recent Decisions</div>
+                    @if (Model.LecturerItems.Any())
+                    {
+                        @foreach (var item in Model.LecturerItems)
+                        {
+                            <a class="notif-item"
+                               href="@item.Href"
+                               data-notif-id="@item.ClientKey"
+                               data-notif-role="lecturer">
+                                <div class="notif-item-top">
+                                    <span class="notif-label">@item.Label</span>
+                                    <span class="notif-pill @item.StatusCss">@item.StatusText</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                                    <span class="notif-course">@item.CourseCode</span>
+                                    <span class="notif-date">@item.Date.ToString("dd MMM, h:mm tt")</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(item.Comment))
+                                {
+                                    <div class="notif-comment">💬 @item.Comment</div>
+                                }
+                            </a>
+                        }
+                    }
+                    else
+                    {
+                        <div class="notif-empty" data-empty-role="lecturer">No recent decisions</div>
+                    }
+                </div>
             }
         </div>
 
-        @if (Model.IsModerator)
+        @if (Model.IsModerator || Model.LecturerItems.Any())
         {
-            <div class="notif-footer">
-                <a asp-controller="Moderator" asp-action="Inbox">View full inbox →</a>
+            <div class="notif-footer" style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                @if (Model.IsModerator)
+                {
+                    <a asp-controller="Moderator" asp-action="Inbox">View full inbox →</a>
+                }
+                else
+                {
+                    <span></span>
+                }
+
+                @if (Model.LecturerItems.Any())
+                {
+                    <button type="button" class="notif-clear-btn" onclick="clearLecturerNotifications(event)">Clear decisions</button>
+                }
             </div>
         }
     </div>
 </div>
 
+
 <script>
+    const lecturerNotifStorageKey = 'seen_notif_ids';
+    const moderatorNotificationCount = @Model.ModeratorItems.Count;
+
     function toggleNotif(e) {
         e.stopPropagation();
         document.getElementById('notifDropdown').classList.toggle('open');
@@ -192,9 +290,97 @@
     document.addEventListener('click', function () {
         document.getElementById('notifDropdown')?.classList.remove('open');
     });
+
+    function getSeenLecturerNotifications() {
+        try {
+            return JSON.parse(localStorage.getItem(lecturerNotifStorageKey) || '[]');
+        } catch {
+            return [];
+        }
+    }
+
+    function setSeenLecturerNotifications(ids) {
+        localStorage.setItem(lecturerNotifStorageKey, JSON.stringify([...new Set(ids)]));
+    }
+
+    function updateLecturerNotificationUi() {
+        const items = Array.from(document.querySelectorAll('.notif-item[data-notif-role="lecturer"]'));
+        if (items.length === 0) {
+            return;
+        }
+
+        const seen = new Set(getSeenLecturerNotifications());
+        const unseenItems = items.filter(item => !seen.has(item.dataset.notifId));
+
+        items.forEach(item => {
+            item.style.display = seen.has(item.dataset.notifId) ? 'none' : 'flex';
+        });
+
+        const lecturerCount = unseenItems.length;
+        const totalCount = moderatorNotificationCount + lecturerCount;
+        const badge = document.getElementById('notifBadge');
+        const headerCount = document.getElementById('notifHeaderCount');
+        const emptyState = document.getElementById('notifEmptyState');
+        const lecturerEmpty = document.querySelector('[data-empty-role="lecturer"]');
+        const lecturerSection = document.querySelector('[data-section-role="lecturer"]');
+
+        if (badge) {
+            if (totalCount > 0) {
+                badge.style.display = 'flex';
+                badge.textContent = totalCount > 9 ? '9+' : String(totalCount);
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        if (headerCount) {
+            headerCount.textContent = `${totalCount} ${totalCount === 1 ? 'item' : 'items'}`;
+        }
+
+        if (emptyState) {
+            emptyState.style.display = totalCount === 0 ? 'block' : 'none';
+        }
+
+        if (lecturerEmpty) {
+            lecturerEmpty.style.display = lecturerCount === 0 ? 'block' : 'none';
+        }
+
+        if (lecturerSection) {
+            lecturerSection.style.display = '';
+        }
+    }
+
+    function markLecturerNotificationSeen(id) {
+        const seen = getSeenLecturerNotifications();
+        seen.push(id);
+        setSeenLecturerNotifications(seen);
+        updateLecturerNotificationUi();
+    }
+
+    function clearLecturerNotifications(e) {
+        e.stopPropagation();
+        const ids = Array.from(document.querySelectorAll('.notif-item[data-notif-role="lecturer"]'))
+            .map(item => item.dataset.notifId)
+            .filter(Boolean);
+        setSeenLecturerNotifications(ids);
+        updateLecturerNotificationUi();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.notif-item[data-notif-role="lecturer"]').forEach(function (item) {
+            item.addEventListener('click', function () {
+                const id = this.dataset.notifId;
+                if (id) {
+                    markLecturerNotificationSeen(id);
+                }
+            });
+        });
+
+        updateLecturerNotificationUi();
+    });
 </script>
 
-@if (!Model.IsModerator && Model.Items.Any())
+@if (Model.LecturerPopupItems.Any())
 {
     <!-- Instagram-style decision popup for lecturers -->
     <div id="decisionOverlay" style="
@@ -266,11 +452,10 @@
 
     <script>
         (function () {
-            const STORAGE_KEY = 'seen_notif_ids';
-            const seen = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const seen = getSeenLecturerNotifications();
 
-            const decisions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Items.Select(i => new {
-                id = i.Label + "_" + i.Date.Ticks,
+            const decisions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.LecturerPopupItems.Select(i => new {
+                id = i.ClientKey,
                 label = i.Label,
                 course = i.CourseCode,
                 status = i.StatusText,
@@ -302,10 +487,10 @@
         function dismissDecisionPopup() {
             const overlay = document.getElementById('decisionOverlay');
             overlay.style.display = 'none';
-            const STORAGE_KEY = 'seen_notif_ids';
-            const seen = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const seen = getSeenLecturerNotifications();
             const allSeen = [...new Set([...seen, ...(window._unseenDecisionIds || [])])];
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(allSeen));
+            setSeenLecturerNotifications(allSeen);
+            updateLecturerNotificationUi();
         }
     </script>
 }

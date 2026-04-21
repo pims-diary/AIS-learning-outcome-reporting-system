@@ -1,0 +1,91 @@
+﻿@*
+    _PageHeader.cshtml — Shared page header with breadcrumbs + Go Back button.
+
+    Usage:
+        @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+        {
+            { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+                {
+                    ("Home",         "LecturerDashboard", "Index", null),
+                    ("2025 – Tri 1", "LecturerDashboard", "Index", new { year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                    ("IT5100",       "CourseDashboard",   "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                    ("Assessments",  null,                null,    null),
+                }
+            },
+            { "BackController", "CourseDashboard" },
+            { "BackAction",     "Index"           },
+            { "BackRouteValues", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
+            // { "BackLabel", "← Back to Assessments" },  optional, defaults to "← Go Back"
+        })
+*@
+@{
+    var breadcrumbs = ViewData["Breadcrumbs"]
+        as List<(string Label, string? Controller, string? Action, object? RouteValues)>
+        ?? new List<(string, string?, string?, object?)>();
+
+    var backController = ViewData["BackController"] as string;
+    var backAction = ViewData["BackAction"] as string;
+    var backRouteValues = ViewData["BackRouteValues"];
+    var backLabel = (ViewData["BackLabel"] as string) ?? "← Go Back";
+
+    bool hasBack = !string.IsNullOrEmpty(backController) && !string.IsNullOrEmpty(backAction);
+
+    // Convert an anonymous object to Dictionary<string,string> for asp-all-route-data
+    Dictionary<string, string> ToRouteDict(object? obj)
+    {
+        var d = new Dictionary<string, string>();
+        if (obj == null) return d;
+        foreach (var prop in obj.GetType().GetProperties())
+        {
+            var val = prop.GetValue(obj);
+            if (val != null) d[prop.Name] = val.ToString()!;
+        }
+        return d;
+    }
+}
+
+<div class="ph-bar">
+
+    <!-- Breadcrumbs -->
+    <nav class="ph-crumbs" aria-label="breadcrumb">
+        @for (int i = 0; i < breadcrumbs.Count; i++)
+        {
+            var crumb = breadcrumbs[i];
+            bool isLast = i == breadcrumbs.Count - 1;
+            bool isLink = !string.IsNullOrEmpty(crumb.Controller) && !string.IsNullOrEmpty(crumb.Action);
+
+            if (isLink)
+            {
+                var routeDict = ToRouteDict(crumb.RouteValues);
+                <a class="ph-crumb ph-crumb-link"
+                       asp-controller="@crumb.Controller"
+                       asp-action="@crumb.Action"
+                       asp-all-route-data="@routeDict">
+                    @crumb.Label
+                </a>
+            }
+            else
+            {
+                <span class="ph-crumb ph-crumb-active">@crumb.Label</span>
+            }
+
+            @if (!isLast)
+            {
+                <span class="ph-sep" aria-hidden="true">/</span>
+            }
+        }
+    </nav>
+
+    <!-- Go Back button -->
+    @if (hasBack)
+    {
+        var backRoute = ToRouteDict(backRouteValues);
+        <a class="ph-back"
+               asp-controller="@backController"
+               asp-action="@backAction"
+               asp-all-route-data="@backRoute">
+            @backLabel
+        </a>
+    }
+
+</div>

@@ -340,22 +340,24 @@
 /* ---- Role pills (matching the designs) ---- */
 .role-pill-lecturer {
     display: inline-block;
-    padding: 6px 18px;
+    padding: 5px 14px;
     border-radius: 20px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     background: #b3dff5;
     color: #1a5c7a;
+    white-space: nowrap;
 }
 
 .role-pill-moderator {
     display: inline-block;
-    padding: 6px 18px;
+    padding: 5px 14px;
     border-radius: 20px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 500;
     background: #c8b8f0;
     color: #3d1f8c;
+    white-space: nowrap;
 }
 
 .role-pill-admin {
@@ -370,11 +372,31 @@
 
 .role-pill-unassigned {
     display: inline-block;
-    padding: 6px 18px;
+    padding: 5px 14px;
     border-radius: 20px;
-    font-size: 14px;
+    font-size: 13px;
     color: #aaa;
     background: #f5f5f5;
+    white-space: nowrap;
+}
+
+.role-pill-list {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 240px;
+    min-height: 32px;
+}
+
+.role-pill-more {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4b5563;
+    background: #eef2f7;
+    white-space: nowrap;
 }
 
 
@@ -575,6 +597,12 @@
     gap: 8px;
     font-size: 13px;
     cursor: pointer;
+}
+
+.admin-form-helper {
+    font-size: 12px;
+    color: #777;
+    margin-top: 6px;
 }
 
 .admin-modal-actions {

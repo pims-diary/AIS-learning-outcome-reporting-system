@@ -15,35 +15,19 @@
 
 <div class="page-shell">
 
-    <div class="top-header">
-        <img class="ais-logo" src="~/images/AIS_logo.png" alt="AIS Logo" />
-
-        <div class="crumb">
-            <a asp-controller="LecturerDashboard" asp-action="Index">Home</a>
-            <span class="sep">/</span>
-            <a asp-controller="LecturerDashboard" asp-action="Index"
-               asp-route-year="@ViewBag.Year" asp-route-trimester="@ViewBag.Trimester">
-                @ViewBag.Year - Tri @ViewBag.Trimester
-            </a>
-            <span class="sep">/</span>
-            <a asp-controller="CourseDashboard" asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
-                @ViewBag.CourseCode
-            </a>
-            <span class="sep">/</span>
-            <strong>Assessments</strong>
-        </div>
-
-        <a class="backlink"
-           asp-controller="CourseDashboard" asp-action="Index"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
-            <- Go Back
-        </a>
-    </div>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ("Home", "LecturerDashboard", "Index", null),
+                ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                ("Assessments", null, null, null)
+            }
+        },
+        { "BackController",  "CourseDashboard" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
+    })
 
     <div class="content-card">
         <h2 class="page-title">Assessments</h2>
@@ -122,11 +106,11 @@
                 @if (canEdit)
                 {
                     <a class="btn-primary"
-                       asp-controller="CourseInformation"
-                       asp-action="EditAssessments"
-                       asp-route-courseCode="@ViewBag.CourseCode"
-                       asp-route-year="@ViewBag.Year"
-                       asp-route-trimester="@ViewBag.Trimester">
+                           asp-controller="CourseInformation"
+                           asp-action="EditAssessments"
+                           asp-route-courseCode="@ViewBag.CourseCode"
+                           asp-route-year="@ViewBag.Year"
+                           asp-route-trimester="@ViewBag.Trimester">
                         @(assignments.Any() ? "Edit Assessments" : "Add Assessments")
                     </a>
                 }
@@ -143,11 +127,11 @@
                 <div class="denied">Action Denied (permission required).</div>
                 <div class="actions-center" style="margin-top:12px;">
                     <a class="btn-secondary"
-                       asp-controller="CourseInformation"
-                       asp-action="Assessments"
-                       asp-route-courseCode="@ViewBag.CourseCode"
-                       asp-route-year="@ViewBag.Year"
-                       asp-route-trimester="@ViewBag.Trimester">
+                           asp-controller="CourseInformation"
+                           asp-action="Assessments"
+                           asp-route-courseCode="@ViewBag.CourseCode"
+                           asp-route-year="@ViewBag.Year"
+                           asp-route-trimester="@ViewBag.Trimester">
                         Back
                     </a>
                 </div>
@@ -163,65 +147,67 @@
                     <input type="hidden" name="trimester" value="@ViewBag.Trimester" />
 
                     <div id="assessmentEditor">
-                    @for (int i = 0; i < assignments.Count; i++)
-                    {
-                        var a = assignments[i];
-                        var currentIds = (a.SelectedLearningOutcomeIds ?? "")
-                            .Split(',')
-                            .Where(s => int.TryParse(s, out _))
-                            .Select(int.Parse)
-                            .ToHashSet();
+                        @for (int i = 0; i < assignments.Count; i++)
+                        {
+                            var a = assignments[i];
+                            var currentIds = (a.SelectedLearningOutcomeIds ?? "")
+                                .Split(',')
+                                .Where(s => int.TryParse(s, out _))
+                                .Select(int.Parse)
+                                .ToHashSet();
 
-                        <div class="assessment-row" style="background:#f8f9fa; border:1px solid #e0e0e0; border-radius:10px; padding:18px 20px; margin-bottom:14px; position:relative;">
-                            <input type="hidden" name="assignments[@i].Id" value="@a.Id" />
+                            <div class="assessment-row" style="background:#f8f9fa; border:1px solid #e0e0e0; border-radius:10px; padding:18px 20px; margin-bottom:14px; position:relative;">
+                                <input type="hidden" name="assignments[@i].Id" value="@a.Id" />
 
-                            <button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove this assessment"
-                                    style="position:absolute; top:10px; right:12px; background:#dc3545; color:#fff; border:none; border-radius:50%; width:26px; height:26px; font-size:14px; cursor:pointer; line-height:26px; text-align:center;">X</button>
+                                <button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove this assessment"
+                                        style="position:absolute; top:10px; right:12px; background:#dc3545; color:#fff; border:none; border-radius:50%; width:26px; height:26px; font-size:14px; cursor:pointer; line-height:26px; text-align:center;">
+                                    X
+                                </button>
 
-                            <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-bottom:12px; padding-right:36px;">
-                                <div style="flex:1; min-width:200px;">
-                                    <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Assessment Name</label>
-                                    <input type="text"
-                                           name="assignments[@i].AssessmentName"
-                                           value="@a.AssessmentName"
-                                           style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:6px; font-size:14px;" />
-                                </div>
-                                <div style="width:100px;">
-                                    <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Marks %</label>
-                                    <input type="number"
-                                           name="assignments[@i].MarksPercentage"
-                                           value="@a.MarksPercentage"
-                                           min="0" max="100"
-                                           style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:6px; font-size:14px;" />
-                                </div>
-                            </div>
-
-                            <input type="hidden"
-                                   name="assignments[@i].SelectedLOIdsStr"
-                                   id="loIds_@i"
-                                   value="@a.SelectedLearningOutcomeIds" />
-
-                            @if (learningOutcomes.Any())
-                            {
-                                <div>
-                                    <label style="font-size:12px; color:#666; display:block; margin-bottom:6px;">Assigned Learning Outcomes</label>
-                                    <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                                        @foreach (var lo in learningOutcomes)
-                                        {
-                                            <label style="display:flex; align-items:center; gap:5px; font-size:13px; cursor:pointer;">
-                                                <input type="checkbox"
-                                                       class="lo-checkbox"
-                                                       data-row="@i"
-                                                       data-lo-id="@lo.Id"
-                                                       @(currentIds.Contains(lo.Id) ? "checked" : "") />
-                                                LO@(lo.OrderNumber)
-                                            </label>
-                                        }
+                                <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-bottom:12px; padding-right:36px;">
+                                    <div style="flex:1; min-width:200px;">
+                                        <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Assessment Name</label>
+                                        <input type="text"
+                                               name="assignments[@i].AssessmentName"
+                                               value="@a.AssessmentName"
+                                               style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:6px; font-size:14px;" />
+                                    </div>
+                                    <div style="width:100px;">
+                                        <label style="font-size:12px; color:#666; display:block; margin-bottom:4px;">Marks %</label>
+                                        <input type="number"
+                                               name="assignments[@i].MarksPercentage"
+                                               value="@a.MarksPercentage"
+                                               min="0" max="100"
+                                               style="width:100%; padding:8px 10px; border:1px solid #ccc; border-radius:6px; font-size:14px;" />
                                     </div>
                                 </div>
-                            }
-                        </div>
-                    }
+
+                                <input type="hidden"
+                                       name="assignments[@i].SelectedLOIdsStr"
+                                       id="loIds_@i"
+                                       value="@a.SelectedLearningOutcomeIds" />
+
+                                @if (learningOutcomes.Any())
+                                {
+                                    <div>
+                                        <label style="font-size:12px; color:#666; display:block; margin-bottom:6px;">Assigned Learning Outcomes</label>
+                                        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                                            @foreach (var lo in learningOutcomes)
+                                            {
+                                                <label style="display:flex; align-items:center; gap:5px; font-size:13px; cursor:pointer;">
+                                                    <input type="checkbox"
+                                                           class="lo-checkbox"
+                                                           data-row="@i"
+                                                           data-lo-id="@lo.Id"
+                                                    @(currentIds.Contains(lo.Id) ? "checked" : "") />
+                                                    LO@(lo.OrderNumber)
+                                                </label>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
                     </div>
 
                     <div id="totalIndicator" style="margin-top:10px; padding:10px 14px; border-radius:6px; font-size:14px; font-weight:500;"></div>
@@ -230,11 +216,11 @@
                         <button type="button" class="btn-secondary" onclick="addAssessmentRow()">+ Add Assessment</button>
                         <div class="right">
                             <a class="btn-secondary"
-                               asp-controller="CourseInformation"
-                               asp-action="Assessments"
-                               asp-route-courseCode="@ViewBag.CourseCode"
-                               asp-route-year="@ViewBag.Year"
-                               asp-route-trimester="@ViewBag.Trimester">
+                                   asp-controller="CourseInformation"
+                                   asp-action="Assessments"
+                                   asp-route-courseCode="@ViewBag.CourseCode"
+                                   asp-route-year="@ViewBag.Year"
+                                   asp-route-trimester="@ViewBag.Trimester">
                                 Cancel
                             </a>
                             <button type="submit" class="btn-primary" id="saveBtn">Save</button>
@@ -243,104 +229,104 @@
                 </form>
 
                 <script>
-                    var rowCount = @assignments.Count;
+                            var rowCount = @assignments.Count;
 
-                    var availableLOs = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-                        learningOutcomes.Select(lo => new { id = lo.Id, order = lo.OrderNumber })
-                    ));
+                            var availableLOs = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                                                learningOutcomes.Select(lo => new { id = lo.Id, order = lo.OrderNumber })
+                                        ));
 
-                    document.querySelectorAll('.lo-checkbox').forEach(function (cb) {
-                        cb.addEventListener('change', function () {
-                            rebuildLoIds(this.dataset.row);
-                        });
-                    });
+                            document.querySelectorAll('.lo-checkbox').forEach(function (cb) {
+                                cb.addEventListener('change', function () {
+                                    rebuildLoIds(this.dataset.row);
+                                });
+                            });
 
-                    function rebuildLoIds(row) {
-                        var hidden = document.getElementById('loIds_' + row);
-                        var checked = Array.from(
-                            document.querySelectorAll('.lo-checkbox[data-row="' + row + '"]:checked')
-                        ).map(function (c) { return c.dataset.loId; });
-                        hidden.value = checked.join(',');
-                    }
+                            function rebuildLoIds(row) {
+                                var hidden = document.getElementById('loIds_' + row);
+                                var checked = Array.from(
+                                    document.querySelectorAll('.lo-checkbox[data-row="' + row + '"]:checked')
+                                ).map(function (c) { return c.dataset.loId; });
+                                hidden.value = checked.join(',');
+                            }
 
-                    function removeRow(btn) {
-                        var row = btn.closest('.assessment-row');
-                        if (!confirm('Remove this assessment? This will take effect after moderator approval.')) return;
-                        row.remove();
-                        updateTotal();
-                    }
+                            function removeRow(btn) {
+                                var row = btn.closest('.assessment-row');
+                                if (!confirm('Remove this assessment? This will take effect after moderator approval.')) return;
+                                row.remove();
+                                updateTotal();
+                            }
 
-                    function addAssessmentRow() {
-                        var i = rowCount++;
-                        var container = document.getElementById('assessmentEditor');
+                            function addAssessmentRow() {
+                                var i = rowCount++;
+                                var container = document.getElementById('assessmentEditor');
 
-                        var loCheckboxes = availableLOs.map(function (lo) {
-                            return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">' +
-                                '<input type="checkbox" class="lo-checkbox" data-row="' + i + '" data-lo-id="' + lo.id + '" onchange="rebuildLoIds(' + i + ')" />' +
-                                'LO' + lo.order +
-                                '</label>';
-                        }).join('');
+                                var loCheckboxes = availableLOs.map(function (lo) {
+                                    return '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;">' +
+                                        '<input type="checkbox" class="lo-checkbox" data-row="' + i + '" data-lo-id="' + lo.id + '" onchange="rebuildLoIds(' + i + ')" />' +
+                                        'LO' + lo.order +
+                                        '</label>';
+                                }).join('');
 
-                        var loSection = availableLOs.length > 0
-                            ? '<div><label style="font-size:12px;color:#666;display:block;margin-bottom:6px;">Assigned Learning Outcomes</label>' +
-                              '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + loCheckboxes + '</div></div>'
-                            : '';
+                                var loSection = availableLOs.length > 0
+                                    ? '<div><label style="font-size:12px;color:#666;display:block;margin-bottom:6px;">Assigned Learning Outcomes</label>' +
+                                      '<div style="display:flex;flex-wrap:wrap;gap:8px;">' + loCheckboxes + '</div></div>'
+                                    : '';
 
-                        var html =
-                            '<div class="assessment-row" style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:10px;padding:18px 20px;margin-bottom:14px;position:relative;">' +
-                            '<input type="hidden" name="assignments[' + i + '].Id" value="0" />' +
-                            '<button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove this assessment" ' +
-                            'style="position:absolute;top:10px;right:12px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;line-height:26px;text-align:center;">X</button>' +
-                            '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;padding-right:36px;">' +
-                            '<div style="flex:1;min-width:200px;">' +
-                            '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Assessment Name</label>' +
-                            '<input type="text" name="assignments[' + i + '].AssessmentName" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />' +
-                            '</div>' +
-                            '<div style="width:100px;">' +
-                            '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Marks %</label>' +
-                            '<input type="number" name="assignments[' + i + '].MarksPercentage" value="0" min="0" max="100" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />' +
-                            '</div></div>' +
-                            '<input type="hidden" name="assignments[' + i + '].SelectedLOIdsStr" id="loIds_' + i + '" value="" />' +
-                            loSection +
-                            '</div>';
+                                var html =
+                                    '<div class="assessment-row" style="background:#f8f9fa;border:1px solid #e0e0e0;border-radius:10px;padding:18px 20px;margin-bottom:14px;position:relative;">' +
+                                    '<input type="hidden" name="assignments[' + i + '].Id" value="0" />' +
+                                    '<button type="button" class="btn-delete-row" onclick="removeRow(this)" title="Remove this assessment" ' +
+                                    'style="position:absolute;top:10px;right:12px;background:#dc3545;color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;line-height:26px;text-align:center;">X</button>' +
+                                    '<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px;padding-right:36px;">' +
+                                    '<div style="flex:1;min-width:200px;">' +
+                                    '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Assessment Name</label>' +
+                                    '<input type="text" name="assignments[' + i + '].AssessmentName" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />' +
+                                    '</div>' +
+                                    '<div style="width:100px;">' +
+                                    '<label style="font-size:12px;color:#666;display:block;margin-bottom:4px;">Marks %</label>' +
+                                    '<input type="number" name="assignments[' + i + '].MarksPercentage" value="0" min="0" max="100" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;font-size:14px;" />' +
+                                    '</div></div>' +
+                                    '<input type="hidden" name="assignments[' + i + '].SelectedLOIdsStr" id="loIds_' + i + '" value="" />' +
+                                    loSection +
+                                    '</div>';
 
-                        container.insertAdjacentHTML('beforeend', html);
-                        updateTotal();
-                    }
+                                container.insertAdjacentHTML('beforeend', html);
+                                updateTotal();
+                            }
 
-                    function updateTotal() {
-                        var inputs = document.querySelectorAll('input[name$=".MarksPercentage"]');
-                        var total = 0;
-                        inputs.forEach(function (inp) { total += parseInt(inp.value) || 0; });
-                        var el = document.getElementById('totalIndicator');
-                        if (total === 100) {
-                            el.style.background = '#d4edda';
-                            el.style.border = '1px solid #c3e6cb';
-                            el.style.color = '#155724';
-                            el.textContent = 'Total: 100%';
-                        } else {
-                            el.style.background = '#f8d7da';
-                            el.style.border = '1px solid #f5c6cb';
-                            el.style.color = '#721c24';
-                            el.textContent = 'Total: ' + total + '% (must be exactly 100%)';
-                        }
-                    }
+                            function updateTotal() {
+                                var inputs = document.querySelectorAll('input[name$=".MarksPercentage"]');
+                                var total = 0;
+                                inputs.forEach(function (inp) { total += parseInt(inp.value) || 0; });
+                                var el = document.getElementById('totalIndicator');
+                                if (total === 100) {
+                                    el.style.background = '#d4edda';
+                                    el.style.border = '1px solid #c3e6cb';
+                                    el.style.color = '#155724';
+                                    el.textContent = 'Total: 100%';
+                                } else {
+                                    el.style.background = '#f8d7da';
+                                    el.style.border = '1px solid #f5c6cb';
+                                    el.style.color = '#721c24';
+                                    el.textContent = 'Total: ' + total + '% (must be exactly 100%)';
+                                }
+                            }
 
-                    document.getElementById('assessmentEditor').addEventListener('input', function (e) {
-                        if (e.target.name && e.target.name.endsWith('.MarksPercentage')) updateTotal();
-                    });
+                            document.getElementById('assessmentEditor').addEventListener('input', function (e) {
+                                if (e.target.name && e.target.name.endsWith('.MarksPercentage')) updateTotal();
+                            });
 
-                    document.querySelector('form').addEventListener('submit', function (e) {
-                        var inputs = document.querySelectorAll('input[name$=".MarksPercentage"]');
-                        var total = 0;
-                        inputs.forEach(function (inp) { total += parseInt(inp.value) || 0; });
-                        if (total !== 100) {
-                            e.preventDefault();
-                            alert('Assessment totals add up to ' + total + '%, not 100%. Please adjust the marks so they total exactly 100%.');
-                        }
-                    });
+                            document.querySelector('form').addEventListener('submit', function (e) {
+                                var inputs = document.querySelectorAll('input[name$=".MarksPercentage"]');
+                                var total = 0;
+                                inputs.forEach(function (inp) { total += parseInt(inp.value) || 0; });
+                                if (total !== 100) {
+                                    e.preventDefault();
+                                    alert('Assessment totals add up to ' + total + '%, not 100%. Please adjust the marks so they total exactly 100%.');
+                                }
+                            });
 
-                    updateTotal();
+                            updateTotal();
                 </script>
             }
         }

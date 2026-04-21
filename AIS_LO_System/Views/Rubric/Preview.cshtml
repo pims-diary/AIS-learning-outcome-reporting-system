@@ -5,13 +5,28 @@
     Layout = "_DashboardLayout";
 }
 
+@await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                (ViewBag.AssessmentName as string, "Assignment", "Index", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                ("Rubric Management", "Rubric", "Index", new { assignmentId = ViewBag.AssignmentId, assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                ("Rubric Preview", null, null, null)
+            }
+        },
+        { "BackController",  "Rubric" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { assignmentId = Model.AssignmentId } as object },
+    })
+
 <h2>Rubric Preview</h2>
 
 <hr />
 
 <a asp-action="Edit"
-   asp-route-id="@Model.Id"
-   class="btn btn-warning">
+       asp-route-id="@Model.Id"
+       class="btn btn-warning">
     Edit Rubric
 </a>
 
@@ -64,9 +79,3 @@
 }
 
 <br />
-
-<a asp-action="Index"
-   asp-route-assignmentId="@Model.AssignmentId"
-   class="btn btn-secondary">
-    Back to Rubric Management
-</a>

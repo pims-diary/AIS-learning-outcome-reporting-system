@@ -9,33 +9,22 @@
 
 <div class="container mt-4">
 
-    <div class="breadcrumb mb-3">
-        <a class="crumb-link"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            @Model.CourseCode @Model.CourseTitle
-        </a>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{Model.CourseCode} {Model.Year} - T{Model.Trimester}", "CourseDashboard", "Index", new { courseCode = Model.CourseCode, year = Model.Year, trimester = Model.Trimester }),
+                ("Reports", null, null, null),
+                ("Course LO Report", null, null, null)
+            }
+        },
+        { "BackController",  "CourseDashboard" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { courseCode = Model.CourseCode, year = Model.Year, trimester = Model.Trimester } as object },
+    })
 
-        <span>/</span>
-        <span class="crumb-link">Reports</span>
-        <span>/</span>
-        <span>Course LO Report</span>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex align-items-center mb-4">
         <h2 class="fw-bold mb-0">Course LO Report</h2>
-
-        <a asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="btn btn-outline-secondary">
-            ← Go Back
-        </a>
     </div>
 
     @if (courseLoSubmission != null)
@@ -138,13 +127,13 @@
                                     </td>
                                     <td>
                                         <a asp-controller="StudentLOReport"
-                                           asp-action="Overview"
-                                           asp-route-studentId="@student.StudentInternalId"
-                                           asp-route-courseCode="@Model.CourseCode"
-                                           asp-route-courseTitle="@Model.CourseTitle"
-                                           asp-route-year="@Model.Year"
-                                           asp-route-trimester="@Model.Trimester"
-                                           class="btn btn-sm btn-danger">
+                                               asp-action="Overview"
+                                               asp-route-studentId="@student.StudentInternalId"
+                                               asp-route-courseCode="@Model.CourseCode"
+                                               asp-route-courseTitle="@Model.CourseTitle"
+                                               asp-route-year="@Model.Year"
+                                               asp-route-trimester="@Model.Trimester"
+                                               class="btn btn-sm btn-danger">
                                             Report
                                         </a>
                                     </td>
@@ -239,10 +228,10 @@
                                         @(assessment.MarksPercentage > 0
                                                                         ? assessment.MarksPercentage + "%"
                                                                         : "Not Set")
-                            </td>
-                            <td>@assessment.GradedStudentsCount / @Model.TotalStudentsEnrolled</td>
-                            <td>
-                                @if (assessment.StatusText == "Fully Graded")
+                                    </td>
+                                    <td>@assessment.GradedStudentsCount / @Model.TotalStudentsEnrolled</td>
+                                    <td>
+                                        @if (assessment.StatusText == "Fully Graded")
                                         {
                                             <span class="badge bg-success">@assessment.StatusText</span>
                                         }
@@ -341,9 +330,9 @@
                                         @(item.AssignmentWeight > 0
                                                                         ? item.AssignmentWeight + "%"
                                                                         : "Not Set")
-                            </td>
-                            <td>
-                                @if (item.StatusText == "Fully Graded")
+                                    </td>
+                                    <td>
+                                        @if (item.StatusText == "Fully Graded")
                                         {
                                             <span class="badge bg-success">@item.StatusText</span>
                                         }
@@ -374,14 +363,14 @@
                                     </td>
                                     <td>
                                         <a asp-controller="CourseLOReport"
-                                           asp-action="AssignmentReport"
-                                           asp-route-assignmentId="@item.AssignmentId"
-                                           asp-route-courseCode="@Model.CourseCode"
-                                           asp-route-courseTitle="@Model.CourseTitle"
-                                           asp-route-assessmentName="@item.AssessmentName"
-                                           asp-route-year="@Model.Year"
-                                           asp-route-trimester="@Model.Trimester"
-                                           class="btn btn-sm btn-danger">
+                                               asp-action="AssignmentReport"
+                                               asp-route-assignmentId="@item.AssignmentId"
+                                               asp-route-courseCode="@Model.CourseCode"
+                                               asp-route-courseTitle="@Model.CourseTitle"
+                                               asp-route-assessmentName="@item.AssessmentName"
+                                               asp-route-year="@Model.Year"
+                                               asp-route-trimester="@Model.Trimester"
+                                               class="btn btn-sm btn-danger">
                                             Report
                                         </a>
                                     </td>
@@ -446,16 +435,36 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-center mb-4">
+    <div class="d-flex justify-content-center gap-3 mb-4">
         <a asp-controller="CourseLOReport"
-           asp-action="DownloadCourseLOReportPdf"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="btn btn-danger">
+               asp-action="DownloadCourseLOReportPdf"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               style="background-color:#c21c00;color:white;padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;border:none;text-decoration:none;display:inline-block;line-height:1.2;white-space:nowrap;">
             Download PDF
         </a>
+
+        @{
+            var canSubmitCourseLO = courseLoSubmission == null || courseLoSubmission.Status != AIS_LO_System.Models.SubmissionStatus.Pending;
+        }
+        @if (canSubmitCourseLO)
+        {
+            <form asp-controller="CourseLOReport"
+                  asp-action="SubmitCourseLOReport"
+                  method="post"
+                  class="d-inline">
+                <input type="hidden" name="courseCode" value="@Model.CourseCode" />
+                <input type="hidden" name="courseTitle" value="@Model.CourseTitle" />
+                <input type="hidden" name="year" value="@Model.Year" />
+                <input type="hidden" name="trimester" value="@Model.Trimester" />
+                <button type="submit"
+                        style="background-color:#c21c00;color:white;padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;border:none;line-height:1.2;white-space:nowrap;">
+                    Submit to Moderator
+                </button>
+            </form>
+        }
     </div>
 
 </div>

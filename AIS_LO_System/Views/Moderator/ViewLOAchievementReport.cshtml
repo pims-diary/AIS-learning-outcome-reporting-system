@@ -91,12 +91,12 @@
                                         @if (row.PdfUrl != null)
                                         {
                                             <div class="d-flex gap-2 justify-content-center">
-                                                <a href="@Url.Action("ViewLOAchievementReportPdf", "Moderator", new { submissionId = row.SubmissionId })"
+                                                <a href="@Url.Action("ViewLOAchievementReportPdf", "Moderator", new { submissionId = row.SubmissionId, studentId = row.StudentInternalId })"
                                                        class="btn btn-sm btn-danger"
                                                        target="_blank">
                                                     View PDF
                                                 </a>
-                                                <a href="@Url.Action("DownloadLOAchievementReportPdf", "Moderator", new { submissionId = row.SubmissionId })"
+                                                <a href="@Url.Action("DownloadLOAchievementReportPdf", "Moderator", new { submissionId = row.SubmissionId, studentId = row.StudentInternalId })"
                                                        class="btn btn-sm btn-outline-secondary">
                                                     Download
                                                 </a>

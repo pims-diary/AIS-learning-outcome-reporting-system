@@ -1,51 +1,42 @@
-@model ErrorViewModel
 @{
-    ViewData["Title"] = "Something Went Wrong";
+    ViewData["Title"] = ViewBag.StatusTitle ?? "Page Status";
     Layout = "_Layout";
+    var statusCode = (int?)ViewBag.StatusCode ?? 0;
+    var statusTitle = (string?)ViewBag.StatusTitle ?? "Request Could Not Be Completed";
+    var statusMessage = (string?)ViewBag.StatusMessage ?? "Something prevented this page from loading correctly.";
     var isSignedIn = User?.Identity?.IsAuthenticated ?? false;
     var homeController = User.IsInRole("Admin") ? "Admin" : "LecturerDashboard";
     var homeAction = User.IsInRole("Admin") ? "Dashboard" : "Index";
 }
 
 <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px; background:
-    radial-gradient(circle at top left, rgba(179,0,0,0.08), transparent 32%),
+    radial-gradient(circle at top left, rgba(194,28,0,0.08), transparent 28%),
     linear-gradient(180deg, #fafafa 0%, #f3f4f6 100%);">
     <div style="width:100%; max-width:760px; background:#fff; border:1px solid #e5e7eb; border-radius:24px;
         box-shadow:0 24px 64px rgba(15,23,42,0.08); overflow:hidden;">
         <div style="height:10px; background:linear-gradient(90deg, #c21c00 0%, #f59e0b 100%);"></div>
 
         <div style="padding:40px 40px 32px;">
-            <div style="width:72px; height:72px; border-radius:20px; background:#fff1f2; color:#c21c00;
-                display:flex; align-items:center; justify-content:center; font-size:32px; font-weight:700; margin-bottom:24px;">
-                !
+            <div style="width:84px; height:84px; border-radius:22px; background:#fff1f2; color:#c21c00;
+                display:flex; align-items:center; justify-content:center; font-size:30px; font-weight:800; margin-bottom:24px;">
+                @statusCode
             </div>
 
             <div style="display:grid; gap:14px;">
                 <h1 style="margin:0; font-size:36px; line-height:1.1; color:#111827; font-weight:800;">
-                    Something went wrong
+                    @statusTitle
                 </h1>
                 <p style="margin:0; font-size:16px; line-height:1.7; color:#4b5563; max-width:640px;">
-                    An unexpected error interrupted this request. Nothing has been deleted, but the page could not be completed.
-                    Please try again, or head back to a safe page and continue from there.
+                    @statusMessage
                 </p>
             </div>
-
-            @if (Model.ShowRequestId)
-            {
-                <div style="margin-top:24px; padding:14px 16px; border-radius:14px; background:#f9fafb; border:1px solid #e5e7eb;">
-                    <div style="font-size:12px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#6b7280; margin-bottom:6px;">
-                        Request ID
-                    </div>
-                    <code style="font-size:14px; color:#111827;">@Model.RequestId</code>
-                </div>
-            }
 
             <div style="display:flex; flex-wrap:wrap; gap:12px; margin-top:28px;">
                 @if (isSignedIn)
                 {
                     <a asp-controller="@homeController"
                        asp-action="@homeAction"
-                       style="display:inline-flex; align-items:center; justify-content:center; min-width:150px; padding:12px 18px;
+                       style="display:inline-flex; align-items:center; justify-content:center; min-width:170px; padding:12px 18px;
                            border-radius:12px; background:#c21c00; color:#fff; text-decoration:none; font-weight:700;">
                         Go to Dashboard
                     </a>
@@ -54,14 +45,14 @@
                 {
                     <a asp-controller="Account"
                        asp-action="Login"
-                       style="display:inline-flex; align-items:center; justify-content:center; min-width:150px; padding:12px 18px;
+                       style="display:inline-flex; align-items:center; justify-content:center; min-width:170px; padding:12px 18px;
                            border-radius:12px; background:#c21c00; color:#fff; text-decoration:none; font-weight:700;">
                         Back to Login
                     </a>
                 }
 
                 <a href="javascript:history.back()"
-                   style="display:inline-flex; align-items:center; justify-content:center; min-width:150px; padding:12px 18px;
+                   style="display:inline-flex; align-items:center; justify-content:center; min-width:170px; padding:12px 18px;
                        border-radius:12px; background:#fff; color:#374151; text-decoration:none; font-weight:700; border:1px solid #d1d5db;">
                     Go Back
                 </a>

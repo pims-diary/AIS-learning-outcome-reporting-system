@@ -28,5 +28,30 @@ namespace AIS_LO_System.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
+
+        [HttpGet("Home/StatusCode/{code:int}")]
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public IActionResult StatusCodePage(int code)
+        {
+            Response.StatusCode = code;
+
+            ViewBag.StatusCode = code;
+            ViewBag.StatusTitle = code switch
+            {
+                403 => "Access Denied",
+                404 => "Page Not Found",
+                401 => "Sign In Required",
+                _ => "Request Could Not Be Completed"
+            };
+            ViewBag.StatusMessage = code switch
+            {
+                403 => "You do not have permission to access this page or perform this action.",
+                404 => "The page or resource you requested could not be found. It may have been moved, removed, or the URL may be incorrect.",
+                401 => "You need to sign in before you can access this page.",
+                _ => "The server returned an unexpected response for this request. Please go back or try again from a safe page."
+            };
+
+            return View("StatusCode");
+        }
     }
 }

@@ -50,38 +50,64 @@ namespace AIS_LO_System.Controllers
             return View(vm);
         }
 
-        [HttpGet]
-        public async Task<IActionResult> DownloadCourseLOReportPdf(
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SubmitCourseLOReport(
             string courseCode,
             string courseTitle,
             int year,
             int trimester)
         {
-            var vm = await BuildCourseLOReportViewModel(courseCode, courseTitle, year, trimester);
-
-            if (vm == null)
-                return NotFound();
-
-            // Auto-submit to moderator when downloading course LO report
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>
                     c.Code == courseCode &&
                     c.Year == year &&
                     c.Trimester == trimester);
 
-            if (course?.ModeratorId != null)
+            if (course?.ModeratorId == null)
             {
-                int.TryParse(User.FindFirst("UserId")?.Value, out int currentUserId);
-                if (currentUserId > 0)
-                {
-                    await _submissions.SubmitAsync(
-                        courseCode, year, trimester,
-                        SubmissionItemType.CourseLOReport,
-                        null, // No ItemRefId for course-level report
-                        $"Course LO Report — {courseCode} {year} T{trimester}",
-                        currentUserId);
-                }
+                TempData["Error"] = "No moderator assigned to this course.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
             }
+
+            int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+            if (userId == 0)
+            {
+                TempData["Error"] = "User not authenticated.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            var existing = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.CourseLOReport);
+
+            if (existing?.Status == SubmissionStatus.Pending)
+            {
+                TempData["Error"] = "This report has already been submitted and is pending review.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            await _submissions.SubmitAsync(
+                courseCode, year, trimester,
+                SubmissionItemType.CourseLOReport,
+                null,
+                $"Course LO Report — {courseCode} {year} T{trimester}",
+                userId);
+
+            TempData["Success"] = "Course LO Report has been submitted to the moderator for review.";
+            return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> DownloadCourseLOReportPdf(
+    string courseCode,
+    string courseTitle,
+    int year,
+    int trimester)
+        {
+            var vm = await BuildCourseLOReportViewModel(courseCode, courseTitle, year, trimester);
+
+            if (vm == null)
+                return NotFound();
 
             var downloadedAt = DateTime.Now;
 

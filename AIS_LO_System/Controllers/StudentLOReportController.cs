@@ -11,7 +11,7 @@ using QuestPDF.Infrastructure;
 
 namespace AIS_LO_System.Controllers
 {
-    [Authorize(Roles = "Lecturer")]
+    [Authorize(Roles = "Lecturer,Admin")]
     public class StudentLOReportController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -123,12 +123,47 @@ namespace AIS_LO_System.Controllers
                 return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
             }
 
-            // Submit all student reports to moderator
+            var existing = await _submissions.GetLatestAsync(
+                courseCode, year, trimester, SubmissionItemType.StudentLOReport, null);
+
+            if (existing?.Status == SubmissionStatus.Pending)
+            {
+                TempData["Error"] = "Student LO Reports have already been submitted and are pending review.";
+                return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
+            }
+
+            // Generate and save every student's PDF at submit time
+            var enrolledStudents = await _context.StudentCourseEnrolments
+                .Where(e => e.CourseId == course.Id)
+                .Include(e => e.Student)
+                .Select(e => e.Student)
+                .Distinct()
+                .OrderBy(s => s.StudentId)
+                .ToListAsync();
+
+            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "student-lo");
+            Directory.CreateDirectory(directory);
+
+            var generatedAt = DateTime.Now;
+
+            foreach (var student in enrolledStudents)
+            {
+                var vm = await BuildStudentCourseOverviewViewModel(
+                    student.Id, courseCode, courseTitle, year, trimester);
+                if (vm == null) continue;
+
+                var pdfBytes = GenerateStudentCourseReportPdfBytes(vm, generatedAt);
+                var filename = $"{vm.StudentId}_{vm.CourseCode}_{vm.Year}_T{vm.Trimester}_StudentLOReport.pdf";
+                var fullPath = Path.Combine(directory, filename);
+                await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
+            }
+
+            // Submit one course-level record to moderator
             await _submissions.SubmitAsync(
                 courseCode, year, trimester,
                 SubmissionItemType.StudentLOReport,
                 null, // No specific student - this represents all students
-                $"Student LO Report (All Students) — {courseCode} {year} T{trimester}",
+                $"Student LO Report — {courseCode} {year} T{trimester}",
                 userId);
 
             TempData["Success"] = "All student LO reports have been submitted to the moderator for review.";
@@ -152,8 +187,9 @@ namespace AIS_LO_System.Controllers
                 return RedirectToAction(nameof(Index), new { courseCode, courseTitle, year, trimester });
             }
 
+            // One submission represents the whole course batch
             ViewBag.Submission = await _submissions.GetLatestAsync(
-                courseCode, year, trimester, SubmissionItemType.StudentLOReport, studentId);
+                courseCode, year, trimester, SubmissionItemType.StudentLOReport, null);
 
             return View(vm);
         }
@@ -172,30 +208,22 @@ namespace AIS_LO_System.Controllers
             if (vm == null)
                 return NotFound();
 
-            // Auto-submit to moderator when downloading single student report
-            var course = await _context.Courses
-                .FirstOrDefaultAsync(c =>
-                    c.Code == courseCode &&
-                    c.Year == year &&
-                    c.Trimester == trimester);
-
-            if (course?.ModeratorId != null)
-            {
-                int.TryParse(User.FindFirst("UserId")?.Value, out int currentUserId);
-                if (currentUserId > 0)
-                {
-                    await _submissions.SubmitAsync(
-                        courseCode, year, trimester,
-                        SubmissionItemType.StudentLOReport,
-                        studentId, // ItemRefId references the specific student
-                        $"Student LO Report — {vm.StudentName} ({vm.StudentId})",
-                        currentUserId);
-                }
-            }
-
             var downloadedAt = DateTime.Now;
+            var pdfBytes = GenerateStudentCourseReportPdfBytes(vm, downloadedAt);
 
-            var pdfBytes = Document.Create(container =>
+            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "student-lo");
+            Directory.CreateDirectory(directory);
+
+            var fileName = $"{vm.StudentId}_{vm.CourseCode}_{vm.Year}_T{vm.Trimester}_StudentLOReport.pdf";
+            var fullPath = Path.Combine(directory, fileName);
+            await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
+
+            return File(pdfBytes, "application/pdf", fileName);
+        }
+
+        private static byte[] GenerateStudentCourseReportPdfBytes(StudentCourseLOOverviewViewModel vm, DateTime generatedAt)
+        {
+            return Document.Create(container =>
             {
                 container.Page(page =>
                 {
@@ -211,7 +239,7 @@ namespace AIS_LO_System.Controllers
                         col.Item().Text($"{vm.StudentName} ({vm.StudentId})");
                         col.Item().Text($"{vm.CourseCode} - {vm.CourseTitle}");
                         col.Item().Text($"Semester: Trimester {vm.Trimester}, {vm.Year}");
-                        col.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
+                        col.Item().Text($"Generated on: {generatedAt:dd MMM yyyy, hh:mm tt}");
                     });
 
                     page.Content().Column(col =>
@@ -219,7 +247,7 @@ namespace AIS_LO_System.Controllers
                         col.Spacing(14);
 
                         col.Item().Text(
-                            $"{vm.AchievedCount} of {vm.TotalLOCount} Learning Outcomes Achieved")
+                                $"{vm.AchievedCount} of {vm.TotalLOCount} Learning Outcomes Achieved")
                             .Bold().FontSize(12);
 
                         col.Item().Text("Learning Outcome Summary")
@@ -284,15 +312,6 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "student-lo");
-            Directory.CreateDirectory(directory);
-
-            var fileName = $"{vm.StudentId}_{vm.CourseCode}_Trimester_{vm.Trimester}_{vm.Year}.pdf";
-            var fullPath = Path.Combine(directory, fileName);
-            await System.IO.File.WriteAllBytesAsync(fullPath, pdfBytes);
-
-            return File(pdfBytes, "application/pdf", fileName);
-
             static IContainer CellStyle(IContainer container)
             {
                 return container
@@ -303,11 +322,11 @@ namespace AIS_LO_System.Controllers
         }
 
         private async Task<StudentCourseLOOverviewViewModel?> BuildStudentCourseOverviewViewModel(
-            int studentId,
-            string courseCode,
-            string courseTitle,
-            int year,
-            int trimester)
+    int studentId,
+    string courseCode,
+    string courseTitle,
+    int year,
+    int trimester)
         {
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>

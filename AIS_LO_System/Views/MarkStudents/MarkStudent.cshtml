@@ -4,78 +4,41 @@
     ViewData["Title"] = "Mark Student";
     Layout = "_DashboardLayout";
     var isImpersonated = !string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value);
+    var errorMessage = TempData["Error"] as string;
 }
 
-@if (TempData["Error"] != null)
+@if (!string.IsNullOrEmpty(errorMessage))
 {
     <div class="alert alert-danger">
-        @TempData["Error"]
+        @errorMessage
     </div>
 }
 
 <div class="container mt-4">
 
-    <div class="breadcrumb mb-3">
-        <a class="crumb-link"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            @Model.CourseCode @Model.CourseTitle
-        </a>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{Model.CourseCode} {Model.Year} - T{Model.Trimester}", "CourseDashboard", "Index", new { courseCode = Model.CourseCode, year = Model.Year, trimester = Model.Trimester }),
+                (Model.AssessmentName, "Assignment", "Index", new { assessmentName = Model.AssessmentName, courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, year = Model.Year, trimester = Model.Trimester }),
+                ("Mark Students", "MarkStudents", "Index", new { assignmentId = Model.AssignmentId, courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, assessmentName = Model.AssessmentName, year = Model.Year, trimester = Model.Trimester }),
+                (Model.StudentName, null, null, null)
+            }
+        },
+        { "BackController",  "MarkStudents" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { assignmentId = Model.AssignmentId, courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, assessmentName = Model.AssessmentName, year = Model.Year, trimester = Model.Trimester } as object },
+    })
 
-        <span>/</span>
-
-        <a class="crumb-link"
-           asp-controller="Assignment"
-           asp-action="Index"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            Assessments
-        </a>
-
-        <span>/</span>
-
-        <a class="crumb-link"
-           asp-controller="MarkStudents"
-           asp-action="Index"
-           asp-route-assignmentId="@Model.AssignmentId"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            Mark Students
-        </a>
-
-        <span>/</span>
-        <span>@Model.StudentName</span>
-    </div>
-
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex align-items-center mb-3">
         <h2 class="fw-bold mb-0">@Model.StudentName</h2>
-
-        <a asp-controller="MarkStudents"
-           asp-action="Index"
-           asp-route-assignmentId="@Model.AssignmentId"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="btn btn-outline-secondary">
-            ← Back
-        </a>
     </div>
 
     <div class="card shadow-sm mb-4">
         <div class="card-body">
 
-            <form asp-controller="MarkStudents" asp-action="SaveMarks" method="post">
+            <form asp-controller="MarkStudents" asp-action="SaveMarks" method="post" id="saveMarksForm">
                 @Html.AntiForgeryToken()
 
                 <input type="hidden" name="assignmentId" value="@Model.AssignmentId" />
@@ -169,7 +132,7 @@
                                                             data-criterion-id="@criterion.CriterionId"
                                                             data-level="@level"
                                                             data-weight="@criterion.Weight"
-                                                            @(isImpersonated ? "disabled" : "")>
+                                                        @(isImpersonated ? "disabled" : "")>
                                                         <div class="cell-score">@level</div>
                                                         <div class="cell-scale">@levelInfo.ScaleName</div>
                                                         <div class="cell-description">
@@ -216,33 +179,35 @@
                     <label class="form-label fw-semibold">Comments</label>
                     <textarea class="form-control"
                               rows="3"
+                              id="commentInput"
                               name="comment"
                               placeholder="Add comments here..."
-                              @(isImpersonated ? "disabled" : "")>@Model.Comment</textarea>
+                    @(isImpersonated ? "disabled" : "")>@Model.Comment</textarea>
                 </div>
 
                 <div class="mt-3 d-flex justify-content-end gap-2">
                     <a asp-controller="MarkStudents"
-                       asp-action="LOAchievementReport"
-                       asp-route-studentId="@Model.StudentInternalId"
-                       asp-route-assignmentId="@Model.AssignmentId"
-                       asp-route-courseCode="@Model.CourseCode"
-                       asp-route-courseTitle="@Model.CourseTitle"
-                       asp-route-assessmentName="@Model.AssessmentName"
-                       asp-route-year="@Model.Year"
-                       asp-route-trimester="@Model.Trimester"
-                       class="btn btn-warning">
+                           asp-action="LOAchievementReport"
+                           asp-route-studentId="@Model.StudentInternalId"
+                           asp-route-assignmentId="@Model.AssignmentId"
+                           asp-route-courseCode="@Model.CourseCode"
+                           asp-route-courseTitle="@Model.CourseTitle"
+                           asp-route-assessmentName="@Model.AssessmentName"
+                           asp-route-year="@Model.Year"
+                           asp-route-trimester="@Model.Trimester"
+                           id="viewLoAchievementLink"
+                           class="btn btn-warning">
                         View LO Achievement Result
                     </a>
 
-                    <button type="submit" class="btn btn-danger" @(isImpersonated ? "disabled style=\"display:none\"" : "")>
+                    <button type="submit" class="btn btn-danger" id="saveMarksButton" @(isImpersonated ? "disabled style=\"display:none\"" : "")>
                         Save Marks
                     </button>
 
                     <button type="submit"
                             form="clearMarksForm"
                             class="btn btn-outline-danger"
-                            @(isImpersonated ? "disabled style=\"display:none\"" : "")>
+                        @(isImpersonated ? "disabled style=\"display:none\"" : "")>
                         Clear Marks
                     </button>
                 </div>
@@ -274,7 +239,7 @@
         .rubric-marking-table th,
         .rubric-marking-table td {
             vertical-align: top;
-            padding: 8px;
+        padding: 6px;
             word-wrap: break-word;
         }
 
@@ -310,17 +275,18 @@
 
     .rubric-cell-btn {
         width: 100%;
-        min-height: 135px;
+        min-height: 120px;
         border: none;
         background: transparent;
         cursor: pointer;
-        padding: 8px;
+        padding: 6px;
         text-align: left;
         display: flex;
         flex-direction: column;
         gap: 4px;
         font-size: 0.82rem;
         transition: background-color 0.15s ease;
+        margin: 0;
     }
 
         .rubric-cell-btn:hover {
@@ -349,7 +315,6 @@
         line-height: 1.2;
         flex: 1;
     }
-    }
 </style>
 
 
@@ -357,6 +322,13 @@
     document.addEventListener("DOMContentLoaded", function () {
         const buttons = document.querySelectorAll(".level-btn");
         const selectedLevels = {};
+        const form = document.getElementById("saveMarksForm");
+        const saveBtn = document.getElementById("saveMarksButton");
+        const criteriaCount = document.querySelectorAll(".calculated-marks[data-criterion-id]").length;
+        const commentInput = document.getElementById("commentInput");
+        const loAchievementLink = document.getElementById("viewLoAchievementLink");
+        const hasServerError = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(!string.IsNullOrEmpty(errorMessage)));
+        const draftStorageKey = "mark-student-draft:@Model.AssignmentId:@Model.StudentInternalId";
 
         function updateTotalScore() {
             let total = 0;
@@ -386,6 +358,98 @@
             }
         }
 
+        function saveDraft() {
+            try {
+                sessionStorage.setItem(draftStorageKey, JSON.stringify({
+                    selectedLevels: selectedLevels,
+                    comment: commentInput ? commentInput.value : ""
+                }));
+            } catch (error) {
+                console.warn("Unable to cache draft marks.", error);
+            }
+        }
+
+        function clearDraft() {
+            try {
+                sessionStorage.removeItem(draftStorageKey);
+            } catch (error) {
+                console.warn("Unable to clear cached draft marks.", error);
+            }
+        }
+
+        function applySelection(criterionId, selectedLevel) {
+            const normalizedCriterionId = String(criterionId);
+            const normalizedLevel = Number(selectedLevel);
+
+            if (Number.isNaN(normalizedLevel)) {
+                return;
+            }
+
+            let matchedButton = null;
+
+            document.querySelectorAll(".level-btn").forEach(function (btn) {
+                if (btn.getAttribute("data-criterion-id") !== normalizedCriterionId) {
+                    return;
+                }
+
+                btn.classList.remove("selected");
+
+                if (Number(btn.getAttribute("data-level")) === normalizedLevel) {
+                    matchedButton = btn;
+                }
+            });
+
+            if (!matchedButton) {
+                return;
+            }
+
+            matchedButton.classList.add("selected");
+
+            const weight = parseFloat(matchedButton.getAttribute("data-weight"));
+            const calculated = normalizedLevel * weight;
+            const marksCell = document.querySelector(".calculated-marks[data-criterion-id='" + normalizedCriterionId + "']");
+
+            if (marksCell) {
+                marksCell.textContent = calculated.toFixed(2);
+            }
+
+            selectedLevels[normalizedCriterionId] = normalizedLevel;
+        }
+
+        function restoreDraft() {
+            if (!hasServerError) {
+                clearDraft();
+                return;
+            }
+
+            try {
+                const rawDraft = sessionStorage.getItem(draftStorageKey);
+                if (!rawDraft) {
+                    return;
+                }
+
+                const draft = JSON.parse(rawDraft);
+                const draftSelections = draft.selectedLevels || {};
+
+                Object.keys(selectedLevels).forEach(function (key) {
+                    delete selectedLevels[key];
+                });
+
+                Object.keys(draftSelections).forEach(function (criterionId) {
+                    applySelection(criterionId, draftSelections[criterionId]);
+                });
+
+                if (commentInput && typeof draft.comment === "string") {
+                    commentInput.value = draft.comment;
+                }
+
+                updateHiddenJson();
+                updateTotalScore();
+            } catch (error) {
+                console.warn("Unable to restore cached draft marks.", error);
+            }
+        }
+
         document.querySelectorAll(".level-btn.selected").forEach(function (btn) {
             const criterionId = btn.getAttribute("data-criterion-id");
             const selectedLevel = parseFloat(btn.getAttribute("data-level"));
@@ -394,6 +458,7 @@
 
         updateHiddenJson();
         updateTotalScore();
+        restoreDraft();
 
         buttons.forEach(function (button) {
             button.addEventListener("click", function () {
@@ -420,7 +485,45 @@
                 selectedLevels[criterionId] = selectedLevel;
                 updateHiddenJson();
                 updateTotalScore();
+                saveDraft();
             });
         });
+
+        // Client-side verification on save: warn if any rubric cells are unselected
+        if (form && saveBtn) {
+            form.addEventListener("submit", function (e) {
+                // Only validate when hitting Save Marks, not other hidden forms
+                const active = document.activeElement;
+                if (active && active !== saveBtn) return;
+
+                const selectedCount = Object.keys(selectedLevels).length;
+
+                if (selectedCount === 0) {
+                    alert("Please select rubric levels before saving marks.");
+                    e.preventDefault();
+                    return;
+                }
+
+                if (criteriaCount > 0 && selectedCount < criteriaCount) {
+                    const missing = criteriaCount - selectedCount;
+                    const ok = confirm(`You still have ${missing} unselected rubric cell(s). Save anyway?`);
+                    if (!ok) {
+                        e.preventDefault();
+                        saveDraft();
+                        return;
+                    }
+                }
+
+                clearDraft();
+            });
+        }
+
+        if (commentInput) {
+            commentInput.addEventListener("input", saveDraft);
+        }
+
+        if (loAchievementLink) {
+            loAchievementLink.addEventListener("click", saveDraft);
+        }
     });
 </script>

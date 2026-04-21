@@ -9,32 +9,19 @@
 
 <div class="container mt-4">
 
-    <div class="breadcrumb mb-3">
-        <a class="crumb-link"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            @Model.CourseCode @Model.CourseTitle
-        </a>
-
-        <span>/</span>
-
-        <a class="crumb-link"
-           asp-controller="StudentLOReport"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester">
-            Student LO Report
-        </a>
-
-        <span>/</span>
-
-        <span>Overall LO Achievement Overview</span>
-    </div>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{Model.CourseCode} {Model.Year} - T{Model.Trimester}", "CourseDashboard", "Index", new { courseCode = Model.CourseCode, year = Model.Year, trimester = Model.Trimester }),
+                ("Student LO Report", "StudentLOReport", "Index", new { courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, year = Model.Year, trimester = Model.Trimester }),
+                ("Overview", null, null, null)
+            }
+        },
+        { "BackController",  "StudentLOReport" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, year = Model.Year, trimester = Model.Trimester } as object },
+    })
 
     @if (studentLoSubmission != null)
     {
@@ -48,16 +35,6 @@
             <div class="text-muted mb-1"><strong>Course:</strong> @Model.CourseCode @Model.CourseTitle</div>
             <div class="text-muted"><strong>Semester:</strong> @Model.TrimesterLabel</div>
         </div>
-
-        <a asp-controller="StudentLOReport"
-           asp-action="Index"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="btn btn-outline-secondary">
-            ← Go Back
-        </a>
     </div>
 
     <!-- Bar graph -->
@@ -218,15 +195,15 @@
                                         @if (item.IsGraded)
                                         {
                                             <a asp-controller="MarkStudents"
-                                               asp-action="LOAchievementReport"
-                                               asp-route-studentId="@Model.StudentInternalId"
-                                               asp-route-assignmentId="@item.AssignmentId"
-                                               asp-route-courseCode="@Model.CourseCode"
-                                               asp-route-courseTitle="@Model.CourseTitle"
-                                               asp-route-assessmentName="@item.AssessmentName"
-                                               asp-route-year="@Model.Year"
-                                               asp-route-trimester="@Model.Trimester"
-                                               class="btn btn-sm btn-danger">
+                                                   asp-action="LOAchievementReport"
+                                                   asp-route-studentId="@Model.StudentInternalId"
+                                                   asp-route-assignmentId="@item.AssignmentId"
+                                                   asp-route-courseCode="@Model.CourseCode"
+                                                   asp-route-courseTitle="@Model.CourseTitle"
+                                                   asp-route-assessmentName="@item.AssessmentName"
+                                                   asp-route-year="@Model.Year"
+                                                   asp-route-trimester="@Model.Trimester"
+                                                   class="btn btn-sm btn-danger">
                                                 View Report
                                             </a>
                                         }
@@ -297,15 +274,15 @@
         </div>
     </div>
 
-    <div class="d-flex justify-content-center mb-4">
+    <div class="d-flex justify-content-center gap-3 mb-4">
         <a asp-controller="StudentLOReport"
-           asp-action="DownloadStudentCourseReportPdf"
-           asp-route-studentId="@Model.StudentInternalId"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="btn btn-danger">
+               asp-action="DownloadStudentCourseReportPdf"
+               asp-route-studentId="@Model.StudentInternalId"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               style="background-color:#c21c00;color:white;padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;border:none;text-decoration:none;display:inline-block;line-height:1.2;white-space:nowrap;">
             Download PDF
         </a>
     </div>

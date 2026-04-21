@@ -7,22 +7,19 @@
 
 <div class="assignment-page">
 
-    <!-- Breadcrumb -->
-    <div class="breadcrumb">
-        <a class="crumb-primary"
-           asp-controller="CourseDashboard"
-           asp-action="Index"
-           asp-route-courseCode="@ViewBag.CourseCode"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
-            @ViewBag.CourseCode @ViewBag.CourseTitle
-        </a>
-
-        <span>/</span>
-        <span class="crumb-primary">Assessments</span>
-        <span>/</span>
-        <span>@ViewBag.AssessmentName</span>
-    </div>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+                ("Assessments", null, null, null),
+                (ViewBag.AssessmentName as string, null, null, null)
+            }
+        },
+        { "BackController",  "CourseDashboard" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
+    })
 
     <!-- Page Title -->
     <h1 class="page-title">@ViewBag.AssessmentName</h1>
@@ -31,8 +28,8 @@
     <div class="card-grid">
 
         <a asp-controller="Assignment"
-           asp-action="Information"
-           asp-route-id="@Model.Id">
+               asp-action="Information"
+               asp-route-id="@Model.Id">
 
 
             <div class="assignment-card">
@@ -44,14 +41,14 @@
         </a>
 
         <a asp-controller="Rubric"
-           asp-action="Index"
-           asp-route-assignmentId="@Model.Id"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="assignment-card-link">
+               asp-action="Index"
+               asp-route-assignmentId="@Model.Id"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               class="assignment-card-link">
 
             <div class="assignment-card">
                 <img src="~/images/RubricManagement.png" alt="Rubric" />
@@ -62,14 +59,14 @@
 
 
         <a asp-controller="LOMapping"
-           asp-action="Index"
-           asp-route-assignmentId="@Model.Id"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="assignment-card-link">
+               asp-action="Index"
+               asp-route-assignmentId="@Model.Id"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               class="assignment-card-link">
 
             <div class="assignment-card">
                 <img src="~/images/LOMappingAndWeighting.png" alt="LO Mapping" />
@@ -79,14 +76,14 @@
         </a>
 
         <a asp-controller="MarkStudents"
-           asp-action="Index"
-           asp-route-assignmentId="@Model.Id"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="assignment-card-link">
+               asp-action="Index"
+               asp-route-assignmentId="@Model.Id"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               class="assignment-card-link">
 
             <div class="assignment-card">
                 <img src="~/images/MarkStudents.png" alt="Mark Students" />

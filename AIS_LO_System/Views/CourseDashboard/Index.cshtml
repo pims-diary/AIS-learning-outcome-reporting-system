@@ -8,6 +8,20 @@
 
 <div class="course-container">
 
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ("Home", "LecturerDashboard", "Index", null),
+                ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", null, null, null)
+            }
+        },
+        { "BackController",  "LecturerDashboard" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
+        { "BackLabel",       "← Back to Dashboard" },
+    })
+
     <!-- Dynamic title -->
     <h2 class="course-title">
         @ViewBag.CourseCode @ViewBag.CourseTitle
@@ -18,16 +32,6 @@
         @ViewBag.DateRange
     </p>
 
-    <!-- Back button  -->
-    <div style="margin-bottom: 20px;">
-        <a class="btn btn-outline-secondary"
-           asp-controller="LecturerDashboard"
-           asp-action="Index"
-           asp-route-year="@ViewBag.Year"
-           asp-route-trimester="@ViewBag.Trimester">
-            Back to Dashboard
-        </a>
-    </div>
 
     @if (ViewBag.AssessmentTotalWarning != null)
     {
@@ -60,16 +64,16 @@
 
         <div class="accordion-body">
             <a asp-controller="CourseInformation" asp-action="Outline"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 Course Outline
             </a>
 
             <a asp-controller="CourseInformation" asp-action="LearningOutcomes"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 Learning Outcomes
             </a>
         </div>
@@ -94,23 +98,23 @@
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
                 <a asp-controller="CourseInformation" asp-action="Assessments"
-                   asp-route-courseCode="@ViewBag.CourseCode"
-                   asp-route-year="@ViewBag.Year"
-                   asp-route-trimester="@ViewBag.Trimester"
-                   style="font-size:12px; color:#666; text-decoration:none; padding:4px 10px; border:1px solid #ddd; border-radius:4px;"
-                   title="View assessment details"
-                   onclick="event.stopPropagation();">
+                       asp-route-courseCode="@ViewBag.CourseCode"
+                       asp-route-year="@ViewBag.Year"
+                       asp-route-trimester="@ViewBag.Trimester"
+                       style="font-size:12px; color:#333; text-decoration:none; padding:4px 10px; border:1px solid #999; border-radius:4px;"
+                       title="View assessment details"
+                       onclick="event.stopPropagation();">
                     View
                 </a>
                 @if (canEditAssessment)
                 {
                     <a asp-controller="CourseInformation" asp-action="EditAssessments"
-                       asp-route-courseCode="@ViewBag.CourseCode"
-                       asp-route-year="@ViewBag.Year"
-                       asp-route-trimester="@ViewBag.Trimester"
-                       style="font-size:12px; color:#c62828; text-decoration:none; padding:4px 10px; border:1px solid #e0b4b4; border-radius:4px;"
-                       title="Edit assessments (requires moderator approval)"
-                       onclick="event.stopPropagation();">
+                           asp-route-courseCode="@ViewBag.CourseCode"
+                           asp-route-year="@ViewBag.Year"
+                           asp-route-trimester="@ViewBag.Trimester"
+                           style="font-size:12px; color:#c62828; text-decoration:none; padding:4px 10px; border:1px solid #e0b4b4; border-radius:4px;"
+                           title="Edit assessments (requires moderator approval)"
+                           onclick="event.stopPropagation();">
                         Edit
                     </a>
                 }
@@ -135,12 +139,12 @@
                     else
                     {
                         <a asp-controller="Assignment"
-                           asp-action="Index"
-                           asp-route-assessmentName="@assess.AssessmentName"
-                           asp-route-courseCode="@ViewBag.CourseCode"
-                           asp-route-courseTitle="@ViewBag.CourseTitle"
-                           asp-route-year="@ViewBag.Year"
-                           asp-route-trimester="@ViewBag.Trimester">
+                               asp-action="Index"
+                               asp-route-assessmentName="@assess.AssessmentName"
+                               asp-route-courseCode="@ViewBag.CourseCode"
+                               asp-route-courseTitle="@ViewBag.CourseTitle"
+                               asp-route-year="@ViewBag.Year"
+                               asp-route-trimester="@ViewBag.Trimester">
                             @assess.AssessmentName
                             @if (assess.MarksPercentage > 0)
                             {
@@ -172,20 +176,20 @@
 
         <div class="accordion-body">
             <a asp-controller="StudentLOReport"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-action="Index"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-courseTitle="@ViewBag.CourseTitle"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 Student LO Report
             </a>
 
             <a asp-controller="CourseLOReport"
-               asp-action="Index"
-               asp-route-courseCode="@ViewBag.CourseCode"
-               asp-route-courseTitle="@ViewBag.CourseTitle"
-               asp-route-year="@ViewBag.Year"
-               asp-route-trimester="@ViewBag.Trimester">
+                   asp-action="Index"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-courseTitle="@ViewBag.CourseTitle"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                 Course LO Report
             </a>
         </div>

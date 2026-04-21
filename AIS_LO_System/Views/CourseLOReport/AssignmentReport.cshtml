@@ -17,50 +17,24 @@
     
     var canSubmit = !viewingAsModeratorFromInbox &&
                     (submission == null || submission.Status != SubmissionStatus.Pending);
+
 }
 
 <div class="container mt-4">
 
-    <div class="breadcrumb mb-3">
-        @if (isModerator)
-        {
-            <a class="crumb-link" asp-controller="Moderator" asp-action="Inbox">
-                Moderator Inbox
-            </a>
-            <span>/</span>
-            <a class="crumb-link"
-                   asp-controller="Moderator"
-                   asp-action="ViewCourseLOReport"
-                   asp-route-submissionId="@submissionId">
-                Course LO Report
-            </a>
-        }
-        else
-        {
-            <a class="crumb-link"
-                   asp-controller="CourseDashboard"
-                   asp-action="Index"
-                   asp-route-courseCode="@Model.CourseCode"
-                   asp-route-year="@Model.Year"
-                   asp-route-trimester="@Model.Trimester">
-                @Model.CourseCode @Model.CourseTitle
-            </a>
-
-            <span>/</span>
-            <a class="crumb-link"
-                   asp-controller="CourseLOReport"
-                   asp-action="Index"
-                   asp-route-courseCode="@Model.CourseCode"
-                   asp-route-courseTitle="@Model.CourseTitle"
-                   asp-route-year="@Model.Year"
-                   asp-route-trimester="@Model.Trimester">
-                Course LO Report
-            </a>
-        }
-
-        <span>/</span>
-        <span>@Model.AssessmentName</span>
-    </div>
+    @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
+    {
+        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+            {
+                ($"{Model.CourseCode} {Model.Year} - T{Model.Trimester}", "CourseDashboard", "Index", new { courseCode = Model.CourseCode, year = Model.Year, trimester = Model.Trimester }),
+                ("Course LO Report", "CourseLOReport", "Index", new { courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, year = Model.Year, trimester = Model.Trimester }),
+                ("Assessment Report", null, null, null)
+            }
+        },
+        { "BackController",  "CourseLOReport" },
+        { "BackAction",      "Index" },
+        { "BackRouteValues", new { courseCode = Model.CourseCode, courseTitle = Model.CourseTitle, year = Model.Year, trimester = Model.Trimester } as object },
+    })
 
     @if (submission != null)
     {
@@ -90,33 +64,13 @@
                     <input type="hidden" name="assessmentName" value="@Model.AssessmentName" />
                     <input type="hidden" name="year" value="@Model.Year" />
                     <input type="hidden" name="trimester" value="@Model.Trimester" />
-                    <button type="submit" class="btn btn-primary">
-                        📤 Submit for Moderation
+                    <button type="submit"
+                            style="background-color:#c21c00;color:white;padding:10px 22px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;border:none;line-height:1.2;white-space:nowrap;">
+                        Submit for Moderation
                     </button>
                 </form>
             }
 
-            @if (isModerator)
-            {
-                <a asp-controller="Moderator"
-                       asp-action="ViewCourseLOReport"
-                       asp-route-submissionId="@submissionId"
-                       class="btn btn-outline-secondary">
-                    ← Go Back
-                </a>
-            }
-            else
-            {
-                <a asp-controller="CourseLOReport"
-                       asp-action="Index"
-                       asp-route-courseCode="@Model.CourseCode"
-                       asp-route-courseTitle="@Model.CourseTitle"
-                       asp-route-year="@Model.Year"
-                       asp-route-trimester="@Model.Trimester"
-                       class="btn btn-outline-secondary">
-                    ← Go Back
-                </a>
-            }
         </div>
     </div>
 
@@ -365,14 +319,14 @@
 
     <div class="d-flex justify-content-center mb-4">
         <a asp-controller="CourseLOReport"
-           asp-action="DownloadAssignmentReportPdf"
-           asp-route-assignmentId="@Model.AssignmentId"
-           asp-route-courseCode="@Model.CourseCode"
-           asp-route-courseTitle="@Model.CourseTitle"
-           asp-route-assessmentName="@Model.AssessmentName"
-           asp-route-year="@Model.Year"
-           asp-route-trimester="@Model.Trimester"
-           class="btn btn-danger">
+               asp-action="DownloadAssignmentReportPdf"
+               asp-route-assignmentId="@Model.AssignmentId"
+               asp-route-courseCode="@Model.CourseCode"
+               asp-route-courseTitle="@Model.CourseTitle"
+               asp-route-assessmentName="@Model.AssessmentName"
+               asp-route-year="@Model.Year"
+               asp-route-trimester="@Model.Trimester"
+               class="btn btn-danger">
             Download PDF
         </a>
     </div>

@@ -11,9 +11,15 @@
     var pillBg = isApproved ? "#d1fae5" : "#fee2e2";
     var pillColor = isApproved ? "#065f46" : "#991b1b";
     var storageKey = $"sub_seen_{Model.Id}_{Model.Status}_{Model.ReviewedAt?.Ticks}";
+    var instanceId = $"subStatus_{Model.Id}_{Model.Status}_{Model.ReviewedAt?.Ticks}".Replace("-", "_");
+    var badgeId = $"{instanceId}_badge";
+    var overlayId = $"{instanceId}_overlay";
+    var reviewedText = Model.ReviewedAt.HasValue
+        ? $"Reviewed {Model.ReviewedAt.Value:dd MMM yyyy, h:mm tt}"
+        : string.Empty;
 
     <!-- Small persistent indicator (always visible after popup dismissed) -->
-    <div id="subStatusBadge" style="display:none; margin-bottom:16px;">
+    <div id="@badgeId" style="display:none; margin-bottom:16px;">
         <span style="
             display:inline-flex; align-items:center; gap:6px;
             padding:5px 12px; border-radius:20px;
@@ -28,7 +34,7 @@
     </div>
 
     <!-- Instagram-style popup overlay -->
-    <div id="subStatusOverlay" style="
+    <div id="@overlayId" style="
         display:none; position:fixed; inset:0; z-index:9999;
         background:rgba(0,0,0,0.55); backdrop-filter:blur(2px);
         align-items:center; justify-content:center;">
@@ -70,14 +76,14 @@
                 @if (Model.ReviewedAt.HasValue)
                 {
                     <div style="font-size:12px; color:#999;">
-                        Reviewed @Model.ReviewedAt.Value.ToString("dd MMM yyyy, h:mm tt")
+                        @reviewedText
                     </div>
                 }
             </div>
 
             <!-- Buttons -->
             <div style="border-top:1px solid #f0f0f0;">
-                <button onclick="dismissSubStatus()" style="
+                <button onclick="dismissSubStatus('@instanceId', '@storageKey')" style="
                     display:block; width:100%; padding:15px;
                     background:none; border:none; cursor:pointer;
                     font-size:14px; font-weight:700; color:#1a6fbb;">
@@ -96,21 +102,69 @@
 
     <script>
         (function() {
-            const key = '@storageKey';
-            const overlay = document.getElementById('subStatusOverlay');
-            const badge   = document.getElementById('subStatusBadge');
+            const popup = {
+                key: '@storageKey',
+                badgeId: '@badgeId',
+                overlayId: '@overlayId'
+            };
 
-            if (!localStorage.getItem(key)) {
+            window._submissionStatusQueue = window._submissionStatusQueue || [];
+            window._submissionStatusActive = window._submissionStatusActive || null;
+
+            function showSubmissionPopup(entry) {
+                const overlay = document.getElementById(entry.overlayId);
+                if (!overlay) {
+                    return false;
+                }
+
                 overlay.style.display = 'flex';
-            } else {
-                badge.style.display = 'block';
+                window._submissionStatusActive = entry;
+                return true;
             }
+
+            window._showNextSubmissionPopup = window._showNextSubmissionPopup || function () {
+                if (window._submissionStatusActive) {
+                    return;
+                }
+
+                while (window._submissionStatusQueue.length > 0) {
+                    const next = window._submissionStatusQueue.shift();
+                    if (showSubmissionPopup(next)) {
+                        return;
+                    }
+                }
+            };
+
+            const badge = document.getElementById(popup.badgeId);
+            if (localStorage.getItem(popup.key)) {
+                if (badge) {
+                    badge.style.display = 'block';
+                }
+                return;
+            }
+
+            window._submissionStatusQueue.push(popup);
+            window._showNextSubmissionPopup();
         })();
 
-        function dismissSubStatus() {
-            document.getElementById('subStatusOverlay').style.display = 'none';
-            document.getElementById('subStatusBadge').style.display = 'block';
-            localStorage.setItem('@storageKey', '1');
+        window.dismissSubStatus = window.dismissSubStatus || function(instanceId, storageKey) {
+            const overlay = document.getElementById(instanceId + '_overlay');
+            const badge = document.getElementById(instanceId + '_badge');
+
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+
+            if (badge) {
+                badge.style.display = 'block';
+            }
+
+            localStorage.setItem(storageKey, '1');
+            window._submissionStatusActive = null;
+
+            if (typeof window._showNextSubmissionPopup === 'function') {
+                window._showNextSubmissionPopup();
+            }
         }
     </script>
 }
