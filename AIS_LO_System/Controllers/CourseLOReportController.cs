@@ -99,10 +99,10 @@ namespace AIS_LO_System.Controllers
 
         [HttpGet]
         public async Task<IActionResult> DownloadCourseLOReportPdf(
-    string courseCode,
-    string courseTitle,
-    int year,
-    int trimester)
+            string courseCode,
+            string courseTitle,
+            int year,
+            int trimester)
         {
             var vm = await BuildCourseLOReportViewModel(courseCode, courseTitle, year, trimester);
 
@@ -284,7 +284,7 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            // NEW: Save PDF to file system for moderator review
+            // Save PDF to file system for moderator review
             var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "course-lo");
             Directory.CreateDirectory(directory);
 
@@ -689,7 +689,6 @@ namespace AIS_LO_System.Controllers
             int year,
             int trimester)
         {
-            // Build the same data as the view
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c =>
                     c.Code == courseCode &&
@@ -823,7 +822,6 @@ namespace AIS_LO_System.Controllers
                 })
                 .ToList();
 
-            // Calculate top and weakest LOs
             var strongestLOs = loSummaries
                 .OrderByDescending(x => x.AveragePercentage)
                 .Take(3)
@@ -834,7 +832,6 @@ namespace AIS_LO_System.Controllers
                 .Take(3)
                 .ToList();
 
-            // Group LO results by student for at-risk calculation
             var studentLoResults = new Dictionary<int, List<(int LearningOutcomeId, string Status)>>();
 
             int rowIndex = 0;
@@ -856,7 +853,6 @@ namespace AIS_LO_System.Controllers
                 }
             }
 
-            // Calculate at-risk students
             var studentResults = enrolledStudents.Select(student =>
             {
                 var results = studentLoResults.ContainsKey(student.Id)
@@ -886,7 +882,6 @@ namespace AIS_LO_System.Controllers
                 .ThenBy(s => s.StudentId)
                 .ToList();
 
-            // Generate PDF
             var pdfBytes = Document.Create(container =>
             {
                 container.Page(page =>
@@ -911,7 +906,6 @@ namespace AIS_LO_System.Controllers
                     {
                         col.Spacing(12);
 
-                        // Top Performing and Weakest LOs
                         if (strongestLOs.Any() || weakestLOs.Any())
                         {
                             col.Item().Text("LO Performance Highlights")
@@ -947,7 +941,6 @@ namespace AIS_LO_System.Controllers
                             col.Item().PaddingTop(10);
                         }
 
-                        // At-Risk Students
                         if (atRiskStudents.Any())
                         {
                             col.Item().Text("At-Risk Students")
@@ -1026,7 +1019,6 @@ namespace AIS_LO_System.Controllers
                 });
             }).GeneratePdf();
 
-            // Save PDF to file system for moderator review
             var directory = Path.Combine(_env.WebRootPath, "uploads", "reports", "assessment-lo");
             Directory.CreateDirectory(directory);
 
@@ -1670,7 +1662,10 @@ namespace AIS_LO_System.Controllers
                     AssignmentId = assignment.Id,
                     AssessmentName = assignment.AssessmentName,
                     HasAnyGradedStudent = assessmentVm.HasAnyGradedStudent,
-                    StatusText = assessmentVm.StatusText
+                    StatusText = assessmentVm.StatusText,
+                    AssignmentWeight = assessmentVm.MarksPercentage,
+                    ContributionTooltip = "Shows how much this assessment contributes to each learning outcome across the whole course.",
+                    ClassAchievementTooltip = "Shows the average class performance for each learning outcome within this assessment only."
                 };
 
                 if (!assessmentVm.HasAnyGradedStudent)
@@ -1707,6 +1702,25 @@ namespace AIS_LO_System.Controllers
                                 totalContribution += maxLevel.Score * mapping.Weight;
                         }
 
+                        decimal totalLOScore = 0;
+                        var allMappingsForLO = mappings
+                            .Where(m => m.LearningOutcomeId == lo.Id)
+                            .ToList();
+
+                        foreach (var mapping in allMappingsForLO)
+                        {
+                            var maxLevel = mapping.RubricCriterion?.Levels?
+                                .OrderByDescending(l => l.Score)
+                                .FirstOrDefault();
+
+                            if (maxLevel != null)
+                                totalLOScore += maxLevel.Score * mapping.Weight;
+                        }
+
+                        var contributionPercentage = totalLOScore > 0
+                            ? Math.Round((totalContribution / totalLOScore) * 100, 2)
+                            : 0;
+
                         var rows = studentAssessmentLOPercentages
                             .Where(x =>
                                 x.LearningOutcomeId == lo.Id &&
@@ -1718,7 +1732,7 @@ namespace AIS_LO_System.Controllers
                             ? Math.Round(rows.Average(x => x.Percentage), 2)
                             : 0;
 
-                        contributionItem.Contributions.Add($"LO{lo.OrderNumber}: {totalContribution:0.##}");
+                        contributionItem.Contributions.Add($"LO{lo.OrderNumber}: {contributionPercentage:0.##}%");
                         contributionItem.ClassAchievements.Add($"LO{lo.OrderNumber}: {averageAchievement:0.##}%");
                     }
                 }
