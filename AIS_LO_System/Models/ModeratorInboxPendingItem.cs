@@ -18,5 +18,8 @@ namespace AIS_LO_System.Models
 
         /// <summary>Used to sort cards in the inbox (latest activity in the group).</summary>
         public DateTime SortDate { get; init; }
+
+        /// <summary>Number of enrolled students for grouped LO Achievement batches.</summary>
+        public int EnrolledStudentCount { get; init; }
     }
 }

@@ -12,16 +12,16 @@
 
     @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
     {
-        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
-            {
-                ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
-                (ViewBag.AssessmentName as string, "Assignment", "Index", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester }),
-                ("Assignment Information", null, null, null)
-            }
-        },
-        { "BackController",  "Assignment" },
-        { "BackAction",      "Index" },
-        { "BackRouteValues", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
+    { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+    {
+    ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+    (ViewBag.AssessmentName as string, "Assignment", "Index", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+    ("Assignment Information", null, null, null)
+    }
+    },
+    { "BackController",  "Assignment" },
+    { "BackAction",      "Index" },
+    { "BackRouteValues", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
     })
 
     <!-- Header -->
@@ -92,84 +92,84 @@
             <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
             <script>
                 (function () {
-                fetch("@(latest.FilePath)@(cacheBust)")
-                .then(r => r.arrayBuffer())
-                .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
-                .then(result => {
-                document.getElementById("docx-preview").innerHTML = result.value;
-                document.getElementById("docx-preview").style.display = "block";
-                document.getElementById("docx-loading").style.display = "none";
-                })
-                .catch(err => {
-                document.getElementById("docx-loading").innerHTML = "<span style='color:#999;'>Could not preview. Use the download button above.</span>";
-                });
+                    fetch("@(latest.FilePath)@(cacheBust)")
+                        .then(r => r.arrayBuffer())
+                        .then(buffer => mammoth.convertToHtml({ arrayBuffer: buffer }))
+                        .then(result => {
+                            document.getElementById("docx-preview").innerHTML = result.value;
+                            document.getElementById("docx-preview").style.display = "block";
+                            document.getElementById("docx-loading").style.display = "none";
+                        })
+                        .catch(err => {
+                            document.getElementById("docx-loading").innerHTML = "<span style='color:#999;'>Could not preview. Use the download button above.</span>";
+                        });
                 })();
             </script>
             <style>
                 @@keyframes spin {
-                to {
-                transform: rotate(360deg);
-                }
+                    to {
+                        transform: rotate(360deg);
+                    }
                 }</style>
-            }
+        }
         else
-            {
-                <p class="no-file">No assignment uploaded yet.</p>
-            }
-        </div>
-
-        <!-- Format Guide -->
-        <details style="margin-top:20px; background:#f0f4ff; border:1px solid #b6d4fe; border-radius:8px; padding:4px 16px;">
-            <summary style="cursor:pointer; font-weight:600; color:#084298; padding:10px 0; font-size:14px;">
-                Format Guide: How the system cross-checks your assignment
-            </summary>
-            <div style="font-size:13px; color:#333; line-height:1.7; padding-bottom:12px;">
-                <p style="margin:8px 0;">The system automatically extracts Learning Outcomes from your assignment document and cross-checks them against the course outline.</p>
-
-                <p style="margin:12px 0 4px; font-weight:600;">Required: Standard introduction line</p>
-                <p style="margin:4px 0 8px; padding-left:12px; border-left:3px solid #b6d4fe;">
-                    Your document must include the standard AIS line:<br />
-                    <em>"This [assignment/test/assessment] is worth <strong>X%</strong> of the total marks in the course and will cover the following learning outcomes as listed in the Course Outline:"</em>
-                </p>
-
-                <p style="margin:12px 0 4px; font-weight:600;">After that line, list the LOs in any of these formats:</p>
-                <ul style="margin:4px 0 8px 20px; padding:0;">
-                    <li><code>Learning Outcome 1: Demonstrate an in-depth knowledge...</code></li>
-                    <li><code>Learning Outcome [2]: Design and develop the presentation layer...</code></li>
-                    <li><code>LO 3: Deploy and test operating systems concepts...</code></li>
-                    <li>Or plain text (no number): <code>Implement the industrial IT project...</code></li>
-                </ul>
-
-                <p style="margin:12px 0 4px; font-weight:600;">How matching works:</p>
-                <ul style="margin:4px 0 8px 20px; padding:0;">
-                    <li><strong>The wording must closely match</strong> the course outline LO text</li>
-                    <li><span style="color:#155724;">&#10003; Aligned</span> = more than 70% word overlap with the course outline</li>
-                    <li><span style="color:#856404;">&#9888; Wording Differs</span> = matched but wording overlap is below 70%</li>
-                    <li><span style="color:#721c24;">&#10007; Missing</span> = an LO that should be in the assignment but was not found</li>
-                </ul>
-
-                <p style="margin:8px 0; color:#555;"><em>Tip: Copy the exact LO wording from the course outline into your assignment document for the best cross-check results.</em></p>
-            </div>
-        </details>
-
-        <!-- Re-upload Section -->
-        @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
         {
-            <div class="reupload-section" style="margin-top:16px;">
-                <form asp-action="UploadAssignment"
-                      method="post"
-                      enctype="multipart/form-data"
-                      id="reuploadForm">
+            <p class="no-file">No assignment uploaded yet.</p>
+        }
+    </div>
 
-                    <input type="hidden" name="assignmentId" value="@Model.Id" />
-                    <input type="file" name="file" accept=".pdf,.docx"
-                           id="fileInput"
-                           style="display:none"
-                           onchange="document.getElementById('reuploadForm').submit()" />
+    <!-- Format Guide -->
+    <details style="margin-top:20px; background:#f0f4ff; border:1px solid #b6d4fe; border-radius:8px; padding:4px 16px;">
+        <summary style="cursor:pointer; font-weight:600; color:#084298; padding:10px 0; font-size:14px;">
+            Format Guide: How the system cross-checks your assignment
+        </summary>
+        <div style="font-size:13px; color:#333; line-height:1.7; padding-bottom:12px;">
+            <p style="margin:8px 0;">The system automatically extracts Learning Outcomes from your assignment document and cross-checks them against the course outline.</p>
 
-                    <button type="button"
-                            onclick="document.getElementById('fileInput').click()"
-                            style="background-color: #c21c00;
+            <p style="margin:12px 0 4px; font-weight:600;">Required: Standard introduction line</p>
+            <p style="margin:4px 0 8px; padding-left:12px; border-left:3px solid #b6d4fe;">
+                Your document must include the standard AIS line:<br />
+                <em>"This [assignment/test/assessment] is worth <strong>X%</strong> of the total marks in the course and will cover the following learning outcomes as listed in the Course Outline:"</em>
+            </p>
+
+            <p style="margin:12px 0 4px; font-weight:600;">After that line, list the LOs in any of these formats:</p>
+            <ul style="margin:4px 0 8px 20px; padding:0;">
+                <li><code>Learning Outcome 1: Demonstrate an in-depth knowledge...</code></li>
+                <li><code>Learning Outcome [2]: Design and develop the presentation layer...</code></li>
+                <li><code>LO 3: Deploy and test operating systems concepts...</code></li>
+                <li>Or plain text (no number): <code>Implement the industrial IT project...</code></li>
+            </ul>
+
+            <p style="margin:12px 0 4px; font-weight:600;">How matching works:</p>
+            <ul style="margin:4px 0 8px 20px; padding:0;">
+                <li><strong>The wording must closely match</strong> the course outline LO text</li>
+                <li><span style="color:#155724;">&#10003; Aligned</span> = more than 70% word overlap with the course outline</li>
+                <li><span style="color:#856404;">&#9888; Wording Differs</span> = matched but wording overlap is below 70%</li>
+                <li><span style="color:#721c24;">&#10007; Missing</span> = an LO that should be in the assignment but was not found</li>
+            </ul>
+
+            <p style="margin:8px 0; color:#555;"><em>Tip: Copy the exact LO wording from the course outline into your assignment document for the best cross-check results.</em></p>
+        </div>
+    </details>
+
+    <!-- Re-upload Section -->
+    @if (string.IsNullOrEmpty(User.FindFirst("ImpersonatedBy")?.Value))
+    {
+        <div class="reupload-section" style="margin-top:16px;">
+            <form asp-action="UploadAssignment"
+                  method="post"
+                  enctype="multipart/form-data"
+                  id="reuploadForm">
+
+                <input type="hidden" name="assignmentId" value="@Model.Id" />
+                <input type="file" name="file" accept=".pdf,.docx"
+                       id="fileInput"
+                       style="display:none"
+                       onchange="document.getElementById('reuploadForm').submit()" />
+
+                <button type="button"
+                        onclick="document.getElementById('fileInput').click()"
+                        style="background-color: #c21c00;
                         color: white;
                         padding: 15px 50px;
                         border-radius: 12px;
@@ -179,114 +179,114 @@
                         border: none;
                         display: block;
                         margin: 0 auto;">
-                        Re-upload Assignment
-                    </button>
+                    @(hasFile ? "Re-upload Assignment" : "Upload Assignment")
+                </button>
 
-                </form>
-            </div>
-        }
+            </form>
+        </div>
+    }
 
-        <!-- LO Cross-Check Results -->
-        @{
-            var crossCheck = ViewBag.CrossCheck as AIS_LO_System.Services.LOCrossCheckResult;
-            bool? losFound = ViewBag.AssignmentLOsFound as bool?;
-            bool? outlineLOsFound = ViewBag.OutlineLOsFound as bool?;
-        }
+    <!-- LO Cross-Check Results -->
+    @{
+        var crossCheck = ViewBag.CrossCheck as AIS_LO_System.Services.LOCrossCheckResult;
+        bool? losFound = ViewBag.AssignmentLOsFound as bool?;
+        bool? outlineLOsFound = ViewBag.OutlineLOsFound as bool?;
+    }
 
-        @if (crossCheck != null)
-        {
-            <div class="crosscheck-section" style="margin-top: 24px;">
-                <h2 style="font-size: 20px; margin-bottom: 16px;">LO Alignment Check</h2>
+    @if (crossCheck != null)
+    {
+        <div class="crosscheck-section" style="margin-top: 24px;">
+            <h2 style="font-size: 20px; margin-bottom: 16px;">LO Alignment Check</h2>
 
-                @if (crossCheck.IsFullyAligned)
+            @if (crossCheck.IsFullyAligned)
+            {
+                <div style="background:#d4edda; border:1px solid #c3e6cb; border-radius:8px; padding:16px; color:#155724; margin-bottom:16px;">
+                    ✅ All Learning Outcomes are aligned with the course outline.
+                </div>
+            }
+            else
+            {
+                <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:16px; color:#856404; margin-bottom:16px;">
+                    ⚠️ Some Learning Outcomes need attention — see details below.
+                </div>
+            }
+
+            @if (crossCheck.Matched.Any())
+            {
+                <h3 style="font-size:16px; margin:16px 0 8px;">Matched LOs</h3>
+                @foreach (var item in crossCheck.Matched)
                 {
-                    <div style="background:#d4edda; border:1px solid #c3e6cb; border-radius:8px; padding:16px; color:#155724; margin-bottom:16px;">
-                        ✅ All Learning Outcomes are aligned with the course outline.
+                    var color = item.Status == "Aligned" ? "#155724" : "#856404";
+                    var bg = item.Status == "Aligned" ? "#d4edda" : "#fff3cd";
+                    var icon = item.Status == "Aligned" ? "✅" : "⚠️";
+                    var similarityLabel = item.Status == "Aligned"
+                    ? $"{(int)(item.Similarity * 100)}% wording match"
+                    : $"{(int)(item.Similarity * 100)}% wording overlap";
+
+                    <div style="background:@bg; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid rgba(0,0,0,0.08);">
+                        <div style="font-weight:600; color:@color; margin-bottom:4px;">
+                            @icon LO @item.LONumber — @item.Status
+                            <span style="font-weight:400; font-size:13px; color:#888;">
+                                (@similarityLabel)
+                            </span>
+                        </div>
+                        <div style="font-size:13px; color:#333; margin-bottom:4px;">
+                            <strong>Course Outline:</strong> @item.OutlineText
+                        </div>
+                        <div style="font-size:13px; color:#555;">
+                            <strong>Assignment Doc:</strong> @item.AssignmentText
+                        </div>
                     </div>
                 }
-                else
+            }
+
+            @if (crossCheck.Missing.Any())
+            {
+                <h3 style="font-size:16px; margin:16px 0 8px;">Needs Review</h3>
+                @foreach (var item in crossCheck.Missing)
                 {
-                    <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:16px; color:#856404; margin-bottom:16px;">
-                        ⚠️ Some Learning Outcomes need attention — see details below.
+                    <div style="background:#fff3cd; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid #ffc107;">
+                        <div style="font-weight:600; color:#856404; margin-bottom:4px;">
+                            ⚠️ LO @item.LONumber — No clear wording match found in the assignment document
+                        </div>
+                        <div style="font-size:13px; color:#333; margin-bottom:4px;">
+                            <strong>Course Outline:</strong> @item.OutlineText
+                        </div>
+                        <div style="font-size:13px; color:#666;">
+                            This may mean the LO is missing, phrased very differently, or not detected clearly by the parser.
+                        </div>
                     </div>
                 }
+            }
 
-                @if (crossCheck.Matched.Any())
+            @if (crossCheck.Extra.Any())
+            {
+                <h3 style="font-size:16px; margin:16px 0 8px;">Extra LOs in Assignment</h3>
+                @foreach (var item in crossCheck.Extra)
                 {
-                    <h3 style="font-size:16px; margin:16px 0 8px;">Matched LOs</h3>
-                    @foreach (var item in crossCheck.Matched)
-                    {
-                        var color = item.Status == "Aligned" ? "#155724" : "#856404";
-                        var bg = item.Status == "Aligned" ? "#d4edda" : "#fff3cd";
-                        var icon = item.Status == "Aligned" ? "✅" : "⚠️";
-                        var similarityLabel = item.Status == "Aligned"
-                            ? $"{(int)(item.Similarity * 100)}% wording match"
-                            : $"{(int)(item.Similarity * 100)}% wording overlap";
-
-                        <div style="background:@bg; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid rgba(0,0,0,0.08);">
-                            <div style="font-weight:600; color:@color; margin-bottom:4px;">
-                                @icon LO @item.LONumber — @item.Status
-                                <span style="font-weight:400; font-size:13px; color:#888;">
-                                    (@similarityLabel)
-                                </span>
-                            </div>
-                            <div style="font-size:13px; color:#333; margin-bottom:4px;">
-                                <strong>Course Outline:</strong> @item.OutlineText
-                            </div>
-                            <div style="font-size:13px; color:#555;">
-                                <strong>Assignment Doc:</strong> @item.AssignmentText
-                            </div>
+                    <div style="background:#fff3cd; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid #ffc107;">
+                        <div style="font-weight:600; color:#856404; margin-bottom:4px;">
+                            ⚠️ LO @item.LONumber — In assignment but not assigned to this assessment in course outline
                         </div>
-                    }
-                }
-
-                @if (crossCheck.Missing.Any())
-                {
-                    <h3 style="font-size:16px; margin:16px 0 8px;">Needs Review</h3>
-                    @foreach (var item in crossCheck.Missing)
-                    {
-                        <div style="background:#fff3cd; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid #ffc107;">
-                            <div style="font-weight:600; color:#856404; margin-bottom:4px;">
-                                ⚠️ LO @item.LONumber — No clear wording match found in the assignment document
-                            </div>
-                            <div style="font-size:13px; color:#333; margin-bottom:4px;">
-                                <strong>Course Outline:</strong> @item.OutlineText
-                            </div>
-                            <div style="font-size:13px; color:#666;">
-                                This may mean the LO is missing, phrased very differently, or not detected clearly by the parser.
-                            </div>
+                        <div style="font-size:13px; color:#555;">
+                            <strong>Assignment Doc:</strong> @item.AssignmentText
                         </div>
-                    }
+                    </div>
                 }
+            }
+        </div>
+    }
+    else if (outlineLOsFound == false)
+    {
+        <div style="margin-top:24px; background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:16px; color:#856404; font-size:14px;">
+            No course outline Learning Outcomes are available yet for this course, so the assignment cross-check cannot run.
+        </div>
+    }
+    else if (losFound == false)
+    {
+        <div style="margin-top:24px; background:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px; padding:16px; color:#666; font-size:14px;">
+            No Learning Outcomes detected in this document — cross-check not available.
+        </div>
+    }
 
-                @if (crossCheck.Extra.Any())
-                {
-                    <h3 style="font-size:16px; margin:16px 0 8px;">Extra LOs in Assignment</h3>
-                    @foreach (var item in crossCheck.Extra)
-                    {
-                        <div style="background:#fff3cd; border-radius:8px; padding:14px 16px; margin-bottom:8px; border:1px solid #ffc107;">
-                            <div style="font-weight:600; color:#856404; margin-bottom:4px;">
-                                ⚠️ LO @item.LONumber — In assignment but not assigned to this assessment in course outline
-                            </div>
-                            <div style="font-size:13px; color:#555;">
-                                <strong>Assignment Doc:</strong> @item.AssignmentText
-                            </div>
-                        </div>
-                    }
-                }
-            </div>
-        }
-        else if (outlineLOsFound == false)
-        {
-            <div style="margin-top:24px; background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:16px; color:#856404; font-size:14px;">
-                No course outline Learning Outcomes are available yet for this course, so the assignment cross-check cannot run.
-            </div>
-        }
-        else if (losFound == false)
-        {
-            <div style="margin-top:24px; background:#f8f9fa; border:1px solid #e0e0e0; border-radius:8px; padding:16px; color:#666; font-size:14px;">
-                No Learning Outcomes detected in this document — cross-check not available.
-            </div>
-        }
-
-    </div>
+</div>

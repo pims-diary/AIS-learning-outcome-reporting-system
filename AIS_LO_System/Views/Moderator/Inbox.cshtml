@@ -19,13 +19,18 @@
         padding: 16px 20px;
         margin-bottom: 24px;
     }
-    .filter-form { margin: 0; }
+
+    .filter-form {
+        margin: 0;
+    }
+
     .filter-row {
         display: flex;
         gap: 12px;
         align-items: center;
         flex-wrap: wrap;
     }
+
     .filter-select {
         padding: 8px 12px;
         border: 1px solid #cbd5e1;
@@ -35,11 +40,13 @@
         min-width: 180px;
         cursor: pointer;
     }
-    .filter-select:focus {
-        outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-    }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+
     .filter-clear {
         padding: 8px 14px;
         background: #fff;
@@ -50,10 +57,11 @@
         color: #64748b;
         font-weight: 500;
     }
-    .filter-clear:hover {
-        background: #f1f5f9;
-        color: #475569;
-    }
+
+        .filter-clear:hover {
+            background: #f1f5f9;
+            color: #475569;
+        }
 </style>
 
 <div class="mod-page">
@@ -155,7 +163,8 @@
                             <div class="mod-card-meta">
                                 @if (item.IsGroupedLoAchievement || item.IsGroupedStudentLoReport)
                                 {
-                                    <span><strong>@item.Submissions.Count</strong> student report(s) in this batch.</span>
+                                    var studentCount = item.EnrolledStudentCount > 0 ? item.EnrolledStudentCount : item.Submissions.Count;
+                                    <span><strong>@studentCount</strong> student report(s) in this batch.</span>
                                     <span>Latest activity @item.SortDate.ToString("dd MMM yyyy, h:mm tt")</span>
                                 }
                                 else

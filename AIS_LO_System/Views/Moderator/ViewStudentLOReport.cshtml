@@ -79,25 +79,21 @@
                                     <td>@row.StudentId</td>
                                     <td>@row.StudentName</td>
                                     <td class="text-center">
-                                        @if (row.ModerationStatus == null)
+                                        @if (row.PdfUrl != null)
+                                        {
+                                            <span class="badge bg-success">Generated</span>
+                                        }
+                                        else if (row.ModerationStatus == null)
                                         {
                                             <span class="text-muted small">Not submitted</span>
                                         }
-                                        else if (row.ModerationStatus == SubmissionStatus.Approved)
-                                        {
-                                            <span class="badge bg-success">Approved</span>
-                                        }
-                                        else if (row.ModerationStatus == SubmissionStatus.Denied)
-                                        {
-                                            <span class="badge bg-danger">Denied</span>
-                                        }
                                         else
                                         {
-                                            <span class="badge bg-warning text-dark">Pending</span>
+                                            <span class="badge bg-secondary">Not Generated</span>
                                         }
                                     </td>
                                     <td class="text-center">
-                                        @if (row.ModerationStatus != null)
+                                        @if (row.PdfUrl != null)
                                         {
                                             <div class="d-flex gap-2 justify-content-center">
                                                 <a asp-action="ViewStudentLOReportPdf"

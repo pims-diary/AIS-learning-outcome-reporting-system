@@ -9,16 +9,16 @@
 <div class="page-shell">
     @await Html.PartialAsync("_PageHeader", new Microsoft.AspNetCore.Mvc.ViewFeatures.ViewDataDictionary(ViewData)
     {
-        { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
-            {
-                ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
-                (ViewBag.AssessmentName as string, "Assignment", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
-                ("LO Mapping and Weighting", null, null, null)
-            }
-        },
-        { "BackController",  "Assignment" },
-        { "BackAction",      "Index" },
-        { "BackRouteValues", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
+    { "Breadcrumbs", new List<(string Label, string? Controller, string? Action, object? RouteValues)>
+    {
+    ($"{ViewBag.CourseCode} {ViewBag.Year} - T{ViewBag.Trimester}", "CourseDashboard", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+    (ViewBag.AssessmentName as string, "Assignment", "Index", new { courseCode = ViewBag.CourseCode, year = ViewBag.Year, trimester = ViewBag.Trimester }),
+    ("LO Mapping and Weighting", null, null, null)
+    }
+    },
+    { "BackController",  "Assignment" },
+    { "BackAction",      "Index" },
+    { "BackRouteValues", new { assessmentName = ViewBag.AssessmentName, courseCode = ViewBag.CourseCode, courseTitle = ViewBag.CourseTitle, year = ViewBag.Year, trimester = ViewBag.Trimester } as object },
     })
 
     <h1 class="page-title">LO Mapping and Weighting</h1>
@@ -31,6 +31,8 @@
     {
         <div class="error-msg">@TempData["Error"]</div>
     }
+
+    @await Component.InvokeAsync("SubmissionStatus", new { submission = ViewBag.LOMappingSubmission as AIS_LO_System.Models.CourseSubmission })
 
     @if (Model.Rubric == null)
     {
@@ -58,13 +60,13 @@
                     <button type="submit" class="btn-save">Save Mapping</button>
                 }
                 <a class="btn-cancel"
-                       asp-controller="Assignment"
-                       asp-action="Index"
-                       asp-route-assessmentName="@ViewBag.AssessmentName"
-                       asp-route-courseCode="@ViewBag.CourseCode"
-                       asp-route-courseTitle="@ViewBag.CourseTitle"
-                       asp-route-year="@ViewBag.Year"
-                       asp-route-trimester="@ViewBag.Trimester">
+                   asp-controller="Assignment"
+                   asp-action="Index"
+                   asp-route-assessmentName="@ViewBag.AssessmentName"
+                   asp-route-courseCode="@ViewBag.CourseCode"
+                   asp-route-courseTitle="@ViewBag.CourseTitle"
+                   asp-route-year="@ViewBag.Year"
+                   asp-route-trimester="@ViewBag.Trimester">
                     Cancel
                 </a>
             </div>
@@ -377,7 +379,7 @@
     }
 
     // Before form submit, validate and add selected LO IDs to form
-    document.getElementById('mappingForm').addEventListener('submit', function(e) {
+    document.getElementById('mappingForm').addEventListener('submit', function (e) {
         // ========================================
         // HARD VALIDATION — block save if incomplete
         // ========================================
@@ -419,17 +421,17 @@
             popup.id = 'validationPopup';
             popup.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999;';
             popup.innerHTML = `
-                <div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
-                    <h3 style="color:#c21c00;margin:0 0 16px;">❌ Cannot Save — Fix These Issues</h3>
-                    <ul style="margin:0;padding:0 0 0 20px;color:#333;font-size:14px;line-height:1.8;">
-                        ${errors.map(err => '<li>' + err + '</li>').join('')}
-                    </ul>
-                    <button onclick="document.getElementById('validationPopup').remove()"
-                            style="margin-top:20px;padding:10px 28px;background:#c21c00;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:15px;display:block;margin-left:auto;">
-                        Got it
-                    </button>
-                </div>
-            `;
+                    <div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+                        <h3 style="color:#c21c00;margin:0 0 16px;">❌ Cannot Save — Fix These Issues</h3>
+                        <ul style="margin:0;padding:0 0 0 20px;color:#333;font-size:14px;line-height:1.8;">
+                            ${errors.map(err => '<li>' + err + '</li>').join('')}
+                        </ul>
+                        <button onclick="document.getElementById('validationPopup').remove()"
+                                style="margin-top:20px;padding:10px 28px;background:#c21c00;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:15px;display:block;margin-left:auto;">
+                            Got it
+                        </button>
+                    </div>
+                `;
             document.body.appendChild(popup);
             return;
         }

@@ -115,22 +115,58 @@ namespace AIS_LO_System.Controllers
                 var assignment = await _context.Assignments.FindAsync(g.Key.ItemRefId);
                 var assessmentName = assignment?.AssessmentName ?? "Assignment";
 
+                var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                    c.Code == g.Key.CourseCode && c.Year == g.Key.Year && c.Trimester == g.Key.Trimester);
+                var enrolledCount = course == null ? 0 : await _context.StudentCourseEnrolments
+                    .Where(e => e.CourseId == course.Id)
+                    .Select(e => e.StudentId)
+                    .Distinct()
+                    .CountAsync();
+
                 items.Add(new ModeratorInboxPendingItem
                 {
                     IsGroupedLoAchievement = true,
                     IsGroupedStudentLoReport = false,
                     Submissions = list,
                     DisplayLabel = $"LO Achievement Report — {assessmentName}",
-                    SortDate = list.Max(s => s.SubmittedAt)
+                    SortDate = list.Max(s => s.SubmittedAt),
+                    EnrolledStudentCount = enrolledCount
                 });
             }
 
-            foreach (var s in rest)
+            var studentLo = rest.Where(s => s.ItemType == SubmissionItemType.StudentLOReport).ToList();
+            var otherRest = rest.Where(s => s.ItemType != SubmissionItemType.StudentLOReport).ToList();
+
+            foreach (var g in studentLo.GroupBy(s => new { s.CourseCode, s.Year, s.Trimester }))
+            {
+                var list = g.OrderBy(s => s.SubmittedAt).ToList();
+                var latest = list.Last();
+
+                var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                    c.Code == g.Key.CourseCode && c.Year == g.Key.Year && c.Trimester == g.Key.Trimester);
+                var enrolledCount = course == null ? 0 : await _context.StudentCourseEnrolments
+                    .Where(e => e.CourseId == course.Id)
+                    .Select(e => e.StudentId)
+                    .Distinct()
+                    .CountAsync();
+
+                items.Add(new ModeratorInboxPendingItem
+                {
+                    IsGroupedLoAchievement = false,
+                    IsGroupedStudentLoReport = true,
+                    Submissions = list,
+                    DisplayLabel = latest.ItemLabel,
+                    SortDate = list.Max(s => s.SubmittedAt),
+                    EnrolledStudentCount = enrolledCount
+                });
+            }
+
+            foreach (var s in otherRest)
             {
                 items.Add(new ModeratorInboxPendingItem
                 {
                     IsGroupedLoAchievement = false,
-                    IsGroupedStudentLoReport = s.ItemType == SubmissionItemType.StudentLOReport,
+                    IsGroupedStudentLoReport = false,
                     Submissions = new List<CourseSubmission> { s },
                     DisplayLabel = s.ItemLabel,
                     SortDate = s.SubmittedAt
@@ -701,13 +737,21 @@ namespace AIS_LO_System.Controllers
                 .Select(s => new { s.Id, s.StudentId, s.FullName })
                 .ToListAsync();
 
-            var rows = students.Select(st => new StudentLoModeratorRowViewModel
+            var studentLoReportDir = Path.Combine(_env.WebRootPath, "uploads", "reports", "student-lo");
+            var rows = students.Select(st =>
             {
-                StudentInternalId = st.Id,
-                StudentId = st.StudentId,
-                StudentName = st.FullName,
-                LatestSubmissionId = submission.Id,
-                ModerationStatus = submission.Status
+                var filename = $"{st.StudentId}_{submission.CourseCode}_{submission.Year}_T{submission.Trimester}_StudentLOReport.pdf";
+                var pdfPath = Path.Combine(studentLoReportDir, filename);
+                var exists = System.IO.File.Exists(pdfPath);
+                return new StudentLoModeratorRowViewModel
+                {
+                    StudentInternalId = st.Id,
+                    StudentId = st.StudentId,
+                    StudentName = st.FullName,
+                    LatestSubmissionId = submission.Id,
+                    ModerationStatus = submission.Status,
+                    PdfUrl = exists ? $"/uploads/reports/student-lo/{filename}" : null
+                };
             }).ToList();
 
             ViewBag.PendingSubmissionIds = submission.Status == SubmissionStatus.Pending
@@ -1253,5 +1297,6 @@ namespace AIS_LO_System.Controllers
         /// <summary>Latest CourseSubmission for this student's LO report, if submitted.</summary>
         public int? LatestSubmissionId { get; set; }
         public SubmissionStatus? ModerationStatus { get; set; }
+        public string? PdfUrl { get; set; }
     }
 }

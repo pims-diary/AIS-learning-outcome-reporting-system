@@ -231,20 +231,19 @@ namespace AIS_LO_System.Controllers
                     page.Margin(30);
                     page.DefaultTextStyle(x => x.FontSize(10));
 
-                    page.Header().Column(col =>
-                    {
-                        col.Item().Text("Student Course LO Report")
-                            .FontSize(18).Bold();
-
-                        col.Item().Text($"{vm.StudentName} ({vm.StudentId})");
-                        col.Item().Text($"{vm.CourseCode} - {vm.CourseTitle}");
-                        col.Item().Text($"Semester: Trimester {vm.Trimester}, {vm.Year}");
-                        col.Item().Text($"Generated on: {generatedAt:dd MMM yyyy, hh:mm tt}");
-                    });
-
                     page.Content().Column(col =>
                     {
                         col.Spacing(14);
+
+                        col.Item().Column(hdr =>
+                        {
+                            hdr.Item().Text("Student Course LO Report")
+                                .FontSize(18).Bold();
+                            hdr.Item().Text($"{vm.StudentName} ({vm.StudentId})");
+                            hdr.Item().Text($"{vm.CourseCode} - {vm.CourseTitle}");
+                            hdr.Item().Text($"Semester: Trimester {vm.Trimester}, {vm.Year}");
+                            hdr.Item().Text($"Generated on: {generatedAt:dd MMM yyyy, hh:mm tt}");
+                        });
 
                         col.Item().Text(
                                 $"{vm.AchievedCount} of {vm.TotalLOCount} Learning Outcomes Achieved")

@@ -119,21 +119,20 @@ namespace AIS_LO_System.Controllers
                     page.Margin(30);
                     page.DefaultTextStyle(x => x.FontSize(10));
 
-                    page.Header().Column(col =>
-                    {
-                        col.Item().Text("Course LO Report")
-                            .FontSize(18).Bold();
-
-                        col.Item().Text($"{vm.CourseCode} - {vm.CourseTitle}");
-                        col.Item().Text(vm.TrimesterLabel);
-                        col.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
-                        col.Item().Text($"Students Enrolled: {vm.TotalStudentsEnrolled}");
-                        col.Item().Text($"Assessments: {vm.TotalAssessments}");
-                    });
-
                     page.Content().Column(col =>
                     {
                         col.Spacing(12);
+
+                        col.Item().Column(hdr =>
+                        {
+                            hdr.Item().Text("Course LO Report")
+                                .FontSize(18).Bold();
+                            hdr.Item().Text($"{vm.CourseCode} - {vm.CourseTitle}");
+                            hdr.Item().Text(vm.TrimesterLabel);
+                            hdr.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
+                            hdr.Item().Text($"Students Enrolled: {vm.TotalStudentsEnrolled}");
+                            hdr.Item().Text($"Assessments: {vm.TotalAssessments}");
+                        });
 
                         col.Item().Text(
                                 $"{vm.TotalAchievedLOs} of {vm.LOSummaries.Count} Learning Outcomes Achieved by Class")
@@ -666,7 +665,7 @@ namespace AIS_LO_System.Controllers
                 courseCode, year, trimester,
                 SubmissionItemType.AssessmentLOReport,
                 assignmentId,
-                $"Assessment LO Report — {assessmentName}",
+                $"{assessmentName} - Assessment LO Report",
                 currentUserId);
 
             if (course.ModeratorId == currentUserId)
@@ -890,21 +889,20 @@ namespace AIS_LO_System.Controllers
                     page.Margin(30);
                     page.DefaultTextStyle(x => x.FontSize(10));
 
-                    page.Header().Column(col =>
-                    {
-                        col.Item().Text("Assessment Class LO Report")
-                            .FontSize(18).Bold();
-
-                        col.Item().Text($"{courseCode} - {courseTitle}");
-                        col.Item().Text($"Assessment: {assessmentName}");
-                        col.Item().Text($"{year} Trimester {trimester}");
-                        col.Item().Text($"Students Enrolled: {enrolledStudents.Count}");
-                        col.Item().Text($"Students Marked: {markedStudentIds.Count}");
-                    });
-
                     page.Content().Column(col =>
                     {
                         col.Spacing(12);
+
+                        col.Item().Column(hdr =>
+                        {
+                            hdr.Item().Text("Assessment Class LO Report")
+                                .FontSize(18).Bold();
+                            hdr.Item().Text($"{courseCode} - {courseTitle}");
+                            hdr.Item().Text($"Assessment: {assessmentName}");
+                            hdr.Item().Text($"{year} Trimester {trimester}");
+                            hdr.Item().Text($"Students Enrolled: {enrolledStudents.Count}");
+                            hdr.Item().Text($"Students Marked: {markedStudentIds.Count}");
+                        });
 
                         if (strongestLOs.Any() || weakestLOs.Any())
                         {
@@ -1250,20 +1248,19 @@ namespace AIS_LO_System.Controllers
                     page.Margin(30);
                     page.DefaultTextStyle(x => x.FontSize(10));
 
-                    page.Header().Column(col =>
-                    {
-                        col.Item().Text("Assignment Class LO Report")
-                            .FontSize(18).Bold();
-
-                        col.Item().Text($"{assignment.AssessmentName}");
-                        col.Item().Text($"{courseCode} - {courseTitle}");
-                        col.Item().Text($"{year} - Trimester {trimester}");
-                        col.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
-                    });
-
                     page.Content().Column(col =>
                     {
                         col.Spacing(14);
+
+                        col.Item().Column(hdr =>
+                        {
+                            hdr.Item().Text("Assignment Class LO Report")
+                                .FontSize(18).Bold();
+                            hdr.Item().Text($"{assignment.AssessmentName}");
+                            hdr.Item().Text($"{courseCode} - {courseTitle}");
+                            hdr.Item().Text($"{year} - Trimester {trimester}");
+                            hdr.Item().Text($"Downloaded on: {downloadedAt:dd MMM yyyy, hh:mm tt}");
+                        });
 
                         col.Item().Text("LO Summary")
                             .Bold().FontSize(12);

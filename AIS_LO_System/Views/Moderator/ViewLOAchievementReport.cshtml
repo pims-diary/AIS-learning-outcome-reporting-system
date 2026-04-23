@@ -74,17 +74,13 @@
                                     <td>@row.StudentId</td>
                                     <td>@row.StudentName</td>
                                     <td class="text-center">
-                                        @if (row.Status == SubmissionStatus.Approved)
+                                        @if (row.PdfUrl != null)
                                         {
-                                            <span class="badge bg-success">Approved</span>
-                                        }
-                                        else if (row.Status == SubmissionStatus.Denied)
-                                        {
-                                            <span class="badge bg-danger">Denied</span>
+                                            <span class="badge bg-success">Generated</span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-warning text-dark">Pending</span>
+                                            <span class="badge bg-secondary">Not Generated</span>
                                         }
                                     </td>
                                     <td class="text-center">
@@ -92,12 +88,12 @@
                                         {
                                             <div class="d-flex gap-2 justify-content-center">
                                                 <a href="@Url.Action("ViewLOAchievementReportPdf", "Moderator", new { submissionId = row.SubmissionId, studentId = row.StudentInternalId })"
-                                                       class="btn btn-sm btn-danger"
-                                                       target="_blank">
+                                                   class="btn btn-sm btn-danger"
+                                                   target="_blank">
                                                     View PDF
                                                 </a>
                                                 <a href="@Url.Action("DownloadLOAchievementReportPdf", "Moderator", new { submissionId = row.SubmissionId, studentId = row.StudentInternalId })"
-                                                       class="btn btn-sm btn-outline-secondary">
+                                                   class="btn btn-sm btn-outline-secondary">
                                                     Download
                                                 </a>
                                             </div>
