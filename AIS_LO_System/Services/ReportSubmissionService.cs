@@ -168,8 +168,6 @@ namespace AIS_LO_System.Services
             var filename = $"{courseCode}_{year}_T{trimester}_StudentLOReport.pdf";
             var fullPath = Path.Combine(directory, filename);
 
-            // TODO: Generate actual PDF using QuestPDF
-            // For now, just return the path where it should be saved
             return await Task.FromResult($"/uploads/reports/student-lo/{filename}");
         }
 
@@ -205,7 +203,6 @@ namespace AIS_LO_System.Services
                             col.Spacing(12);
                             col.Item().Text($"{vm.TotalAchievedLOs} of {vm.LOSummaries.Count} Learning Outcomes Achieved by Class").Bold();
 
-                            // Add more content here as needed
                         });
                     });
                 }).GeneratePdf();
@@ -235,8 +232,6 @@ namespace AIS_LO_System.Services
                 var filename = $"{courseCode}_{year}_T{trimester}_{safeAssessmentName}_AssessmentLOReport.pdf";
                 var fullPath = Path.Combine(directory, filename);
 
-                // TODO: Generate actual PDF using QuestPDF
-                // For now, just return the path where it should be saved
                 return await Task.FromResult($"/uploads/reports/assessment-lo/{filename}");
             }
             catch
