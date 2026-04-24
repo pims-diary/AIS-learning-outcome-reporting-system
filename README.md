@@ -1,7 +1,4 @@
-# AIS-learning-outcome-reporting-system
-Learning Outcome Achievement Reporting System: rubric-based marking, LO mapping, and PDF reporting for academic quality assurance (AIS/NZQA-aligned).
-
-# Learning Outcome Achievement Reporting System (Ongoing)
+# Learning Outcome Achievement Reporting System
 
 A .NET 8 web-based system for rubric-based marking and automated Learning Outcome (LO) achievement reporting (AIS/NZQA-aligned).
 
@@ -16,12 +13,12 @@ This system supports:
 
 ## Tech Stack
 - Backend: .NET 8 (C#)
-- Frontend: ASP.NET Core MVC / Blazor
+- Frontend: ASP.NET Core MVC (Razor Views)
 - Database: SQL Server
 - ORM: Entity Framework Core (Code-First), LINQ
-- Auth: ASP.NET Identity (RBAC: Admin / Lecturer / Moderator)
-- Document Processing: Open XML SDK (Word)
-- PDF: QuestPDF / iTextSharp
+- Auth: Custom cookie-based authentication with BCrypt password hashing (RBAC: Admin / Lecturer / Moderator)
+- Document Processing: Open XML SDK (Word), EPPlus (Excel)
+- PDF: QuestPDF, iText 7 (itext7 / itext7.pdfhtml)
 
 ## Local Setup (Developer)
 ### Prerequisites
@@ -33,5 +30,4 @@ This system supports:
 From the repo root:
 ```bash
 dotnet restore
-dotnet run --project WebApp
-
+dotnet run --project AIS_LO_System
