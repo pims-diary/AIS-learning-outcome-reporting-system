@@ -1,12 +1,14 @@
 ﻿using AIS_LO_System.Models;
 using AIS_LO_System.Data;
 using AIS_LO_System.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
 
 namespace AIS_LO_System.Controllers
 {
+    [Authorize(Roles = "Lecturer,Admin")]
     public class AssignmentController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -16,6 +18,24 @@ namespace AIS_LO_System.Controllers
         {
             _context = context;
             _submissions = submissions;
+        }
+
+        private int GetUserId()
+        {
+            int.TryParse(User.FindFirst("UserId")?.Value, out int id);
+            return id;
+        }
+
+        private async Task<bool> IsLecturerForCourse(string courseCode, int year, int trimester)
+        {
+            if (User.IsInRole("Admin")) return true;
+            var userId = GetUserId();
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            if (course == null) return false;
+            if (course.LecturerId == userId || course.ModeratorId == userId) return true;
+            return await _context.LecturerCourseEnrolments
+                .AnyAsync(e => e.UserId == userId && e.CourseId == course.Id);
         }
 
         [HttpGet]
@@ -31,6 +51,9 @@ namespace AIS_LO_System.Controllers
                 TempData["Error"] = "Assessment name is required.";
                 return RedirectToAction("Index", "CourseDashboard", new { courseCode, year, trimester });
             }
+
+            if (!await IsLecturerForCourse(courseCode, year, trimester))
+                return Forbid();
 
             var assessmentDraftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
             if (assessmentDraftLock != null)
@@ -87,6 +110,9 @@ namespace AIS_LO_System.Controllers
 
             if (assignment == null) return NotFound();
 
+            if (!await IsLecturerForCourse(assignment.CourseCode, assignment.Year, assignment.Trimester))
+                return Forbid();
+
             var assessmentDraftLock = await BlockIfAssessmentDraftPendingAsync(
                 assignment.CourseCode,
                 assignment.Year,
@@ -139,6 +165,7 @@ namespace AIS_LO_System.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadAssignment(IFormFile file, int assignmentId)
         {
             if (file == null || file.Length == 0)
@@ -152,6 +179,9 @@ namespace AIS_LO_System.Controllers
 
             var assignment = _context.Assignments.FirstOrDefault(a => a.Id == assignmentId);
             if (assignment == null) return NotFound();
+
+            if (!await IsLecturerForCourse(assignment.CourseCode, assignment.Year, assignment.Trimester))
+                return Forbid();
 
             var assessmentDraftLock = await BlockIfAssessmentDraftPendingAsync(
                 assignment.CourseCode,

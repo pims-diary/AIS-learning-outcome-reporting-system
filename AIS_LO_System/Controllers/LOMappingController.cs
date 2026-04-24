@@ -1,20 +1,40 @@
 ﻿using AIS_LO_System.Data;
 using AIS_LO_System.Models;
 using AIS_LO_System.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace AIS_LO_System.Controllers
 {
+    [Authorize(Roles = "Lecturer,Admin")]
     public class LOMappingController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly SubmissionService _submissions;   // FIX #2
+        private readonly SubmissionService _submissions;
 
         public LOMappingController(ApplicationDbContext context, SubmissionService submissions)
         {
             _context = context;
             _submissions = submissions;
+        }
+
+        private int GetUserId()
+        {
+            int.TryParse(User.FindFirst("UserId")?.Value, out int id);
+            return id;
+        }
+
+        private async Task<bool> IsLecturerForCourse(string courseCode, int year, int trimester)
+        {
+            if (User.IsInRole("Admin")) return true;
+            var userId = GetUserId();
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            if (course == null) return false;
+            if (course.LecturerId == userId || course.ModeratorId == userId) return true;
+            return await _context.LecturerCourseEnrolments
+                .AnyAsync(e => e.UserId == userId && e.CourseId == course.Id);
         }
 
         // ======================================================
@@ -31,6 +51,9 @@ namespace AIS_LO_System.Controllers
         {
             if (assignmentId == 0)
                 return BadRequest("Assignment ID is required.");
+
+            if (!await IsLecturerForCourse(courseCode, year, trimester))
+                return Forbid();
 
             var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
             if (draftLock != null)
@@ -111,7 +134,6 @@ namespace AIS_LO_System.Controllers
                     .ToList();
             }
 
-            // FIX #2: Pass existing submission status so the page can show it
             var existingSubmission = await _submissions.GetLatestAsync(
                 courseCode, year, trimester, SubmissionItemType.LOMapping, assignmentId);
             ViewBag.LOMappingSubmission = existingSubmission;
@@ -180,7 +202,6 @@ namespace AIS_LO_System.Controllers
 
         // ======================================================
         // SAVE LO MAPPINGS
-        // FIX #2: After a successful save, submit the LO mapping to the moderator
         // ======================================================
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -194,6 +215,9 @@ namespace AIS_LO_System.Controllers
             List<MappingInput> mappings,
             List<int> selectedLOIds)
         {
+            if (!await IsLecturerForCourse(courseCode, year, trimester))
+                return Forbid();
+
             var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
             if (draftLock != null)
                 return draftLock;
@@ -290,7 +314,6 @@ namespace AIS_LO_System.Controllers
 
                 TempData["Success"] = "LO mappings and weights saved successfully!";
 
-                // FIX #2: Submit the LO mapping to the moderator for approval
                 int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
                 var course = await _context.Courses.FirstOrDefaultAsync(c =>
                     c.Code == courseCode && c.Year == year && c.Trimester == trimester);

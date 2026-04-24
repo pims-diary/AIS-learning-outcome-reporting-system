@@ -11,7 +11,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.Add<AIS_LO_System.Filters.ReadOnlyWhenImpersonatingFilter>();
+}).AddRazorRuntimeCompilation();
 builder.Services.AddScoped<AIS_LO_System.Services.SubmissionService>();
 builder.Services.AddScoped<ReportSubmissionService>();
 builder.Services.AddScoped<AIS_LO_System.Services.ModerationDraftService>();
@@ -44,7 +47,6 @@ using (var scope = app.Services.CreateScope())
     {
         db.Database.Migrate();
 
-        // One-time fix: add columns if migration recorded but columns missing
         try
         {
             db.Database.ExecuteSqlRaw(@"

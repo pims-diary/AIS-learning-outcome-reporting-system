@@ -25,6 +25,22 @@ namespace LOARS.Web.Controllers
             var course = await _context.Courses
                 .FirstOrDefaultAsync(c => c.Code == courseCode && c.Year == year && c.Trimester == trimester);
 
+            if (course == null)
+                return NotFound();
+
+            // Verify the logged-in user is assigned to this course (Admin bypasses this)
+            if (!User.IsInRole("Admin"))
+            {
+                int.TryParse(User.FindFirst("UserId")?.Value, out int userId);
+                var isAssigned = course.LecturerId == userId
+                    || course.ModeratorId == userId
+                    || await _context.LecturerCourseEnrolments
+                        .AnyAsync(e => e.UserId == userId && e.CourseId == course.Id);
+
+                if (!isAssigned)
+                    return Forbid();
+            }
+
             ViewBag.CourseCode = courseCode;
             ViewBag.CourseTitle = course?.Title ?? "";
             ViewBag.Year = year;

@@ -1,6 +1,7 @@
 ﻿using AIS_LO_System.Data;
 using AIS_LO_System.Models;
 using AIS_LO_System.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
@@ -9,6 +10,7 @@ using System.Text.RegularExpressions;
 
 namespace AIS_LO_System.Controllers
 {
+    [Authorize(Roles = "Lecturer,Admin")]
     public class RubricController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -18,6 +20,24 @@ namespace AIS_LO_System.Controllers
         {
             _context = context;
             _submissions = submissions;
+        }
+
+        private int GetUserId()
+        {
+            int.TryParse(User.FindFirst("UserId")?.Value, out int id);
+            return id;
+        }
+
+        private async Task<bool> IsLecturerForCourse(string courseCode, int year, int trimester)
+        {
+            if (User.IsInRole("Admin")) return true;
+            var userId = GetUserId();
+            var course = await _context.Courses.FirstOrDefaultAsync(c =>
+                c.Code == courseCode && c.Year == year && c.Trimester == trimester);
+            if (course == null) return false;
+            if (course.LecturerId == userId || course.ModeratorId == userId) return true;
+            return await _context.LecturerCourseEnrolments
+                .AnyAsync(e => e.UserId == userId && e.CourseId == course.Id);
         }
 
         // ======================================================
@@ -33,6 +53,9 @@ namespace AIS_LO_System.Controllers
         {
             if (assignmentId == null)
                 return BadRequest("AssignmentId is required.");
+
+            if (!await IsLecturerForCourse(courseCode, year, trimester))
+                return Forbid();
 
             var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
             if (draftLock != null)
@@ -71,6 +94,7 @@ namespace AIS_LO_System.Controllers
         // UPLOAD RUBRIC EXCEL
         // ======================================================
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadRubricExcel(
     IFormFile file,
     int assignmentId,
@@ -80,6 +104,9 @@ namespace AIS_LO_System.Controllers
     int year,
     int trimester)
         {
+            if (!await IsLecturerForCourse(courseCode, year, trimester))
+                return Forbid();
+
             var draftLock = await BlockIfAssessmentDraftPendingAsync(courseCode, year, trimester);
             if (draftLock != null)
                 return draftLock;
@@ -402,7 +429,6 @@ namespace AIS_LO_System.Controllers
             if (rubric == null)
                 return NotFound();
 
-            // FIX #5: Update criterion names, level scores, AND descriptions
             foreach (var criterion in rubric.Criteria)
             {
                 var updatedCriterion = model.Criteria
@@ -420,7 +446,7 @@ namespace AIS_LO_System.Controllers
                         if (updatedLevel != null)
                         {
                             level.Score = updatedLevel.Score;
-                            level.Description = updatedLevel.Description ?? level.Description;  // FIX #5: Update description
+                            level.Description = updatedLevel.Description ?? level.Description;
                         }
                     }
                 }
